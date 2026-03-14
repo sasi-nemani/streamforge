@@ -1,0 +1,704 @@
+# StreamForge Stream Profile — flights.stream
+# Profiled: 2026-03-14T11:17:09.326987+00:00
+# Events sampled: 400
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 5
+# Discovery method: event_type_field
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: flights.stream
+profiled_at: '2026-03-14T11:17:09.326987+00:00'
+total_events_sampled: 400
+parse_success_rate: 1.0
+discovery_method: event_type_field
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: flight.gate_changed
+  detection_method: event_type_field
+  event_count: 93
+  sample_rate: 0.2325
+  inference_confidence: 0.92
+  top_keys:
+  - event_id
+  - event_type
+  - flight_number
+  - origin
+  - destination
+  - scheduled_departure
+  - actual_departure
+  - delay_minutes
+  - status
+  - gate
+  - aircraft_type
+  - passenger_count
+  - timestamp
+  - severity
+  - crew_captain
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Unique identifier for the event, in standard UUID v4 format
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    enum_values:
+    - flight.gate_changed
+    notes: Type of event, e.g. 'flight.gate_changed'
+  - path: flight_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Flight number, e.g. 'EK6158'
+  - path: origin
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Origin airport code, e.g. 'MAN'
+  - path: destination
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Destination airport code, e.g. 'CDG'
+  - path: scheduled_departure
+    type: timestamp_iso8601
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Scheduled departure time in ISO 8601 format
+  - path: actual_departure
+    type: timestamp_iso8601
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Actual departure time in ISO 8601 format, may be null if not available
+  - path: delay_minutes
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Delay in minutes, e.g. 0 or 112
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    enum_values:
+    - BOARDING
+    - ON_TIME
+    - CANCELLED
+    - DELAYED
+    - DEPARTED
+    notes: Flight status, e.g. 'BOARDING', 'ON_TIME', 'CANCELLED', 'DELAYED'
+  - path: gate
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Gate number, e.g. 'A22', may be null if not available
+  - path: aircraft_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Aircraft type, e.g. 'A320', 'B777', 'A380'
+  - path: passenger_count
+    type: integer
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Number of passengers, may be null if not available
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: Timestamp, either in Unix epoch milliseconds or ISO 8601 format
+  - path: severity
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.3441
+    confidence: 0.5
+    enum_values:
+    - INFO
+    - CRITICAL
+    - WARNING
+    notes: Severity level, e.g. 'INFO', 'CRITICAL', 'WARNING', may be null if not
+      available
+  - path: crew_captain
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.1613
+    confidence: 0.2
+    notes: Crew captain name, may be null if not available
+- cluster_id: flight.landed
+  detection_method: event_type_field
+  event_count: 83
+  sample_rate: 0.2075
+  inference_confidence: 0.85
+  top_keys:
+  - event_id
+  - event_type
+  - flight_number
+  - origin
+  - destination
+  - scheduled_departure
+  - actual_departure
+  - delay_minutes
+  - status
+  - gate
+  - aircraft_type
+  - passenger_count
+  - timestamp
+  - severity
+  - crew_captain
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Unique identifier for the event
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - flight.landed
+    notes: Type of event, in this case 'flight.landed'
+  - path: flight_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Flight number
+  - path: origin
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Origin airport code
+  - path: destination
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Destination airport code
+  - path: scheduled_departure
+    type: timestamp_iso8601
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Scheduled departure time in ISO 8601 format
+  - path: actual_departure
+    type: timestamp_iso8601
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Actual departure time in ISO 8601 format
+  - path: delay_minutes
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Delay in minutes
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - LANDED
+    - DEPARTED
+    - CANCELLED
+    - ON_TIME
+    notes: Flight status
+  - path: gate
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Gate number
+  - path: aircraft_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Aircraft type
+  - path: passenger_count
+    type: integer
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Number of passengers
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Timestamp in either ISO 8601 format or Unix epoch time in milliseconds
+  - path: severity
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.3373
+    confidence: 0.5
+    enum_values:
+    - WARNING
+    - INFO
+    - CRITICAL
+    notes: Severity level
+  - path: crew_captain
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.2169
+    confidence: 0.4
+    notes: Name of the crew captain
+- cluster_id: flight.delayed
+  detection_method: event_type_field
+  event_count: 81
+  sample_rate: 0.2025
+  inference_confidence: 0.85
+  top_keys:
+  - event_id
+  - event_type
+  - flight_number
+  - origin
+  - destination
+  - scheduled_departure
+  - actual_departure
+  - delay_minutes
+  - status
+  - gate
+  - aircraft_type
+  - passenger_count
+  - timestamp
+  - severity
+  - crew_captain
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Unique identifier for the event
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Type of event, always 'flight.delayed' in the provided samples
+  - path: flight_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Flight number
+  - path: origin
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Origin airport code
+  - path: destination
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Destination airport code
+  - path: scheduled_departure
+    type: timestamp_iso8601
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Scheduled departure time in ISO 8601 format
+  - path: actual_departure
+    type: timestamp_iso8601
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Actual departure time in ISO 8601 format, may be null if not available
+  - path: delay_minutes
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Delay minutes, can be integer or string
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - ON_TIME
+    - DELAYED
+    - LANDED
+    - CANCELLED
+    notes: Flight status, can be ON_TIME, DELAYED, LANDED, or CANCELLED
+  - path: gate
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Gate number, may be null if not available
+  - path: aircraft_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Aircraft type
+  - path: passenger_count
+    type: integer
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Number of passengers, may be null if not available
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Timestamp, can be ISO 8601 string or Unix epoch ms
+  - path: severity
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.2716
+    confidence: 0.6
+    enum_values:
+    - INFO
+    - CRITICAL
+    - WARNING
+    notes: Severity level, may be null if not available
+  - path: crew_captain
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.2346
+    confidence: 0.6
+    notes: Crew captain name, may be null if not available
+- cluster_id: flight.status_changed
+  detection_method: event_type_field
+  event_count: 77
+  sample_rate: 0.1925
+  inference_confidence: 0.85
+  top_keys:
+  - event_id
+  - event_type
+  - flight_number
+  - origin
+  - destination
+  - scheduled_departure
+  - actual_departure
+  - delay_minutes
+  - status
+  - gate
+  - aircraft_type
+  - passenger_count
+  - timestamp
+  - severity
+  - crew_captain
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Unique event identifier
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Event type, always 'flight.status_changed'
+  - path: flight_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Flight number
+  - path: origin
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Origin airport code
+  - path: destination
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Destination airport code
+  - path: scheduled_departure
+    type: timestamp_iso8601
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Scheduled departure time in ISO 8601 format
+  - path: actual_departure
+    type: timestamp_iso8601
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Actual departure time in ISO 8601 format, may be null if not available
+  - path: delay_minutes
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Delay in minutes
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Flight status, e.g. 'CANCELLED', 'DELAYED', 'BOARDING', 'LANDED'
+  - path: gate
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Gate number, may be null if not available
+  - path: aircraft_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Aircraft type, e.g. 'A320', 'A380', 'B737'
+  - path: passenger_count
+    type: integer
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Number of passengers, may be null if not available
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Timestamp, may be in ISO 8601 format or Unix epoch milliseconds
+  - path: severity
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.3247
+    confidence: 0.5
+    notes: Severity level, may be null if not available, e.g. 'WARNING', 'CRITICAL',
+      'INFO'
+  - path: crew_captain
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.2208
+    confidence: 0.5
+    notes: Crew captain's name, may be null if not available
+- cluster_id: flight.departed
+  detection_method: event_type_field
+  event_count: 66
+  sample_rate: 0.165
+  inference_confidence: 0.85
+  top_keys:
+  - event_id
+  - event_type
+  - flight_number
+  - origin
+  - destination
+  - scheduled_departure
+  - actual_departure
+  - delay_minutes
+  - status
+  - gate
+  - aircraft_type
+  - passenger_count
+  - timestamp
+  - severity
+  - crew_captain
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Unique identifier for the event
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - flight.departed
+    notes: Type of event
+  - path: flight_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Flight number
+  - path: origin
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Origin airport
+  - path: destination
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Destination airport
+  - path: scheduled_departure
+    type: timestamp_iso8601
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Scheduled departure time
+  - path: actual_departure
+    type: timestamp_iso8601
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Actual departure time
+  - path: delay_minutes
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Delay in minutes
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - DEPARTED
+    - LANDED
+    - BOARDING
+    - DELAYED
+    - ON_TIME
+    - CANCELLED
+    notes: Flight status
+  - path: gate
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Gate number
+  - path: aircraft_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - A380
+    - B737
+    - A350
+    - B777
+    notes: Aircraft type
+  - path: passenger_count
+    type: integer
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Number of passengers
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Timestamp in either ISO8601 or epoch milliseconds format
+  - path: severity
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.3333
+    confidence: 0.7
+    enum_values:
+    - INFO
+    - WARNING
+    - CRITICAL
+    notes: Severity level
+  - path: crew_captain
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.2424
+    confidence: 0.7
+    notes: Crew captain name

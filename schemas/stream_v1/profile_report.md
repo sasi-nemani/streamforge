@@ -1,13 +1,27 @@
-# Inference Report — stream_v1
+# Stream Profile Report — stream_v1
 
-**Inferred:** 2026-03-14T11:16:21.181828+00:00  
+**Profiled:** 2026-03-14T11:16:21.181828+00:00  
 **Model:** llama-3.3-70b-versatile  
 **Events sampled:** 300  
-**Overall confidence:** 85%
+**Parse success rate:** 100.0%  
+**Discovery method:** single  
+**Sub-schemas:** 1
 
 ---
 
-## Field Summary
+## Sub-Schema Summary
+
+| Cluster | Events | % Stream | Fields | Confidence | PII |
+|---------|--------|----------|--------|------------|-----|
+| `payment.processed` | 300 | 100% | 14 | 85% | `user.email`, `user.name`, `metadata.ip_address` |
+
+---
+
+## `payment.processed`
+
+- **Events:** 300 (100% of stream)
+- **Top-level keys:** event_id, event_type, timestamp, transaction_id, amount, currency, status, payment_method, user, metadata
+- **Confidence:** 85%
 
 | Field | Type | Required | Confidence | PII |
 |-------|------|----------|------------|-----|
@@ -26,24 +40,4 @@
 | `metadata.user_agent` | string | ○ | 70% | — |
 | `metadata.region` | string | ○ | 70% | — |
 
----
-
-## PII Fields
-
-- **`user.email`** — email
-- **`user.name`** — name
-- **`metadata.ip_address`** — ip_address
-
----
-
-## Low Confidence Fields (< 80%)
-
-- **`metadata.ip_address`** — 70% confidence — IP address of the user
-- **`metadata.user_agent`** — 70% confidence — User agent of the user
-- **`metadata.region`** — 70% confidence — Region of the user
-
----
-
-## Mixed Type Fields
-
-- **`amount`** — Transaction amount, sometimes string and sometimes number
+**PII in this cluster:** `user.email` (email), `user.name` (name), `metadata.ip_address` (ip_address)

@@ -1,21 +1,34 @@
 """
-StreamForge Dashboard — Streamlit UI
+StreamForge Dashboard — Apple Design System
+============================================
 
-Reads schemas/ and drift_reports/ written by the CLI.
-No backend, no database. Pure file reader.
+A single-file Streamlit application. No backend, no database.
+All data is read directly from the filesystem (schemas/, drift_reports/).
 
-Run:  streamlit run streamforge_ui.py
-  or: streamforge ui
+Layout:
+  Sidebar  — Fleet Overview selector + stream list + aggregate stats
+  Main     — Fleet Overview page -OR- Stream detail (5 tabs)
+
+Design system: Apple HIG (Human Interface Guidelines) adapted for the web.
+  - Font:      SF Pro / Inter (system-ui fallback)
+  - Palette:   Apple's canonical colours (blue, green, orange, red, grays)
+  - Depth:     Subtle shadows, no hard borders
+  - Spacing:   Generous — never cramped
+  - Motion:    CSS transitions where Streamlit allows
+
+Run with:  streamforge ui
+           streamlit run streamforge_ui.py
 """
 
-import json
+from __future__ import annotations
+
 from pathlib import Path
-from datetime import datetime
+from typing import Optional
 
 import streamlit as st
 import yaml
 
-# ── page config ───────────────────────────────────────────────────────────────
+# ── Page config (must be the first Streamlit call) ────────────────────────────
 st.set_page_config(
     page_title="StreamForge",
     page_icon="⚡",
@@ -23,692 +36,828 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-SCHEMAS_DIR = Path("schemas")
-DRIFT_DIR = Path("drift_reports")
+# ── Directory conventions ──────────────────────────────────────────────────────
+SCHEMAS_DIR      = Path("schemas")
+DRIFT_DIR        = Path("drift_reports")
+CONSUMERS_SUBDIR = "consumers.yaml"
 
-TIER_COLOR = {1: "#f59e0b", 2: "#f97316", 3: "#ef4444"}
-TIER_LABEL = {1: "Tier 1 — Non-breaking", 2: "Tier 2 — Breaking", 3: "Tier 3 — Critical"}
-TYPE_COLOR = {
-    "email": "#7c3aed", "uuid": "#2563eb", "timestamp_epoch_ms": "#0891b2",
-    "timestamp_iso8601": "#0891b2", "timestamp_rfc2822": "#0891b2",
-    "integer": "#16a34a", "float": "#16a34a", "boolean": "#ca8a04",
-    "mixed": "#dc2626", "null": "#6b7280",
+
+# ══════════════════════════════════════════════════════════════════════════════
+# APPLE DESIGN SYSTEM — CSS
+# ══════════════════════════════════════════════════════════════════════════════
+
+APPLE_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --sf-bg:            #F5F5F7;
+    --sf-card:          #FFFFFF;
+    --sf-blue:          #0071E3;
+    --sf-blue-dark:     #0077ED;
+    --sf-green:         #34C759;
+    --sf-orange:        #FF9F0A;
+    --sf-red:           #FF3B30;
+    --sf-text:          #1D1D1F;
+    --sf-text-2:        #6E6E73;
+    --sf-text-3:        #AEAEB2;
+    --sf-border:        rgba(210,210,215,0.5);
+    --sf-border-solid:  #D2D2D7;
+    --sf-shadow-sm:     0 1px 4px rgba(0,0,0,0.06),0 2px 8px rgba(0,0,0,0.04);
+    --sf-shadow-md:     0 2px 12px rgba(0,0,0,0.08),0 4px 24px rgba(0,0,0,0.04);
+    --sf-radius-sm:     10px;
+    --sf-radius-md:     14px;
+    --sf-radius-lg:     20px;
+    --sf-radius-pill:   980px;
+    --sf-transition:    0.2s cubic-bezier(0.25,0.46,0.45,0.94);
 }
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+html,body,.stApp {
+    background-color: var(--sf-bg) !important;
+    font-family: 'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif !important;
+    color: var(--sf-text) !important;
+    -webkit-font-smoothing: antialiased !important;
+}
 
+[data-testid="stSidebar"] {
+    background: rgba(255,255,255,0.92) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    border-right: 1px solid var(--sf-border) !important;
+}
+[data-testid="stSidebar"] .block-container { padding-top:1.5rem !important; }
+
+.main .block-container {
+    padding: 1.5rem 2rem 3rem 2rem !important;
+    max-width: 1400px !important;
+}
+
+h1,h2,h3,h4,h5 {
+    font-family: 'Inter',-apple-system,sans-serif !important;
+    color: var(--sf-text) !important;
+    letter-spacing: -0.02em !important;
+}
+h1 { font-size:2.25rem !important; font-weight:700 !important; }
+h2 { font-size:1.5rem !important;  font-weight:600 !important; }
+h3 { font-size:1.15rem !important; font-weight:600 !important; }
+
+[data-testid="stMetric"] {
+    background: var(--sf-card) !important;
+    border-radius: var(--sf-radius-md) !important;
+    padding: 20px 22px !important;
+    box-shadow: var(--sf-shadow-sm) !important;
+    border: 1px solid var(--sf-border) !important;
+    transition: box-shadow var(--sf-transition) !important;
+}
+[data-testid="stMetric"]:hover { box-shadow: var(--sf-shadow-md) !important; }
+[data-testid="stMetricLabel"] {
+    font-size:12px !important; font-weight:500 !important;
+    text-transform:uppercase !important; letter-spacing:0.06em !important;
+    color:var(--sf-text-2) !important;
+}
+[data-testid="stMetricValue"] {
+    font-size:2rem !important; font-weight:700 !important;
+    color:var(--sf-text) !important; letter-spacing:-0.03em !important;
+}
+
+[data-testid="stTabs"] [role="tablist"] {
+    border-bottom: 1px solid var(--sf-border-solid) !important;
+    gap: 0 !important; padding-bottom: 0 !important;
+}
+[data-testid="stTabs"] button[role="tab"] {
+    font-family: 'Inter',sans-serif !important; font-size:14px !important;
+    font-weight:500 !important; color:var(--sf-text-2) !important;
+    padding:10px 16px !important; border-radius:0 !important;
+    border-bottom:2px solid transparent !important;
+    transition: color var(--sf-transition),border-color var(--sf-transition) !important;
+}
+[data-testid="stTabs"] button[role="tab"]:hover { color:var(--sf-text) !important; background:transparent !important; }
+[data-testid="stTabs"] button[aria-selected="true"] {
+    color:var(--sf-blue) !important;
+    border-bottom-color:var(--sf-blue) !important;
+    background:transparent !important;
+}
+
+[data-testid="stExpander"] {
+    background: var(--sf-card) !important;
+    border: 1px solid var(--sf-border) !important;
+    border-radius: var(--sf-radius-md) !important;
+    overflow: hidden !important;
+    box-shadow: var(--sf-shadow-sm) !important;
+    margin-bottom: 8px !important;
+}
+
+.stButton > button {
+    background: var(--sf-blue) !important;
+    color: white !important; border: none !important;
+    border-radius: var(--sf-radius-pill) !important;
+    font-family: 'Inter',sans-serif !important;
+    font-weight: 500 !important; font-size: 14px !important;
+    padding: 8px 20px !important;
+    transition: background var(--sf-transition),transform var(--sf-transition) !important;
+}
+.stButton > button:hover {
+    background: var(--sf-blue-dark) !important;
+    transform: translateY(-1px) !important;
+}
+
+[data-testid="stSelectbox"] > div > div {
+    border-radius: var(--sf-radius-sm) !important;
+    border-color: var(--sf-border-solid) !important;
+    background: var(--sf-card) !important;
+}
+
+hr {
+    border: none !important;
+    border-top: 1px solid var(--sf-border-solid) !important;
+    margin: 20px 0 !important; opacity: 0.6 !important;
+}
+
+code {
+    background: rgba(0,0,0,0.04) !important;
+    border-radius: 4px !important; font-size:12.5px !important;
+    padding: 2px 6px !important; color: var(--sf-text) !important;
+    font-family: 'SF Mono','Fira Code','Fira Mono',monospace !important;
+}
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.12); border-radius:3px; }
+
+#MainMenu        { visibility:hidden !important; }
+footer           { visibility:hidden !important; }
+header           { visibility:hidden !important; }
+[data-testid="stDeployButton"] { display:none !important; }
+</style>
+"""
+
+st.markdown(APPLE_CSS, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DATA LOADING (cached 30s)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=30)
 def load_all_schemas() -> dict[str, dict]:
-    schemas = {}
+    schemas: dict[str, dict] = {}
     if not SCHEMAS_DIR.exists():
         return schemas
-    for p in sorted(SCHEMAS_DIR.glob("*/schema.yaml")):
+    for schema_file in sorted(SCHEMAS_DIR.glob("*/schema.yaml")):
         try:
-            data = yaml.safe_load(p.read_text())
-            if data:
-                schemas[p.parent.name] = data
+            data = yaml.safe_load(schema_file.read_text()) or {}
+            schemas[schema_file.parent.name] = data
         except Exception:
             pass
     return schemas
 
 
-def load_profile(stream_name: str) -> dict | None:
+@st.cache_data(ttl=30)
+def load_profile(stream_name: str) -> Optional[dict]:
     p = SCHEMAS_DIR / stream_name / "profile.yaml"
-    if p.exists():
-        try:
-            return yaml.safe_load(p.read_text())
-        except Exception:
-            return None
-    return None
+    return yaml.safe_load(p.read_text()) if p.exists() else None
 
 
-def load_policy(stream_name: str) -> dict:
-    p = SCHEMAS_DIR / stream_name / "stream_policy.yaml"
-    if p.exists():
-        return yaml.safe_load(p.read_text()) or {}
-    return {}
+@st.cache_data(ttl=30)
+def load_consumers(stream_name: str) -> Optional[dict]:
+    p = SCHEMAS_DIR / stream_name / CONSUMERS_SUBDIR
+    return yaml.safe_load(p.read_text()) if p.exists() else None
 
 
-def load_drift_reports(stream_name: str) -> list[dict]:
+@st.cache_data(ttl=30)
+def load_drift_reports(stream_name: str) -> list[tuple[str, str]]:
     d = DRIFT_DIR / stream_name
-    reports = []
     if not d.exists():
-        return reports
-    for md_path in sorted(d.glob("*.md"), reverse=True):
-        reports.append({"filename": md_path.name, "content": md_path.read_text()})
-    return reports
+        return []
+    return [(f.name, f.read_text()) for f in sorted(d.glob("*.md"), reverse=True)]
 
 
-def has_pii(schema: dict) -> bool:
-    return any(f.get("pii") for f in schema.get("fields", []))
+@st.cache_data(ttl=30)
+def load_policy(stream_name: str) -> Optional[dict]:
+    p = SCHEMAS_DIR / stream_name / "stream_policy.yaml"
+    return yaml.safe_load(p.read_text()) if p.exists() else None
 
 
-def pii_badge(cats: list[str]) -> str:
+# ══════════════════════════════════════════════════════════════════════════════
+# DESIGN SYSTEM COMPONENTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _type_badge(ft: str) -> str:
+    """Coloured pill for a FieldType value."""
+    palettes = {
+        "string":             ("#E3F2FD","#1565C0"), "integer":    ("#E8F5E9","#2E7D32"),
+        "float":              ("#E8F5E9","#2E7D32"), "boolean":    ("#F3E5F5","#6A1B9A"),
+        "timestamp_epoch_ms": ("#FFF8E1","#F57F17"), "timestamp_iso8601": ("#FFF8E1","#F57F17"),
+        "timestamp_rfc2822":  ("#FFF8E1","#F57F17"), "date":       ("#FFF8E1","#F57F17"),
+        "uuid":               ("#E0F7FA","#00695C"), "email":      ("#FCE4EC","#880E4F"),
+        "phone":              ("#FCE4EC","#880E4F"), "array":      ("#F1F8E9","#33691E"),
+        "object":             ("#EFEBE9","#4E342E"), "null":       ("#FAFAFA","#9E9E9E"),
+        "mixed":              ("#FFF3E0","#E65100"),
+    }
+    bg, fg = palettes.get(ft, ("#F5F5F5","#424242"))
+    return (f'<span style="background:{bg};color:{fg};padding:2px 9px;border-radius:980px;'
+            f'font-size:11px;font-weight:600;letter-spacing:0.04em;white-space:nowrap">{ft}</span>')
+
+
+def _pii_badge(cats: list) -> str:
     if not cats:
-        return ""
-    return " ".join(
-        f'<span style="background:#7c3aed;color:white;padding:1px 6px;border-radius:4px;font-size:11px">{c}</span>'
-        for c in cats
-    )
+        return '<span style="color:#AEAEB2;font-size:12px">—</span>'
+    label = ", ".join(str(c) for c in cats[:2])
+    if len(cats) > 2: label += f" +{len(cats)-2}"
+    return (f'<span style="background:#FFE5E5;color:#C0392B;padding:2px 9px;border-radius:980px;'
+            f'font-size:11px;font-weight:600">{label}</span>')
 
 
-def type_badge(t: str) -> str:
-    color = TYPE_COLOR.get(t, "#374151")
-    return f'<span style="background:{color};color:white;padding:1px 6px;border-radius:4px;font-size:11px">{t}</span>'
-
-
-def tier_badge(tier: int) -> str:
-    color = TIER_COLOR.get(tier, "#6b7280")
-    return f'<span style="background:{color};color:white;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">Tier {tier}</span>'
+def _status_dot(has_drift: bool, has_pii: bool) -> str:
+    if has_drift:
+        return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#FF3B30;box-shadow:0 0 6px #FF3B3088;flex-shrink:0"></span>'
+    if has_pii:
+        return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#FF9F0A;box-shadow:0 0 6px #FF9F0A88;flex-shrink:0"></span>'
+    return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#34C759;box-shadow:0 0 6px #34C75988;flex-shrink:0"></span>'
 
 
 def render_field_table(fields: list[dict]) -> str:
-    """Render a list of field dicts as an HTML table. Reused across Schema and Sub-schemas tabs."""
-    rows_html = ""
-    for f in fields:
-        name = f.get("path", f.get("name", "?"))
-        ftype = f.get("type", f.get("field_type", "string"))
-        req = "✓" if f.get("required") else "○"
-        presence = f.get("presence_rate", 1.0)
-        conf = f.get("confidence", 1.0)
-        pii = f.get("pii", [])
-        notes = (f.get("notes") or "")[:80]
-        enum_vals = f.get("enum_values") or []
+    """
+    Renders a list of field dicts as an Apple-styled HTML table.
+    Reused across Schema tab and Sub-schemas tab.
+    """
+    if not fields:
+        return "<p style='color:#6E6E73;font-style:italic;font-size:13px'>No fields.</p>"
+
+    rows = []
+    for f in sorted(fields, key=lambda x: -(x.get("presence_rate", 0))):
+        path       = f.get("path", "—")
+        ftype      = f.get("type", "string")
+        required   = f.get("required", False)
+        presence   = f.get("presence_rate", 0)
+        confidence = f.get("confidence", 0)
+        pii        = f.get("pii", [])
+        notes      = (f.get("notes") or "")
+
+        req_html = ('<span style="color:#34C759;font-weight:700;font-size:13px">●</span>'
+                    if required else
+                    '<span style="color:#AEAEB2;font-size:13px">○</span>')
 
         pct = int(presence * 100)
-        bar_color = "#16a34a" if pct >= 80 else "#f59e0b" if pct >= 50 else "#6b7280"
-        bar = (
-            f'<div style="background:#e5e7eb;border-radius:4px;height:8px;width:80px;display:inline-block;vertical-align:middle">'
-            f'<div style="background:{bar_color};width:{pct}%;height:100%;border-radius:4px"></div></div>'
-            f' <span style="font-size:11px;color:#6b7280">{pct}%</span>'
+        bar_c = "#34C759" if pct >= 80 else "#FF9F0A" if pct >= 50 else "#FF3B30"
+        pres_html = (
+            f'<div style="display:flex;align-items:center;gap:6px">'
+            f'<div style="width:52px;height:5px;background:#F0F0F0;border-radius:3px;overflow:hidden">'
+            f'<div style="width:{pct}%;height:100%;background:{bar_c};border-radius:3px"></div></div>'
+            f'<span style="font-size:12px;color:#6E6E73;font-variant-numeric:tabular-nums">{pct}%</span>'
+            f'</div>'
         )
 
-        conf_color = "#16a34a" if conf >= 0.9 else "#f59e0b" if conf >= 0.7 else "#ef4444"
-        conf_str = f'<span style="color:{conf_color};font-weight:600">{conf:.0%}</span>'
+        conf_pct = int(confidence * 100)
+        conf_c = "#34C759" if conf_pct >= 80 else "#FF9F0A" if conf_pct >= 60 else "#FF3B30"
+        conf_html = f'<span style="color:{conf_c};font-size:12px;font-weight:500">{conf_pct}%</span>'
 
-        enum_str = ""
-        if enum_vals:
-            shown = enum_vals[:4]
-            more = f" +{len(enum_vals)-4}" if len(enum_vals) > 4 else ""
-            enum_str = (
-                "<br><span style='font-size:10px;color:#6b7280'>"
-                + "  ".join(f"<code>{v}</code>" for v in shown) + more
-                + "</span>"
-            )
+        notes_html = (f'<span style="color:#6E6E73;font-size:12px">'
+                      f'{notes[:70]}{"…" if len(notes)>70 else ""}</span>')
 
-        rows_html += f"""
-        <tr>
-          <td style="font-family:monospace;font-size:13px;padding:8px 12px;border-bottom:1px solid #f3f4f6">
-            <strong>{name}</strong>{enum_str}
-          </td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6">{type_badge(ftype)}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:center">{req}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6">{bar}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:center">{conf_str}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6">{pii_badge(pii)}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:12px">{notes}</td>
-        </tr>"""
+        rows.append(
+            f"<tr>"
+            f'<td style="padding:10px 12px;font-family:\'SF Mono\',\'Fira Code\',monospace;font-size:12.5px;white-space:nowrap;color:#1D1D1F">{path}</td>'
+            f'<td style="padding:10px 12px">{_type_badge(ftype)}</td>'
+            f'<td style="padding:10px 12px;text-align:center">{req_html}</td>'
+            f'<td style="padding:10px 12px">{pres_html}</td>'
+            f'<td style="padding:10px 12px;text-align:center">{conf_html}</td>'
+            f'<td style="padding:10px 12px">{_pii_badge(pii)}</td>'
+            f'<td style="padding:10px 12px">{notes_html}</td>'
+            f"</tr>"
+        )
 
-    return f"""
-    <table style="width:100%;border-collapse:collapse;font-size:14px">
-      <thead>
-        <tr style="background:#f9fafb;font-weight:600;color:#374151">
-          <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">Field</th>
-          <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">Type</th>
-          <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e5e7eb">Req</th>
-          <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">Presence</th>
-          <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e5e7eb">Confidence</th>
-          <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">PII</th>
-          <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">Notes</th>
-        </tr>
-      </thead>
-      <tbody>{rows_html}</tbody>
-    </table>"""
+    th = ('font-size:11px;font-weight:600;text-transform:uppercase;'
+          'letter-spacing:0.06em;color:#6E6E73;border-bottom:1px solid #E5E5EA')
+    header = (
+        f'<tr style="background:#F5F5F7">'
+        f'<th style="padding:10px 12px;{th}">Field Path</th>'
+        f'<th style="padding:10px 12px;{th}">Type</th>'
+        f'<th style="padding:10px 12px;{th};text-align:center">Req</th>'
+        f'<th style="padding:10px 12px;{th}">Presence</th>'
+        f'<th style="padding:10px 12px;{th};text-align:center">Conf.</th>'
+        f'<th style="padding:10px 12px;{th}">PII</th>'
+        f'<th style="padding:10px 12px;{th}">Notes</th>'
+        f'</tr>'
+    )
+
+    return (
+        '<div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(210,210,215,0.5);'
+        'box-shadow:0 1px 4px rgba(0,0,0,0.06)">'
+        '<table style="width:100%;border-collapse:collapse;font-family:Inter,-apple-system,sans-serif;font-size:13px">'
+        f'<thead>{header}</thead>'
+        f'<tbody>{"".join(rows)}</tbody>'
+        '</table></div>'
+    )
 
 
-# ── session state ─────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SESSION STATE
+# ══════════════════════════════════════════════════════════════════════════════
 
 if "selected_stream" not in st.session_state:
-    st.session_state.selected_stream = "🏠 Fleet Overview"
+    st.session_state.selected_stream = None
+if "view" not in st.session_state:
+    st.session_state.view = "fleet"
 
-# ── load data ─────────────────────────────────────────────────────────────────
 
-schemas = load_all_schemas()
-stream_names = list(schemas.keys())
+# ══════════════════════════════════════════════════════════════════════════════
+# SIDEBAR
+# ══════════════════════════════════════════════════════════════════════════════
 
-# Pre-compute fleet stats
-drift_map = {s: load_drift_reports(s) for s in stream_names}
-pii_map = {s: has_pii(schemas[s]) for s in stream_names}
-streams_with_drift = [s for s in stream_names if drift_map[s]]
-streams_with_pii = [s for s in stream_names if pii_map[s]]
+schemas      = load_all_schemas()
+stream_names = sorted(schemas.keys())
 
-# ── sidebar ───────────────────────────────────────────────────────────────────
+_drift_streams: set[str] = set()
+_pii_streams: set[str] = set()
+for _sn in stream_names:
+    if load_drift_reports(_sn):
+        _drift_streams.add(_sn)
+    for _f in schemas.get(_sn, {}).get("fields", []):
+        if _f.get("pii"):
+            _pii_streams.add(_sn)
+            break
 
 with st.sidebar:
-    st.markdown("## ⚡ StreamForge")
-    st.caption("AI-native schema inference & drift detection")
-    st.divider()
-
-    if not schemas:
-        st.warning("No schemas found.\n\nRun `streamforge init <path>` first.")
-        st.stop()
-
-    # Navigation — Fleet Overview is always first
-    nav_options = ["🏠 Fleet Overview"] + stream_names
-
-    def _stream_label(s: str) -> str:
-        if s == "🏠 Fleet Overview":
-            return s
-        icon = "🔴" if drift_map.get(s) else "✅"
-        return f"{icon} {s}"
-
-    # Find current index
-    current = st.session_state.selected_stream
-    if current not in nav_options:
-        current = "🏠 Fleet Overview"
-    current_idx = nav_options.index(current)
-
-    selected = st.radio(
-        "Navigation",
-        nav_options,
-        index=current_idx,
-        format_func=_stream_label,
-        label_visibility="collapsed",
-    )
-    st.session_state.selected_stream = selected
-
-    st.divider()
-
-    # Fleet stats
-    st.markdown("**Fleet Stats**")
-    col_a, col_b = st.columns(2)
-    col_a.metric("📡 Streams", len(stream_names))
-    col_b.metric("🔴 Drift", len(streams_with_drift))
-    col_a2, col_b2 = st.columns(2)
-    col_a2.metric("🔒 PII", len(streams_with_pii))
-    col_b2.metric("✅ Clean", len(stream_names) - len(streams_with_drift))
-    st.caption("Refresh page to reload from disk")
-
-
-# ── FLEET OVERVIEW ────────────────────────────────────────────────────────────
-
-if selected == "🏠 Fleet Overview":
-
     st.markdown(
-        "<h1 style='font-size:2.2rem;margin-bottom:0'>⚡ StreamForge</h1>"
-        "<p style='font-size:1.1rem;color:#6b7280;margin-top:4px'>"
-        "AI-native schema intelligence for event-driven data platforms"
-        "</p>",
+        '<div style="padding:4px 0 20px 0">'
+        '<span style="font-size:22px;font-weight:700;letter-spacing:-0.02em;color:#1D1D1F">⚡ StreamForge</span><br>'
+        '<span style="font-size:12px;color:#6E6E73;font-weight:400">Schema Intelligence Platform</span>'
+        '</div>',
         unsafe_allow_html=True,
     )
-    st.divider()
 
-    # ── Problem statement ─────────────────────────────────────────────────────
-    st.markdown("### The problem with data streams at scale")
-    st.markdown("")
+    if st.button("🏠  Fleet Overview", use_container_width=True,
+                 type="primary" if st.session_state.view == "fleet" else "secondary"):
+        st.session_state.view = "fleet"
+        st.session_state.selected_stream = None
+        st.rerun()
 
-    card_style = (
-        "border-radius:12px;padding:20px 24px;height:100%;min-height:160px;"
-        "border:1px solid {border};background:{bg};"
+    st.markdown(
+        '<div style="font-size:11px;font-weight:600;text-transform:uppercase;'
+        'letter-spacing:0.08em;color:#AEAEB2;padding:20px 0 8px 4px">Streams</div>',
+        unsafe_allow_html=True,
     )
 
-    p1, p2, p3 = st.columns(3)
+    if not stream_names:
+        st.caption("No streams. Run `streamforge init` first.")
+    else:
+        for _sn in stream_names:
+            _active = st.session_state.selected_stream == _sn and st.session_state.view == "stream"
+            _dot    = "🔴 " if _sn in _drift_streams else "🟡 " if _sn in _pii_streams else "✅ "
+            if st.button(f"{_dot}{_sn}", key=f"sb_{_sn}", use_container_width=True,
+                         type="primary" if _active else "secondary"):
+                st.session_state.selected_stream = _sn
+                st.session_state.view = "stream"
+                st.rerun()
 
-    with p1:
+    n_total = len(stream_names)
+    n_drift = len(_drift_streams)
+    n_pii   = len(_pii_streams)
+
+    if n_total:
+        st.markdown("---")
         st.markdown(
-            f'<div style="{card_style.format(bg="#fff7ed", border="#fed7aa")}">'
-            "<div style='font-size:1.6rem'>🔥</div>"
-            "<div style='font-weight:700;font-size:1rem;margin:8px 0 6px'>The 3am incident</div>"
-            "<div style='color:#374151;font-size:0.9rem;line-height:1.5'>"
-            "A field changed in the payments stream. Twelve downstream consumers broke. "
-            "Four engineers. Six hours. Root cause: nobody knew the schema had drifted."
-            "</div></div>",
+            f'<div style="padding:4px 0">'
+            f'<div style="font-size:11px;font-weight:600;text-transform:uppercase;'
+            f'letter-spacing:0.08em;color:#AEAEB2;margin-bottom:10px">Fleet Stats</div>'
+            f'<div style="font-size:13px;color:#1D1D1F;margin-bottom:5px">📡 {n_total} streams</div>'
+            f'<div style="font-size:13px;color:{"#FF3B30" if n_drift else "#34C759"};margin-bottom:5px">'
+            f'{"🔴" if n_drift else "✅"} {n_drift} with drift</div>'
+            f'<div style="font-size:13px;color:{"#FF9F0A" if n_pii else "#6E6E73"}">'
+            f'🔒 {n_pii} with PII</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
 
-    with p2:
-        st.markdown(
-            f'<div style="{card_style.format(bg="#faf5ff", border="#d8b4fe")}">'
-            "<div style='font-size:1.6rem'>📋</div>"
-            "<div style='font-weight:700;font-size:1rem;margin:8px 0 6px'>The compliance audit</div>"
-            "<div style='color:#374151;font-size:0.9rem;line-height:1.5'>"
-            '"Which of our streams contain PII?" Three weeks of manual review across '
-            "200 Kafka topics. GDPR deadline in four weeks. No automated answer existed."
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
 
-    with p3:
+# ══════════════════════════════════════════════════════════════════════════════
+# FLEET OVERVIEW
+# ══════════════════════════════════════════════════════════════════════════════
+
+def render_fleet_overview():
+    st.markdown(
+        '<div style="padding:32px 0 8px 0">'
+        '<h1 style="font-size:2.6rem;font-weight:700;letter-spacing:-0.03em;color:#1D1D1F;margin:0">⚡ StreamForge</h1>'
+        '<p style="font-size:1.15rem;color:#6E6E73;margin:8px 0 0 0;font-weight:400">'
+        'AI-native schema intelligence for event streams at any scale.'
+        '</p></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("---")
+
+    # ── Pain-point cards ──────────────────────────────────────────────────────
+    st.markdown('<h2 style="font-size:1.2rem;font-weight:600;margin:0 0 16px 0">The Problem Every Data Platform Team Faces</h2>', unsafe_allow_html=True)
+
+    CARD = ('background:#FFFFFF;border-radius:16px;padding:24px;'
+            'box-shadow:0 2px 12px rgba(0,0,0,0.07);border:1px solid rgba(210,210,215,0.5);min-height:160px')
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
         st.markdown(
-            f'<div style="{card_style.format(bg="#f0fdf4", border="#86efac")}">'
-            "<div style='font-size:1.6rem'>🤷</div>"
-            "<div style='font-weight:700;font-size:1rem;margin:8px 0 6px'>The unknown unknowns</div>"
-            "<div style='color:#374151;font-size:0.9rem;line-height:1.5'>"
-            '"We have 847 Kafka topics. Nobody has current documentation. '
-            "New engineers spend weeks just learning what data exists, let alone what shape it's in."
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
+            f'<div style="{CARD}"><div style="font-size:28px;margin-bottom:10px">🔥</div>'
+            '<div style="font-size:15px;font-weight:600;color:#1D1D1F;margin-bottom:8px">The 3am Incident</div>'
+            '<div style="font-size:13px;color:#6E6E73;line-height:1.6">Someone renamed <code>amount</code> '
+            'at 2:17am. 4 engineers. 6 hours. $2M in delayed settlements.</div></div>',
+            unsafe_allow_html=True)
+    with c2:
+        st.markdown(
+            f'<div style="{CARD}"><div style="font-size:28px;margin-bottom:10px">📋</div>'
+            '<div style="font-size:15px;font-weight:600;color:#1D1D1F;margin-bottom:8px">The Compliance Audit</div>'
+            '<div style="font-size:13px;color:#6E6E73;line-height:1.6">"Which Kafka topics have passport numbers?" '
+            '3 weeks of manual review. Should take 30 seconds.</div></div>',
+            unsafe_allow_html=True)
+    with c3:
+        st.markdown(
+            f'<div style="{CARD}"><div style="font-size:28px;margin-bottom:10px">🤷</div>'
+            '<div style="font-size:15px;font-weight:600;color:#1D1D1F;margin-bottom:8px">The Unknown Unknowns</div>'
+            '<div style="font-size:13px;color:#6E6E73;line-height:1.6">"We have 847 Kafka topics. Nobody knows '
+            'what\'s in them, who owns them, or what breaks if they change."</div></div>',
+            unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── How it works ──────────────────────────────────────────────────────────
-    st.markdown("### How StreamForge works")
-    st.markdown("")
+    st.markdown('<h2 style="font-size:1.2rem;font-weight:600;margin:8px 0 16px 0">How StreamForge Works</h2>', unsafe_allow_html=True)
 
-    step_style = (
-        "border-radius:10px;padding:18px 20px;text-align:center;"
-        "background:{bg};border:1px solid {border};"
-    )
-    arrow_style = "display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:#9ca3af;padding-top:20px"
+    STEP = ('background:#FFFFFF;border-radius:16px;padding:24px 20px;text-align:center;'
+            'box-shadow:0 2px 12px rgba(0,0,0,0.07);border:1px solid rgba(210,210,215,0.5)')
 
-    h1, arr1, h2, arr2, h3 = st.columns([3, 1, 3, 1, 3])
+    s1, arr1, s2, arr2, s3 = st.columns([2, 0.25, 2, 0.25, 2])
+    ARR = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:24px;color:#AEAEB2;padding-top:50px">→</div>'
 
-    with h1:
-        st.markdown(
-            f'<div style="{step_style.format(bg="#eff6ff", border="#bfdbfe")}">'
-            "<div style='font-size:1.8rem'>📥</div>"
-            "<div style='font-weight:700;margin:8px 0 4px;color:#1d4ed8'>1. Ingest</div>"
-            "<div style='font-size:0.85rem;color:#374151;line-height:1.5'>"
-            "Any format. Structured JSON, broken JSON, log-prefixed lines, mixed event types. "
-            "The resilient parser extracts something from everything."
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
+    with s1:
+        st.markdown(f'<div style="{STEP}"><div style="font-size:30px;margin-bottom:10px">📥</div>'
+            '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#0071E3;margin-bottom:6px">1 — Ingest</div>'
+            '<div style="font-size:14px;font-weight:600;color:#1D1D1F;margin-bottom:6px">Any Format, Any Quality</div>'
+            '<div style="font-size:12px;color:#6E6E73;line-height:1.5">Broken JSON, log-prefixed lines, '
+            'mixed formats. Resilient parsing with confidence scoring.</div></div>', unsafe_allow_html=True)
     with arr1:
-        st.markdown(f'<div style="{arrow_style}">→</div>', unsafe_allow_html=True)
-    with h2:
-        st.markdown(
-            f'<div style="{step_style.format(bg="#f0fdf4", border="#86efac")}">'
-            "<div style='font-size:1.8rem'>🔍</div>"
-            "<div style='font-weight:700;margin:8px 0 4px;color:#15803d'>2. Discover</div>"
-            "<div style='font-size:0.85rem;color:#374151;line-height:1.5'>"
-            "AI auto-clusters events by type. Builds a sub-schema per cluster. "
-            "Presence rates, PII, types — all inferred. No documentation written."
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(ARR, unsafe_allow_html=True)
+    with s2:
+        st.markdown(f'<div style="{STEP}"><div style="font-size:30px;margin-bottom:10px">🔬</div>'
+            '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#0071E3;margin-bottom:6px">2 — Discover</div>'
+            '<div style="font-size:14px;font-weight:600;color:#1D1D1F;margin-bottom:6px">Sub-Schema per Event Type</div>'
+            '<div style="font-size:12px;color:#6E6E73;line-height:1.5">Structural fingerprinting clusters events. '
+            'LLM builds a precise schema per cluster.</div></div>', unsafe_allow_html=True)
     with arr2:
-        st.markdown(f'<div style="{arrow_style}">→</div>', unsafe_allow_html=True)
-    with h3:
-        st.markdown(
-            f'<div style="{step_style.format(bg="#faf5ff", border="#d8b4fe")}">'
-            "<div style='font-size:1.8rem'>🛡️</div>"
-            "<div style='font-weight:700;margin:8px 0 4px;color:#7c3aed'>3. Govern</div>"
-            "<div style='font-size:0.85rem;color:#374151;line-height:1.5'>"
-            "Continuous drift detection. PII flagged automatically. "
-            "Policy-driven alerts: log, alert, or block deployment before consumers break."
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(ARR, unsafe_allow_html=True)
+    with s3:
+        st.markdown(f'<div style="{STEP}"><div style="font-size:30px;margin-bottom:10px">🛡️</div>'
+            '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#0071E3;margin-bottom:6px">3 — Govern</div>'
+            '<div style="font-size:14px;font-weight:600;color:#1D1D1F;margin-bottom:6px">Alert Before Consumers Break</div>'
+            '<div style="font-size:12px;color:#6E6E73;line-height:1.5">PSI + chi-squared drift detection. '
+            'Slack, CI/CD blocking, blast radius — before prod breaks.</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.divider()
 
     # ── Fleet health grid ─────────────────────────────────────────────────────
-    n_streams = len(stream_names)
-    drift_count = len(streams_with_drift)
-    pii_count = len(streams_with_pii)
-
-    st.markdown(f"### Stream fleet — {n_streams} stream(s) monitored")
-    if drift_count:
-        st.error(f"**{drift_count} stream(s) have drift reports** — review recommended.")
+    if not stream_names:
+        st.markdown(
+            '<div style="background:#F5F5F7;border-radius:16px;padding:48px;text-align:center;border:2px dashed #D2D2D7">'
+            '<div style="font-size:40px;margin-bottom:16px">📂</div>'
+            '<div style="font-size:18px;font-weight:600;color:#1D1D1F;margin-bottom:8px">No streams yet</div>'
+            '<div style="font-size:14px;color:#6E6E73">Run <code>streamforge init events/&lt;stream&gt;</code> '
+            'to infer your first schema.</div></div>',
+            unsafe_allow_html=True)
     else:
-        st.success("All streams clean — no drift detected.")
-    st.markdown("")
+        st.markdown(f'<h2 style="font-size:1.2rem;font-weight:600;margin:8px 0 16px 0">Fleet Health — {len(stream_names)} Streams</h2>', unsafe_allow_html=True)
 
-    # 3 cards per row
-    COLS = 3
-    rows = [stream_names[i:i+COLS] for i in range(0, len(stream_names), COLS)]
+        cols = st.columns(3)
+        for idx, sn in enumerate(stream_names):
+            sd          = schemas.get(sn, {})
+            has_drift   = sn in _drift_streams
+            has_pii     = sn in _pii_streams
+            dr          = load_drift_reports(sn)
+            all_fields  = sd.get("fields", [])
+            pii_fields  = [f for f in all_fields if f.get("pii")]
+            confidence  = sd.get("inference_confidence", 0)
+            sampled     = sd.get("event_count_sampled", 0)
 
-    for row in rows:
-        cols = st.columns(COLS)
-        for col, stream in zip(cols, row):
-            schema = schemas[stream]
-            has_drift_flag = bool(drift_map[stream])
-            pii_flag = pii_map[stream]
-            fields = schema.get("fields", [])
-            pii_fields = [f for f in fields if f.get("pii")]
-            conf = schema.get("inference_confidence", 0)
-            inferred_at = schema.get("inferred_at", "")
-            drift_reports_list = drift_map[stream]
+            if has_drift:
+                border_c, status_icon, status_label = "#FF3B30", "🔴", f"{len(dr)} drift report(s)"
+            elif has_pii:
+                border_c, status_icon, status_label = "#FF9F0A", "🟡", f"{len(pii_fields)} PII field(s)"
+            else:
+                border_c, status_icon, status_label = "#34C759", "✅", "Schema Clean"
 
-            status_icon = "🔴" if has_drift_flag else "✅"
-            border_color = "#fca5a5" if has_drift_flag else "#86efac"
-            bg_color = "#fff5f5" if has_drift_flag else "#f0fdf4"
-
-            with col:
-                # Stream card
+            with cols[idx % 3]:
                 st.markdown(
-                    f'<div style="border:2px solid {border_color};background:{bg_color};'
-                    f'border-radius:12px;padding:16px 18px;margin-bottom:8px">'
-                    f'<div style="font-size:1.2rem;font-weight:700">{status_icon} {stream}</div>'
-                    f'<div style="color:#6b7280;font-size:0.8rem;margin:4px 0 10px">'
-                    f'Confidence: <strong>{conf:.0%}</strong>'
-                    + (f' &nbsp;·&nbsp; Inferred {inferred_at[:10]}' if inferred_at else '')
-                    + '</div>'
-                    f'<div style="display:flex;gap:12px;flex-wrap:wrap">'
-                    f'<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:4px;font-size:12px">'
-                    f'📋 {len(fields)} fields</span>'
-                    + (f'<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:4px;font-size:12px">'
-                       f'🔒 {len(pii_fields)} PII</span>' if pii_fields else '')
-                    + (f'<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:4px;font-size:12px">'
-                       f'⚠ {len(drift_reports_list)} drift</span>' if drift_reports_list else '')
-                    + '</div></div>',
+                    f'<div style="background:#FFFFFF;border-radius:16px;padding:22px 20px;'
+                    f'box-shadow:0 2px 12px rgba(0,0,0,0.07);border:1px solid rgba(210,210,215,0.5);'
+                    f'border-top:3px solid {border_c};margin-bottom:16px">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+                    f'<div style="font-size:14px;font-weight:600;color:#1D1D1F;word-break:break-word">{sn}</div>'
+                    f'<span style="font-size:18px">{status_icon}</span></div>'
+                    f'<div style="font-size:12px;font-weight:500;color:{border_c};margin-bottom:12px">{status_label}</div>'
+                    f'<div style="font-size:12px;color:#6E6E73;display:flex;flex-direction:column;gap:4px">'
+                    f'<span>📊 {len(all_fields)} fields</span>'
+                    f'<span>🎯 {confidence:.0%} confidence</span>'
+                    f'<span>📅 {sampled:,} events sampled</span>'
+                    f'</div></div>',
                     unsafe_allow_html=True,
                 )
-                if st.button(f"Inspect →", key=f"inspect_{stream}"):
-                    st.session_state.selected_stream = stream
+                if st.button(f"View {sn}", key=f"fc_{sn}", use_container_width=True):
+                    st.session_state.selected_stream = sn
+                    st.session_state.view = "stream"
                     st.rerun()
 
-    # Pad empty cells in last row
-    if stream_names and len(rows[-1]) < COLS:
-        for _ in range(COLS - len(rows[-1])):
-            with cols[len(rows[-1]) + _]:
-                st.empty()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.divider()
-
-    # ── Quick-start reminder ──────────────────────────────────────────────────
-    st.markdown("### Quick start")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Collect live data & infer schema:**")
-        st.code(
-            "python taps/wikipedia.py --max 200\n"
-            "streamforge init events/wikipedia/live\n"
-            "streamforge ui",
-            language="bash",
-        )
-    with c2:
-        st.markdown("**Watch for drift continuously:**")
-        st.code(
-            "streamforge watch events/wikipedia/live --interval 15\n"
-            "# Then open a new terminal and edit a field\n"
-            "# Drift report appears in the dashboard automatically",
-            language="bash",
-        )
-
-    st.stop()
-
-
-# ── STREAM DETAIL ─────────────────────────────────────────────────────────────
-
-schema = schemas[selected]
-fields = schema.get("fields", [])
-policy = load_policy(selected)
-drift_reports = load_drift_reports(selected)
-profile = load_profile(selected)
-
-has_drift = len(drift_reports) > 0
-status_icon = "🔴" if has_drift else "✅"
-status_text = f"{len(drift_reports)} drift report(s)" if has_drift else "Schema clean"
-
-col_title, col_status = st.columns([3, 1])
-with col_title:
-    st.title(f"⚡ {selected}")
-    st.caption(
-        f"v{schema.get('version', '1.0.0')}  •  "
-        f"{schema.get('event_count_sampled', '?')} events sampled  •  "
-        f"Inferred by {schema.get('inference_model', 'unknown')}  •  "
-        f"Confidence {schema.get('inference_confidence', 0):.0%}"
-    )
-with col_status:
-    st.metric(label="Status", value=status_icon, delta=status_text,
-              delta_color="inverse" if has_drift else "normal")
-
-st.divider()
-
-# ── tabs ───────────────────────────────────────────────────────────────────────
-tab_schema, tab_sub, tab_pii, tab_drift, tab_policy = st.tabs(
-    ["📋 Schema", "🧩 Sub-schemas", "🔒 PII & Compliance", "📊 Drift History", "⚙️ Policy"]
-)
-
-# ── TAB: Schema ───────────────────────────────────────────────────────────────
-with tab_schema:
-    required = [f for f in fields if f.get("required")]
-    optional = [f for f in fields if not f.get("required")]
-    pii_fields = [f for f in fields if f.get("pii")]
-    low_conf = [f for f in fields if f.get("confidence", 1) < 0.8]
-
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total fields", len(fields))
-    m2.metric("Required", len(required))
-    m3.metric("PII flagged", len(pii_fields))
-    m4.metric("Low confidence", len(low_conf))
-
-    if profile and len(profile.get("sub_schemas", [])) > 1:
-        st.info(
-            f"This stream has **{len(profile['sub_schemas'])} sub-schemas** "
-            f"(discovery: `{profile.get('discovery_method', '?')}`). "
-            "The fields below are from the **primary cluster** only. "
-            "See the **Sub-schemas** tab for the full breakdown."
-        )
-
-    st.markdown("#### Fields")
-    st.markdown(render_field_table(fields), unsafe_allow_html=True)
-
-    if schema.get("event_types"):
-        st.markdown("#### Event types in this stream")
-        cols = st.columns(min(len(schema["event_types"]), 6))
-        for i, et in enumerate(schema["event_types"]):
-            cols[i % len(cols)].code(et)
-
-# ── TAB: Sub-schemas ──────────────────────────────────────────────────────────
-with tab_sub:
-    if not profile:
-        st.info(
-            "No `profile.yaml` found for this stream yet.\n\n"
-            "Re-run `streamforge init` to generate a full multi-cluster profile:\n"
-            f"```\nstreamforge init events/{selected}\n```"
-        )
-    else:
-        sub_schemas = profile.get("sub_schemas", [])
-        discovery = profile.get("discovery_method", "unknown")
-        parse_rate = profile.get("parse_success_rate", 1.0)
-        total_sampled = profile.get("total_events_sampled", 0)
-
-        # Metrics row
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Clusters found", len(sub_schemas))
-        m2.metric("Discovery method", discovery.replace("_", " "))
-        m3.metric("Parse success rate", f"{parse_rate:.1%}")
-        m4.metric("Events sampled", total_sampled)
-
-        if not sub_schemas:
-            st.warning("Profile exists but contains no sub-schemas.")
-            st.stop()
-
-        st.markdown("#### Cluster summary")
-
-        # Cluster summary table
-        rows_html = ""
-        for sub in sub_schemas:
-            cid = sub.get("cluster_id", "?")
-            event_count = sub.get("event_count", 0)
-            sample_rate = sub.get("sample_rate", 0)
-            sub_fields = sub.get("fields", [])
-            conf = sub.get("inference_confidence", 0)
-            top_keys = sub.get("top_keys", [])
-
-            pii_in_sub = [f for f in sub_fields if f.get("pii")]
-            pii_str = ", ".join(
-                f'<code>{f["path"]}</code>' for f in pii_in_sub[:3]
-            ) if pii_in_sub else "—"
-            if len(pii_in_sub) > 3:
-                pii_str += f" +{len(pii_in_sub)-3}"
-
-            conf_color = "#16a34a" if conf >= 0.85 else "#f59e0b" if conf >= 0.7 else "#ef4444"
-            pct = int(sample_rate * 100)
-            bar = (
-                f'<div style="background:#e5e7eb;border-radius:4px;height:6px;width:60px;'
-                f'display:inline-block;vertical-align:middle">'
-                f'<div style="background:#3b82f6;width:{pct}%;height:100%;border-radius:4px"></div></div>'
-                f' <span style="font-size:11px;color:#6b7280">{pct}%</span>'
-            )
-
-            rows_html += f"""
-            <tr>
-              <td style="font-family:monospace;font-size:13px;padding:10px 12px;border-bottom:1px solid #f3f4f6;font-weight:600">{cid}</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6;text-align:right">{event_count:,}</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6">{bar}</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6;text-align:center">{len(sub_fields)}</td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6;text-align:center">
-                <span style="color:{conf_color};font-weight:600">{conf:.0%}</span>
-              </td>
-              <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6;font-size:12px">{pii_str}</td>
-            </tr>"""
-
-        st.markdown(f"""
-        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px">
-          <thead>
-            <tr style="background:#f9fafb;font-weight:600;color:#374151">
-              <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">Cluster</th>
-              <th style="padding:10px 12px;text-align:right;border-bottom:2px solid #e5e7eb">Events</th>
-              <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">% Stream</th>
-              <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e5e7eb">Fields</th>
-              <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e5e7eb">Confidence</th>
-              <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e5e7eb">PII</th>
-            </tr>
-          </thead>
-          <tbody>{rows_html}</tbody>
-        </table>
-        """, unsafe_allow_html=True)
-
-        st.markdown("#### Per-cluster field breakdown")
-
-        for sub in sub_schemas:
-            cid = sub.get("cluster_id", "?")
-            sub_fields = sub.get("fields", [])
-            event_count = sub.get("event_count", 0)
-            sample_rate = sub.get("sample_rate", 0)
-            conf = sub.get("inference_confidence", 0)
-            top_keys = sub.get("top_keys", [])
-
-            pii_in_sub = [f for f in sub_fields if f.get("pii")]
-            pii_indicator = f" 🔒 {len(pii_in_sub)} PII" if pii_in_sub else ""
-
-            with st.expander(
-                f"**{cid}** — {event_count} events ({sample_rate:.0%}) · "
-                f"{len(sub_fields)} fields · {conf:.0%} confidence{pii_indicator}",
-                expanded=(len(sub_schemas) == 1),
-            ):
-                if top_keys:
-                    st.caption(f"Top-level keys: `{'`, `'.join(top_keys[:10])}`")
-                if sub_fields:
-                    st.markdown(render_field_table(sub_fields), unsafe_allow_html=True)
-                else:
-                    st.info("No fields inferred for this cluster.")
-
-# ── TAB: PII ──────────────────────────────────────────────────────────────────
-with tab_pii:
-    pii_fields = [f for f in fields if f.get("pii")]
-
-    # Also pull PII from profile sub-schemas if available
-    profile_pii: list[tuple[str, dict]] = []  # (cluster_id, field)
-    if profile:
-        for sub in profile.get("sub_schemas", []):
-            for f in sub.get("fields", []):
-                if f.get("pii"):
-                    profile_pii.append((sub.get("cluster_id", "?"), f))
-
-    all_pii = profile_pii if profile_pii else [(selected, f) for f in pii_fields]
-
-    if not all_pii:
-        st.success("No PII detected in this stream.")
-    else:
-        st.warning(
-            f"**{len(all_pii)} PII field(s) detected.** "
-            "Ensure compliance with GDPR / CCPA before sharing or storing."
-        )
-        st.markdown("")
-
-        for cluster_id, f in all_pii:
-            name = f.get("path", f.get("name", "?"))
-            cats = f.get("pii", [])
-            ftype = f.get("type", f.get("field_type", ""))
-            notes = f.get("notes") or ""
-
-            with st.container():
-                col_name, col_cats, col_type, col_cluster = st.columns([2, 2, 1, 1])
-                with col_name:
-                    st.markdown(f"**`{name}`**")
-                    if notes:
-                        st.caption(notes[:100])
-                with col_cats:
-                    st.markdown(pii_badge(cats), unsafe_allow_html=True)
-                with col_type:
-                    st.markdown(type_badge(ftype), unsafe_allow_html=True)
-                with col_cluster:
-                    st.caption(f"in `{cluster_id}`")
-                st.divider()
-
-        st.markdown("#### Compliance checklist")
-        checks = [
-            ("Data minimisation", "Is each PII field strictly necessary?"),
-            ("Retention policy", "Are PII fields subject to a deletion schedule?"),
-            ("Access control", "Are PII fields masked or excluded from analytics exports?"),
-            ("Consent", "Is there a lawful basis for collecting each PII field?"),
-        ]
-        for label, detail in checks:
-            st.checkbox(f"**{label}** — {detail}", key=label)
-
-# ── TAB: Drift ────────────────────────────────────────────────────────────────
-with tab_drift:
-    if not drift_reports:
-        st.success("No drift detected. Schema is clean.")
-        st.caption("StreamForge writes a report here when drift is found during `watch` or `plan`.")
-    else:
-        st.error(f"**{len(drift_reports)} drift report(s)** on record for this stream.")
-
-        for i, r in enumerate(drift_reports):
-            fname = r["filename"]
-            try:
-                dt = datetime.strptime(fname.replace(".md", ""), "%Y-%m-%d-%H%M")
-                label = dt.strftime("%d %b %Y at %H:%M")
-            except ValueError:
-                label = fname
-
-            with st.expander(f"{'🔴' if i == 0 else '📄'} {label}", expanded=(i == 0)):
-                st.markdown(r["content"])
-
-# ── TAB: Policy ───────────────────────────────────────────────────────────────
-with tab_policy:
-    if not policy:
-        st.info("No stream_policy.yaml found. Run `streamforge init` to generate one.")
-    else:
-        st.markdown("#### Alert configuration")
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Sample size", policy.get("sample_size", 200))
-        c2.metric("Poll interval", f"{policy.get('poll_interval_seconds', 30)}s")
-        c3.metric("Alert from tier", policy.get("alert_tier", 2))
-
-        st.markdown("#### Actions per tier")
-        actions = policy.get("actions", {})
-        for tier_key, default in [("tier_1", "log"), ("tier_2", "alert"), ("tier_3", "block")]:
-            action = actions.get(tier_key, default)
-            tier_num = int(tier_key[-1])
-            action_color = {"log": "#6b7280", "alert": "#f97316", "block": "#ef4444"}.get(action, "#6b7280")
+    # ── Quick start ───────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown('<h2 style="font-size:1.2rem;font-weight:600;margin:8px 0 16px 0">Quick Start</h2>', unsafe_allow_html=True)
+    qc1, qc2, qc3, qc4 = st.columns(4)
+    for col, title, cmd in [
+        (qc1, "Infer Schema",       "streamforge init \\\n  events/payments/stream_v1"),
+        (qc2, "Detect Drift",       "streamforge plan \\\n  events/stream_v2 \\\n  --schema schemas/stream_v1/schema.yaml"),
+        (qc3, "Watch Continuously", "streamforge watch \\\n  events/payments/stream_v1 \\\n  --interval 30"),
+        (qc4, "Export JSON Schema", "streamforge export \\\n  schemas/stream_v1 \\\n  --format json-schema"),
+    ]:
+        with col:
             st.markdown(
-                f'<div style="display:flex;align-items:center;gap:12px;margin:8px 0">'
-                f'{tier_badge(tier_num)}'
-                f'<span style="color:#374151">{TIER_LABEL[tier_num]}</span>'
-                f'<span style="margin-left:auto;background:{action_color};color:white;'
-                f'padding:2px 10px;border-radius:4px;font-size:13px;font-weight:600">{action.upper()}</span>'
+                f'<div style="background:#FFFFFF;border-radius:12px;padding:16px;'
+                f'box-shadow:0 1px 6px rgba(0,0,0,0.05);border:1px solid rgba(210,210,215,0.4)">'
+                f'<div style="font-size:11px;font-weight:600;color:#0071E3;margin-bottom:8px;'
+                f'text-transform:uppercase;letter-spacing:0.06em">{title}</div>'
+                f'<code style="font-size:11px;color:#1D1D1F;white-space:pre-wrap;background:transparent;padding:0">{cmd}</code>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
-        wh = policy.get("webhook_url")
-        st.markdown("#### Webhook")
-        if wh:
-            st.code(wh)
-        else:
-            st.caption("No webhook configured. Edit `stream_policy.yaml` to add one.")
 
-        st.markdown("#### Raw policy")
-        with st.expander("stream_policy.yaml"):
-            policy_path = SCHEMAS_DIR / selected / "stream_policy.yaml"
-            if policy_path.exists():
-                st.code(policy_path.read_text(), language="yaml")
+# ══════════════════════════════════════════════════════════════════════════════
+# STREAM DETAIL
+# ══════════════════════════════════════════════════════════════════════════════
+
+def render_stream_detail(stream_name: str):
+    sd            = schemas.get(stream_name, {})
+    profile_data  = load_profile(stream_name)
+    drift_reports = load_drift_reports(stream_name)
+    policy_data   = load_policy(stream_name)
+    consumers_data = load_consumers(stream_name)
+
+    all_fields = sd.get("fields", [])
+    pii_fields = [f for f in all_fields if f.get("pii")]
+
+    # ── Header ─────────────────────────────────────────────────────────────────
+    dot = _status_dot(bool(drift_reports), bool(pii_fields))
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:12px;padding:20px 0 4px 0">'
+        f'{dot}'
+        f'<h1 style="font-size:1.8rem;font-weight:700;letter-spacing:-0.02em;color:#1D1D1F;margin:0">{stream_name}</h1>'
+        f'</div>'
+        f'<p style="color:#6E6E73;font-size:13px;margin:4px 0 20px 22px">'
+        f'Inferred {sd.get("inferred_at","")[:10]}  ·  '
+        f'Model: {sd.get("inference_model","—")}  ·  '
+        f'{sd.get("event_count_sampled",0):,} events  ·  '
+        f'v{sd.get("version","1.0.0")}'
+        f'</p>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Metrics ────────────────────────────────────────────────────────────────
+    mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+    mc1.metric("Fields",        len(all_fields))
+    mc2.metric("Confidence",    f'{sd.get("inference_confidence",0):.0%}')
+    mc3.metric("PII Fields",    len(pii_fields))
+    mc4.metric("Drift Reports", len(drift_reports))
+    mc5.metric("Sub-schemas",   len(profile_data.get("sub_schemas",[])) if profile_data else "—")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Tabs ───────────────────────────────────────────────────────────────────
+    tab_schema, tab_sub, tab_pii, tab_drift, tab_policy = st.tabs([
+        "📋  Schema", "🧩  Sub-schemas", "🔒  PII & Compliance", "📈  Drift History", "⚙️  Policy"
+    ])
+
+    # Schema tab
+    with tab_schema:
+        st.markdown(
+            '<p style="color:#6E6E73;font-size:13px;margin-bottom:16px">'
+            'Primary schema from the largest cluster. Edit <code>schema.yaml</code> to declare corrections — '
+            'it\'s the source of truth for <code>streamforge watch</code> and CI/CD blocking.'
+            '</p>',
+            unsafe_allow_html=True,
+        )
+        if all_fields:
+            st.markdown(render_field_table(all_fields), unsafe_allow_html=True)
+            enum_fields = [f for f in all_fields if f.get("enum_values")]
+            if enum_fields:
+                with st.expander(f"📌 Enum Values ({len(enum_fields)} fields)"):
+                    for f in enum_fields:
+                        vals = f.get("enum_values", [])
+                        st.markdown(f'`{f["path"]}` → ' + " | ".join(f"`{v}`" for v in vals[:20]))
+            with st.expander("🗂  Raw schema.yaml"):
+                p = SCHEMAS_DIR / stream_name / "schema.yaml"
+                if p.exists(): st.code(p.read_text(), language="yaml")
+        else:
+            st.info("No schema found. Run `streamforge init` first.")
+
+    # Sub-schemas tab
+    with tab_sub:
+        st.markdown(
+            '<p style="color:#6E6E73;font-size:13px;margin-bottom:16px">'
+            'StreamForge automatically discovers distinct event types in a single stream. '
+            'Each cluster gets its own schema — presence rates are computed <em>within</em> the cluster, '
+            'not diluted across the whole stream. This is the core differentiator.'
+            '</p>',
+            unsafe_allow_html=True,
+        )
+        if not profile_data:
+            st.info("No `profile.yaml` found. Re-run `streamforge init` to generate sub-schema profiles.")
+        else:
+            sub_schemas = profile_data.get("sub_schemas", [])
+            hc1, hc2, hc3, hc4 = st.columns(4)
+            hc1.metric("Clusters",        len(sub_schemas))
+            hc2.metric("Discovery",        profile_data.get("discovery_method","—").replace("_"," ").title())
+            hc3.metric("Parse Rate",       f'{profile_data.get("parse_success_rate",1):.1%}')
+            hc4.metric("Events Sampled",   f'{profile_data.get("total_events_sampled",0):,}')
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            if sub_schemas:
+                # Cluster summary table
+                rows = []
+                for sub in sub_schemas:
+                    cid   = sub.get("cluster_id","—")
+                    ev    = sub.get("event_count",0)
+                    sr    = sub.get("sample_rate",0)
+                    conf  = sub.get("inference_confidence",0)
+                    sf    = sub.get("fields",[])
+                    pf    = [f for f in sf if f.get("pii")]
+                    ps    = ", ".join(f"`{f['path']}`" for f in pf[:2]) + (f" +{len(pf)-2}" if len(pf)>2 else "")
+                    rows.append(
+                        f"<tr><td style='padding:10px 12px;font-weight:600;font-size:13px'>{cid}</td>"
+                        f"<td style='padding:10px 12px;font-size:13px'>{ev:,}</td>"
+                        f"<td style='padding:10px 12px;font-size:13px'>{sr:.0%}</td>"
+                        f"<td style='padding:10px 12px;font-size:13px'>{len(sf)}</td>"
+                        f"<td style='padding:10px 12px;font-size:13px;color:{'#34C759' if conf>=0.8 else '#FF9F0A'}'>{conf:.0%}</td>"
+                        f"<td style='padding:10px 12px;font-size:12px;color:#6E6E73'>{ps or '—'}</td></tr>"
+                    )
+                th_s = 'font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6E6E73;border-bottom:1px solid #E5E5EA'
+                st.markdown(
+                    '<div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(210,210,215,0.5);margin-bottom:20px">'
+                    '<table style="width:100%;border-collapse:collapse">'
+                    f'<thead><tr style="background:#F5F5F7">'
+                    f'<th style="padding:10px 12px;{th_s}">Cluster</th>'
+                    f'<th style="padding:10px 12px;{th_s}">Events</th>'
+                    f'<th style="padding:10px 12px;{th_s}">% Stream</th>'
+                    f'<th style="padding:10px 12px;{th_s}">Fields</th>'
+                    f'<th style="padding:10px 12px;{th_s}">Confidence</th>'
+                    f'<th style="padding:10px 12px;{th_s}">PII</th>'
+                    f'</tr></thead>'
+                    f'<tbody>{"".join(rows)}</tbody></table></div>',
+                    unsafe_allow_html=True,
+                )
+                for sub in sub_schemas:
+                    cid = sub.get("cluster_id","—")
+                    sf  = sub.get("fields",[])
+                    tk  = sub.get("top_keys",[])
+                    with st.expander(f"🔍  {cid}  —  {sub.get('event_count',0):,} events  ·  {sub.get('inference_confidence',0):.0%} confidence"):
+                        if tk:
+                            st.markdown(
+                                f'<div style="font-size:12px;color:#6E6E73;margin-bottom:12px">Top keys: '
+                                + " · ".join(f"<code>{k}</code>" for k in tk[:10])
+                                + '</div>', unsafe_allow_html=True)
+                        st.markdown(render_field_table(sf), unsafe_allow_html=True)
+
+    # PII tab
+    with tab_pii:
+        st.markdown(
+            '<p style="color:#6E6E73;font-size:13px;margin-bottom:16px">'
+            'PII detected via regex patterns and field-name heuristics — no LLM required. '
+            'Runs on every <code>init</code>. Sub-schemas are checked independently.'
+            '</p>', unsafe_allow_html=True)
+        if not pii_fields:
+            st.success("✅ No PII detected in primary schema.")
+        else:
+            st.warning(f"⚠️ {len(pii_fields)} PII field(s) — review for GDPR/CCPA compliance.")
+            st.markdown(render_field_table(pii_fields), unsafe_allow_html=True)
+
+        if profile_data:
+            for sub in profile_data.get("sub_schemas",[]):
+                spii = [f for f in sub.get("fields",[]) if f.get("pii")]
+                if spii:
+                    with st.expander(f"🔒 PII in {sub.get('cluster_id','—')}"):
+                        st.markdown(render_field_table(spii), unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown('<h3 style="font-size:15px;font-weight:600;margin-bottom:12px">Compliance Checklist</h3>', unsafe_allow_html=True)
+        for title, desc in [
+            ("Data Minimisation",  "Only collect PII necessary for the stated purpose. Review fields above."),
+            ("Retention Policy",   "Kafka retention for PII topics: default 7 days may violate GDPR Art. 5(1)(e)."),
+            ("Access Controls",    "Kafka ACLs must restrict read access to PII topics to authorised consumers only."),
+            ("Encryption in Transit", "All PII topics must use TLS. Check broker security.protocol configuration."),
+            ("Right to Erasure",   "GDPR Art. 17: you must be able to delete/anonymise a user's data across all consumers."),
+            ("Consent Lineage",    "Every PII field should be traceable to a consent event. Register consumers in consumers.yaml."),
+        ]:
+            icon = "⚠️" if pii_fields else "✅"
+            st.markdown(
+                f'<div style="background:#FFFFFF;border-radius:10px;padding:14px 16px;margin-bottom:8px;'
+                f'box-shadow:0 1px 4px rgba(0,0,0,0.05);border:1px solid rgba(210,210,215,0.4)">'
+                f'<div style="font-size:13px;font-weight:600;color:#1D1D1F;margin-bottom:4px">{icon} {title}</div>'
+                f'<div style="font-size:12px;color:#6E6E73">{desc}</div></div>',
+                unsafe_allow_html=True)
+
+    # Drift tab
+    with tab_drift:
+        st.markdown(
+            '<p style="color:#6E6E73;font-size:13px;margin-bottom:16px">'
+            'Reports generated by <code>streamforge watch</code> or <code>streamforge plan</code>. '
+            'Tier 3 = critical (CI blocking) · Tier 2 = breaking · Tier 1 = informational.'
+            '</p>', unsafe_allow_html=True)
+        if not drift_reports:
+            st.markdown(
+                '<div style="background:#F0FFF4;border-radius:12px;padding:24px;text-align:center;border:1px solid #C6F6D5">'
+                '<div style="font-size:24px;margin-bottom:8px">✅</div>'
+                '<div style="font-size:15px;font-weight:600;color:#276749">Schema is clean</div>'
+                '<div style="font-size:13px;color:#48BB78;margin-top:4px">'
+                'Run <code>streamforge watch</code> to monitor continuously.</div></div>',
+                unsafe_allow_html=True)
+        else:
+            for i, (fname, content) in enumerate(drift_reports):
+                tc = "#FF3B30" if "tier 3" in content.lower() else "#FF9F0A" if "tier 2" in content.lower() else "#34C759"
+                with st.expander(f"{'🆕' if i==0 else '📋'} {fname}", expanded=(i==0)):
+                    st.markdown(f'<div style="border-left:3px solid {tc};padding-left:12px;margin-bottom:12px;'
+                                f'font-size:12px;color:{tc};font-weight:600">'
+                                f'{"🔴 Critical" if tc=="#FF3B30" else "⚠️ Breaking" if tc=="#FF9F0A" else "✅ Informational"}'
+                                f'</div>', unsafe_allow_html=True)
+                    st.markdown(content)
+
+    # Policy tab
+    with tab_policy:
+        st.markdown(
+            '<p style="color:#6E6E73;font-size:13px;margin-bottom:16px">'
+            'Controls how StreamForge responds to drift. Edit <code>stream_policy.yaml</code> '
+            'alongside <code>schema.yaml</code> — changes take effect on next poll cycle.'
+            '</p>', unsafe_allow_html=True)
+
+        if not policy_data:
+            st.info("No policy found. Run `streamforge init` to generate a default policy.")
+        else:
+            pc1, pc2, pc3 = st.columns(3)
+            pc1.metric("Sample Size",   f'{policy_data.get("sample_size",200):,} events')
+            pc2.metric("Poll Interval", f'{policy_data.get("poll_interval_seconds",30)}s')
+            pc3.metric("Alert Tier",    f'Tier {policy_data.get("alert_tier",2)}+')
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            actions = policy_data.get("actions", {})
+            action_html = ""
+            for tk, action in actions.items():
+                bg = {"log":"#F0F0F0","alert":"#FFF8E1","block":"#FFEBEE"}.get(action,"#F5F5F5")
+                fg = {"log":"#6E6E73","alert":"#F57F17","block":"#C62828"}.get(action,"#6E6E73")
+                action_html += (
+                    f'<div style="display:flex;align-items:center;padding:12px 16px;background:{bg};'
+                    f'border-radius:8px;margin-bottom:8px">'
+                    f'<div style="font-size:13px;font-weight:600;color:#1D1D1F">{tk.replace("_"," ").title()}</div>'
+                    f'<div style="flex:1"></div>'
+                    f'<span style="background:white;color:{fg};border:1px solid {fg};padding:3px 12px;'
+                    f'border-radius:980px;font-size:11px;font-weight:700;letter-spacing:0.06em">{action.upper()}</span>'
+                    f'</div>'
+                )
+            st.markdown(
+                f'<div style="background:#FFFFFF;border-radius:12px;padding:16px;'
+                f'box-shadow:0 1px 6px rgba(0,0,0,0.05);border:1px solid rgba(210,210,215,0.4)">'
+                f'<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;'
+                f'color:#AEAEB2;margin-bottom:12px">Drift Response Actions</div>'
+                f'{action_html}</div>',
+                unsafe_allow_html=True)
+
+            # Consumer registry
+            st.markdown("---")
+            st.markdown('<h3 style="font-size:15px;font-weight:600;margin-bottom:12px">Consumer Registry & Blast Radius</h3>', unsafe_allow_html=True)
+            st.markdown(
+                '<p style="color:#6E6E73;font-size:13px;margin-bottom:12px">'
+                'Declare which services read this stream. When drift is detected, StreamForge computes '
+                'the blast radius — exactly which consumers break and who to page.'
+                '</p>', unsafe_allow_html=True)
+            if consumers_data:
+                for c in consumers_data.get("consumers", []):
+                    crit = c.get("criticality","tier3")
+                    cc   = {"tier1":"#FF3B30","tier2":"#FF9F0A","tier3":"#34C759"}.get(crit,"#6E6E73")
+                    with st.expander(f"👤 {c.get('name','?')} — {c.get('team','?')} — {crit.upper()}"):
+                        st.markdown(
+                            f'**Contact:** {c.get("contact","—")}  \n'
+                            f'**Schema version:** {c.get("schema_version","—")}  \n'
+                            + (f'**Description:** {c.get("description","")}  \n' if c.get("description") else "")
+                            + (f'**Runbook:** {c.get("runbook","")}' if c.get("runbook") else "")
+                        )
+                        fps = [f.get("path","?") for f in c.get("fields_used",[])]
+                        if fps:
+                            st.markdown("**Fields used:** " + " · ".join(f"`{p}`" for p in fps[:10]))
+            else:
+                st.info(
+                    "No `consumers.yaml` yet.  \n"
+                    f"A template was created at `schemas/{stream_name}/consumers.yaml` — "
+                    "fill it in to enable blast radius analysis."
+                )
+
+            with st.expander("🗂  Raw stream_policy.yaml"):
+                p = SCHEMAS_DIR / stream_name / "stream_policy.yaml"
+                if p.exists(): st.code(p.read_text(), language="yaml")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ROUTER
+# ══════════════════════════════════════════════════════════════════════════════
+
+if st.session_state.view == "fleet" or not st.session_state.selected_stream:
+    render_fleet_overview()
+else:
+    render_stream_detail(st.session_state.selected_stream)

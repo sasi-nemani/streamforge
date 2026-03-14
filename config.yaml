@@ -1,0 +1,192 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# StreamForge Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# Resolution order (highest priority first):
+#   1. CLI flags (--api-key, --model, --interval, ...)
+#   2. Environment variables (GROQ_API_KEY, STREAMFORGE_LOG_LEVEL, ...)
+#   3. This config file (config.yaml in the project root)
+#   4. Compiled-in defaults (streamforge/config.py)
+#
+# Copy this file and commit it. Do NOT commit API keys — use env vars or
+# a secrets manager. Any value here can be overridden without editing code.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── LLM Inference ─────────────────────────────────────────────────────────────
+inference:
+  # Provider: "groq" (default, fast/free tier) | "openai" | "ollama" (local)
+  provider: groq
+
+  # Model name — must match the provider's model catalogue.
+  # Groq recommended: llama-3.3-70b-versatile (best quality/speed balance)
+  # OpenAI alternative: gpt-4o-mini (cheaper) or gpt-4o (most accurate)
+  model: llama-3.3-70b-versatile
+
+  # API base URL — change this to switch providers without code changes.
+  # Groq:   https://api.groq.com/openai/v1
+  # OpenAI: https://api.openai.com/v1
+  # Ollama: http://localhost:11434/v1
+  base_url: https://api.groq.com/openai/v1
+
+  # Max characters in the LLM prompt (controls cost + latency).
+  # 20000 ≈ 5k tokens. Leave headroom for system prompt + tool response.
+  max_prompt_chars: 20000
+
+  # Retry count before falling back to statistical inference.
+  max_retries: 3
+
+# ── Kafka Connector ────────────────────────────────────────────────────────────
+kafka:
+  # Comma-separated list of broker addresses.
+  # Examples:
+  #   Local:            localhost:9092
+  #   AWS MSK:          b-1.mycluster.xxxxx.c2.kafka.us-east-1.amazonaws.com:9092
+  #   Confluent Cloud:  pkc-xxxxx.us-east-2.aws.confluent.cloud:9092
+  bootstrap_servers: []
+
+  # Security: PLAINTEXT | SSL | SASL_SSL | SASL_PLAINTEXT
+  security_protocol: PLAINTEXT
+
+  # SASL mechanism (only for SASL_SSL / SASL_PLAINTEXT):
+  # PLAIN | SCRAM-SHA-256 | SCRAM-SHA-512 | GSSAPI | OAUTHBEARER
+  sasl_mechanism: null   # set via KAFKA_SASL_MECHANISM env var in production
+  sasl_username: null    # set via KAFKA_SASL_USERNAME
+  sasl_password: null    # set via KAFKA_SASL_PASSWORD
+
+  # SSL (for SSL / SASL_SSL protocols)
+  ssl_ca_location: null      # path to CA certificate bundle
+  ssl_cert_location: null    # path to client certificate (mTLS)
+  ssl_key_location: null     # path to client private key (mTLS)
+
+  # Consumer settings
+  consumer_group: streamforge-profiler   # unique group to avoid interfering with producers
+  auto_offset_reset: earliest            # earliest = read from beginning; latest = tail only
+  max_poll_records: 500                  # batch size per poll
+  session_timeout_ms: 30000
+  request_timeout_ms: 30000
+
+  # How many messages to collect before profiling.
+  # Larger = better schema accuracy but slower startup.
+  sample_target: 1000
+
+# ── Drift Detection ────────────────────────────────────────────────────────────
+drift:
+  # Fraction of events in new sample that must show type change before flagging.
+  # 0.05 = 5%. Industry standard starting point; tune lower for high-stakes streams.
+  type_change_threshold: 0.05
+
+  # Absolute change in presence rate that triggers a drift event.
+  # 0.15 = field was 95% present, now <80% → flag it.
+  presence_drop_threshold: 0.15
+
+  # Fraction of new events with an unseen enum value before flagging enum drift.
+  enum_new_value_threshold: 0.05
+
+  # False positive rate for statistical tests (binomial z-test, chi-squared).
+  # 0.01 = 1% chance of a false alarm on a clean stream.
+  statistical_alpha: 0.01
+
+  # Minimum events required before running statistical tests.
+  # Below this, we fall back to threshold-based heuristics.
+  min_sample_for_stats: 30
+
+  # PSI (Population Stability Index) thresholds for numeric drift.
+  # < low   → stable; low–high → slight drift; > high → significant drift
+  psi_threshold_low: 0.10
+  psi_threshold_high: 0.20
+
+# ── Sampling ──────────────────────────────────────────────────────────────────
+sampling:
+  # Default events to sample for 'init' (full profile).
+  init_sample_size: 500
+
+  # Default events to sample per poll cycle in 'watch'.
+  watch_sample_size: 200
+
+  # Default poll interval for 'watch' in seconds.
+  watch_interval_seconds: 30
+
+# ── PII Detection ─────────────────────────────────────────────────────────────
+pii:
+  # Master switch — set false to disable all PII detection (not recommended).
+  enabled: true
+
+  # Pattern matching on field values (regex-based). Fast, no LLM needed.
+  patterns_enabled: true
+
+  # Field name heuristics ("email" in path → likely email PII).
+  field_hints_enabled: true
+
+  # Flag fields whose values look like real email addresses.
+  flag_email_values: true
+
+  # Flag internal IP ranges (RFC1918) as PII?
+  # Disable if your events routinely contain service mesh IPs.
+  flag_internal_ips: false
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+notifications:
+  slack:
+    enabled: false
+    # Incoming webhook URL — get from https://api.slack.com/apps → Incoming Webhooks
+    # Best set via SLACK_WEBHOOK_URL env var, not committed here.
+    webhook_url: null   # env: SLACK_WEBHOOK_URL
+
+    # Override channel — leave null to use the webhook's default channel.
+    channel: null       # e.g. "#data-oncall"
+
+    # @mention on Tier 3 (critical) drift. Use Slack user ID or group alias.
+    mention_on_tier3: "<!here>"   # <!here> pings online members; <!channel> pings all
+
+    # Minimum tier to send Slack messages: 1 = all, 2 = breaking+, 3 = critical only
+    min_tier: 2
+
+  pagerduty:
+    enabled: false
+    # PagerDuty Events API v2 routing key.
+    routing_key: null   # env: PAGERDUTY_ROUTING_KEY
+
+    # Only page on this tier or above.
+    escalate_on_tier: 3
+
+    # Severity map: Tier 1 → info, Tier 2 → warning, Tier 3 → critical
+    severity_map:
+      tier_1: info
+      tier_2: warning
+      tier_3: critical
+
+# ── Output ────────────────────────────────────────────────────────────────────
+output:
+  # Where schema files are written by 'init'.
+  schemas_dir: schemas
+
+  # Where drift reports are written by 'watch' and 'plan'.
+  drift_reports_dir: drift_reports
+
+  # Where consumers.yaml files live (one per stream, alongside schema.yaml).
+  consumers_dir: schemas
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging:
+  # Level: DEBUG | INFO | WARNING | ERROR | CRITICAL
+  # Override with STREAMFORGE_LOG_LEVEL env var.
+  level: INFO
+
+  # Format: "structured" (JSON, for log aggregation) | "human" (colourised CLI output)
+  # "structured" is the right choice for production / CI.
+  # "human" is the right choice for local development.
+  format: human
+
+  # In "structured" mode, write logs to this file (or stderr if null).
+  log_file: null
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+dashboard:
+  # Default port for 'streamforge ui'.
+  port: 8501
+
+  # Auto-refresh interval in seconds (0 = disabled).
+  # Useful for a live NOC-style view.
+  refresh_interval: 0
+
+  # Theme: "apple" (default) | "dark" | "minimal"
+  theme: apple

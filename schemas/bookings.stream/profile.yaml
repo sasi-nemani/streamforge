@@ -1,0 +1,725 @@
+# StreamForge Stream Profile — bookings.stream
+# Profiled: 2026-03-14T11:18:37.520943+00:00
+# Events sampled: 250
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 4
+# Discovery method: event_type_field
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: bookings.stream
+profiled_at: '2026-03-14T11:18:37.520943+00:00'
+total_events_sampled: 250
+parse_success_rate: 1.0
+discovery_method: event_type_field
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: booking.cancelled
+  detection_method: event_type_field
+  event_count: 69
+  sample_rate: 0.276
+  inference_confidence: 0.85
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Unique event identifier
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Event type, always 'booking.cancelled' in this dataset
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Booking reference number
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Timestamp of event creation, sometimes in ISO8601 format and sometimes
+      in Unix epoch milliseconds
+  - path: total_price
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Total price of the booking
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - GBP
+    - USD
+    - EUR
+    notes: Currency of the booking
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - ECONOMY
+    - BUSINESS
+    - FIRST
+    notes: Cabin class of the booking
+  - path: contact_email
+    type: email
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    pii:
+    - email
+    notes: Contact email of the passenger
+  - path: contact_phone
+    type: phone
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    pii:
+    - phone
+    notes: Contact phone number of the passenger
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: List of flight numbers
+  - path: flights[]
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.0
+    confidence: 0.9
+    notes: Individual flight number
+  - path: loyalty_number
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    pii:
+    - passport
+    - loyalty_number
+    notes: Loyalty program number, sometimes null
+  - path: passengers
+    type: array
+    required: false
+    nullable: true
+    presence_rate: 0.913
+    confidence: 0.8
+    notes: List of passengers
+  - path: passengers[].title
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.913
+    confidence: 0.8
+    enum_values:
+    - Dr
+    - Mrs
+    - Ms
+    - Mr
+    notes: Title of the passenger
+  - path: passengers[].first_name
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.913
+    confidence: 0.8
+    pii:
+    - name
+    notes: First name of the passenger
+  - path: passengers[].last_name
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.913
+    confidence: 0.8
+    pii:
+    - name
+    notes: Last name of the passenger
+  - path: passengers[].date_of_birth
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.913
+    confidence: 0.8
+    pii:
+    - date_of_birth
+    - phone
+    notes: Date of birth of the passenger
+  - path: passengers[].passport_number
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.913
+    confidence: 0.8
+    pii:
+    - passport
+    notes: Passport number of the passenger
+- cluster_id: booking.created
+  detection_method: event_type_field
+  event_count: 65
+  sample_rate: 0.26
+  inference_confidence: 0.92
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: A unique identifier for the event, follows standard UUID v4 format
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    enum_values:
+    - booking.created
+    notes: The type of event, always 'booking.created' in the provided samples
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: A reference for the booking, always present
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: The timestamp when the event was created, can be either a Unix epoch time
+      in milliseconds or an ISO 8601 string
+  - path: total_price
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: The total price of the booking, always a floating point number
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    enum_values:
+    - USD
+    - GBP
+    - EUR
+    notes: The currency of the total price, one of 'USD', 'GBP', or 'EUR'
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    enum_values:
+    - BUSINESS
+    - ECONOMY
+    - FIRST
+    notes: The class of the cabin, one of 'BUSINESS', 'ECONOMY', or 'FIRST'
+  - path: contact_email
+    type: email
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    pii:
+    - email
+    notes: The email of the contact person, always a valid email address
+  - path: contact_phone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    pii:
+    - phone
+    notes: The phone number of the contact person, always a string
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: An array of flight codes, always present
+  - path: flights[]
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.0
+    confidence: 0.95
+    notes: An individual flight code, always a string
+  - path: loyalty_number
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    pii:
+    - passport
+    - loyalty_number
+    notes: The loyalty number of the passenger, not always present and can be null
+      when present
+  - path: passengers
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 0.9538
+    confidence: 0.95
+    notes: An array of passenger objects, always present but can be empty
+  - path: passengers[]
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 0.0
+    confidence: 0.95
+    notes: An individual passenger object, always present when 'passengers' is not
+      empty
+  - path: passengers[].title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9538
+    confidence: 0.95
+    enum_values:
+    - Mr
+    - Ms
+    - Mrs
+    - Dr
+    notes: The title of the passenger, one of 'Mr', 'Ms', 'Mrs', or 'Dr'
+  - path: passengers[].first_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9538
+    confidence: 0.95
+    pii:
+    - name
+    notes: The first name of the passenger, always a string
+  - path: passengers[].last_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9538
+    confidence: 0.95
+    pii:
+    - name
+    notes: The last name of the passenger, always a string
+  - path: passengers[].date_of_birth
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9538
+    confidence: 0.95
+    pii:
+    - date_of_birth
+    - phone
+    notes: The date of birth of the passenger, always a string in the format 'YYYY-MM-DD'
+  - path: passengers[].passport_number
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.9538
+    confidence: 0.8
+    pii:
+    - passport
+    notes: The passport number of the passenger, can be null
+  - path: passenger_name
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.0462
+    confidence: 0.5
+    pii:
+    - name
+    notes: The full name of a passenger, not always present and seems redundant with
+      'passengers' array
+- cluster_id: booking.amended
+  detection_method: event_type_field
+  event_count: 60
+  sample_rate: 0.24
+  inference_confidence: 0.9
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: Unique event identifier
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    enum_values:
+    - booking.amended
+    notes: Type of event, e.g. booking amended
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: Reference number for the booking
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.8
+    notes: Timestamp when the event was created, can be in different formats (unix
+      epoch ms, ISO8601 string, RFC2822 string)
+  - path: total_price
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: Total price of the booking
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    enum_values:
+    - GBP
+    - EUR
+    - USD
+    notes: Currency of the booking
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    enum_values:
+    - ECONOMY
+    - FIRST
+    - BUSINESS
+    notes: Class of the cabin
+  - path: contact_email
+    type: email
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    pii:
+    - email
+    notes: Email address of the contact person
+  - path: contact_phone
+    type: phone
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    pii:
+    - phone
+    notes: Phone number of the contact person
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.95
+    notes: List of flight numbers
+  - path: passengers
+    type: array
+    required: false
+    nullable: false
+    presence_rate: 0.9667
+    confidence: 0.8
+    notes: List of passenger details
+  - path: passengers[].title
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.9667
+    confidence: 0.8
+    enum_values:
+    - Ms
+    - Mr
+    - Dr
+    - Mrs
+    notes: Title of the passenger
+  - path: passengers[].first_name
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.9667
+    confidence: 0.8
+    pii:
+    - name
+    notes: First name of the passenger
+  - path: passengers[].last_name
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.9667
+    confidence: 0.8
+    pii:
+    - name
+    notes: Last name of the passenger
+  - path: passengers[].date_of_birth
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.9667
+    confidence: 0.8
+    pii:
+    - date_of_birth
+    - phone
+    notes: Date of birth of the passenger
+  - path: passengers[].passport_number
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 0.9667
+    confidence: 0.8
+    pii:
+    - passport
+    notes: Passport number of the passenger
+  - path: loyalty_number
+    type: string
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.8
+    pii:
+    - passport
+    - loyalty_number
+    notes: Loyalty number of the passenger
+- cluster_id: booking.check_in
+  detection_method: event_type_field
+  event_count: 56
+  sample_rate: 0.224
+  inference_confidence: 0.6
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: total_price
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 0.9286
+    confidence: 0.6857
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9286
+    confidence: 0.6857
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].first_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9286
+    confidence: 0.6857
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].last_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9286
+    confidence: 0.6857
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].date_of_birth
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9286
+    confidence: 0.6857
+    pii:
+    - date_of_birth
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].passport_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9286
+    confidence: 0.6857
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_email
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_phone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: loyalty_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    - loyalty_number
+    notes: Statistically inferred (LLM fallback)
+  - path: passenger_name
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.0714
+    confidence: 0.5143
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
