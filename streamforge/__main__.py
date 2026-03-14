@@ -654,26 +654,26 @@ def consumers(
 
 @app.command()
 def demo(
-    baseline_size: int = typer.Option(300, "--baseline", "-b", help="Baseline events to generate"),
-    drift_size:    int = typer.Option(200, "--drift",    "-d", help="Drifted events to inject"),
-    output_dir:    str = typer.Option("schemas",         "--output", "-o"),
-    write_report:  bool = typer.Option(True, "--report/--no-report", help="Write drift report to disk"),
+    baseline_size: int  = typer.Option(300, "--baseline", "-b", help="Baseline events to generate"),
+    drift_size:    int  = typer.Option(200, "--drift",    "-d", help="Drifted events to inject"),
+    output_dir:    str  = typer.Option("schemas",         "--output", "-o"),
+    write_report:  bool = typer.Option(True,  "--report/--no-report", help="Write drift report to disk"),
+    loop:          bool = typer.Option(False, "--loop/--no-loop",
+                                       help="Loop continuously (for live dashboard demos). Ctrl+C to stop."),
 ):
     """
     Live drift detection demo — no Kafka needed.
 
     Generates realistic payment events in two phases:
-      Phase 1: 300 clean baseline events → infer schema
-      Phase 2: 200 drifted events → detect Tier 3 drift in real time
+      Phase 1: 300 clean baseline events → schema inferred, 3 clean watch ticks
+      Phase 2: 200 drifted events → Tier 3 drift detected in real time
 
-    This is the 90-second board-room demo. No API key required for the demo
-    (schema is inferred statistically from the generated events).
+    No API key required. Run alongside `streamforge ui` to see the dashboard update live.
+
+    Add --loop to run continuously during a presentation (Ctrl+C to stop).
     """
     import time
     from datetime import datetime, timezone
-    from rich.live import Live
-    from rich.spinner import Spinner
-    from rich.text import Text
 
     from .connectors.generators import payment_events, drifted_payment_events
     from .drift_detector import detect_drift
@@ -692,128 +692,141 @@ def demo(
         "started logging [red]card_last_four[/red] — a PII field not in the baseline schema.\n"
         "\nStreamForge catches it before any consumer breaks.\n"
     )
+    if loop:
+        console.print("[dim]Running in loop mode (Ctrl+C to stop). Open 'streamforge ui' in another terminal.[/dim]\n")
     time.sleep(1)
 
-    # ── Phase 1: Generate baseline and build a statistical schema ──────────────
-    console.print("[bold]PHASE 1 — Baseline monitoring[/bold]  [dim](300 clean events)[/dim]")
-    console.print("  Generating payment events...")
-    baseline = payment_events(n=baseline_size, seed=42)
-
-    # Build a schema from baseline events using statistical inference (no LLM needed for demo)
-    # We construct the InferredSchema directly from field stats.
-    field_values, presence_rates = get_all_field_paths(baseline)
-
-    # Hand-coded schema matching what an LLM would produce for these events
-    # (avoids API key requirement for the demo)
+    # ── Build baseline schema once — reused across loop iterations ────────────
+    # Hand-coded schema matching what an LLM would produce for these events.
+    # No API key required for the demo.
     demo_fields = [
-        FieldSchema(name="event_id",    path="event_id",    field_type=FieldType.UUID,              required=True,  presence_rate=1.0,  confidence=0.99, notes="Payment event UUID"),
-        FieldSchema(name="event_type",  path="event_type",  field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.98, enum_values=["payment_initiated","payment_completed","payment_failed"], notes="Payment lifecycle event type"),
-        FieldSchema(name="timestamp",   path="timestamp",   field_type=FieldType.TIMESTAMP_EPOCH_MS, required=True, presence_rate=1.0,  confidence=0.99, notes="Event timestamp — Unix epoch milliseconds"),
-        FieldSchema(name="amount",      path="amount",      field_type=FieldType.FLOAT,             required=True,  presence_rate=1.0,  confidence=0.99, notes="Payment amount in dollars"),
-        FieldSchema(name="currency",    path="currency",    field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.97, enum_values=["USD","EUR","GBP","CAD","AUD"], notes="ISO 4217 currency code"),
-        FieldSchema(name="user_id",     path="user_id",     field_type=FieldType.UUID,              required=True,  presence_rate=1.0,  confidence=0.99, notes="Unique user identifier"),
-        FieldSchema(name="user_email",  path="user_email",  field_type=FieldType.EMAIL,             required=True,  presence_rate=1.0,  confidence=0.99, pii_categories=[PIICategory.EMAIL], notes="User email — PII"),
-        FieldSchema(name="merchant_id", path="merchant_id", field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.96, notes="Merchant identifier"),
-        FieldSchema(name="status",      path="status",      field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.97, enum_values=["pending","completed","failed","processing"], notes="Payment status"),
-        FieldSchema(name="metadata.source",  path="metadata.source",  field_type=FieldType.STRING,  required=False, presence_rate=0.72, confidence=0.94, enum_values=["web","mobile","api"], notes="Request source"),
-        FieldSchema(name="metadata.version", path="metadata.version", field_type=FieldType.STRING,  required=False, presence_rate=0.65, confidence=0.88, enum_values=["v2","v3"], notes="API version"),
+        FieldSchema(name="event_id",    path="event_id",    field_type=FieldType.UUID,               required=True,  presence_rate=1.0,  confidence=0.99, notes="Payment event UUID"),
+        FieldSchema(name="event_type",  path="event_type",  field_type=FieldType.STRING,             required=True,  presence_rate=1.0,  confidence=0.98, enum_values=["payment_initiated","payment_completed","payment_failed"], notes="Payment lifecycle event type"),
+        FieldSchema(name="timestamp",   path="timestamp",   field_type=FieldType.TIMESTAMP_EPOCH_MS, required=True,  presence_rate=1.0,  confidence=0.99, notes="Event timestamp — Unix epoch milliseconds"),
+        FieldSchema(name="amount",      path="amount",      field_type=FieldType.FLOAT,              required=True,  presence_rate=1.0,  confidence=0.99, notes="Payment amount in dollars"),
+        FieldSchema(name="currency",    path="currency",    field_type=FieldType.STRING,             required=True,  presence_rate=1.0,  confidence=0.97, enum_values=["USD","EUR","GBP","CAD","AUD"], notes="ISO 4217 currency code"),
+        FieldSchema(name="user_id",     path="user_id",     field_type=FieldType.UUID,               required=True,  presence_rate=1.0,  confidence=0.99, notes="Unique user identifier"),
+        FieldSchema(name="user_email",  path="user_email",  field_type=FieldType.EMAIL,              required=True,  presence_rate=1.0,  confidence=0.99, pii_categories=[PIICategory.EMAIL], notes="User email — PII"),
+        FieldSchema(name="merchant_id", path="merchant_id", field_type=FieldType.STRING,             required=True,  presence_rate=1.0,  confidence=0.96, notes="Merchant identifier"),
+        FieldSchema(name="status",      path="status",      field_type=FieldType.STRING,             required=True,  presence_rate=1.0,  confidence=0.97, enum_values=["pending","completed","failed","processing"], notes="Payment status"),
+        FieldSchema(name="metadata.source",  path="metadata.source",  field_type=FieldType.STRING,   required=False, presence_rate=0.72, confidence=0.94, enum_values=["web","mobile","api"], notes="Request source"),
+        FieldSchema(name="metadata.version", path="metadata.version", field_type=FieldType.STRING,   required=False, presence_rate=0.65, confidence=0.88, enum_values=["v2","v3"], notes="API version"),
     ]
 
     baseline_schema = InferredSchema(
         stream_name=STREAM_NAME,
         version="1.0.0",
         inferred_at=datetime.now(timezone.utc).isoformat(),
-        event_count_sampled=len(baseline),
+        event_count_sampled=baseline_size,
         fields=demo_fields,
         inference_model="statistical+demo",
         inference_confidence=0.97,
     )
 
-    # Print schema summary
-    console.print(f"  ✓ Schema inferred — [bold]{len(demo_fields)}[/bold] fields, confidence [green]97%[/green]")
-    console.print(f"  ✓ PII detected: [yellow]user_email[/yellow] (email)")
-    console.print()
+    baseline = payment_events(n=baseline_size, seed=42)
+    drifted  = drifted_payment_events(n=drift_size, seed=99)
 
-    # Simulate 3 clean watch cycles
-    for cycle in range(1, 4):
-        sample = reservoir_sample(baseline, 50)
-        drift_check = detect_drift(baseline_schema, sample, STREAM_NAME)
-        ts = datetime.now().strftime("%H:%M:%S")
-        console.print(
-            f"  [[dim]{ts}[/dim]] [green]✓[/green] {STREAM_NAME} — "
-            f"[dim]{len(sample)} events sampled — schema clean[/dim]"
-        )
-        time.sleep(0.8)
+    def _run_one_cycle(iteration: int) -> None:
+        """Run one full Phase1 → Phase2 demo cycle."""
+        if iteration > 1:
+            console.rule(f"[dim]Loop {iteration}[/dim]")
 
-    console.print()
+        # ── Phase 1 ────────────────────────────────────────────────────────────
+        console.print("[bold]PHASE 1 — Baseline monitoring[/bold]  [dim](clean schema)[/dim]")
+        if iteration == 1:
+            console.print(f"  ✓ Schema inferred — [bold]{len(demo_fields)}[/bold] fields, confidence [green]97%[/green]")
+            console.print(f"  ✓ PII detected: [yellow]user_email[/yellow] (email)")
+            console.print()
 
-    # ── Phase 2: Inject drift ──────────────────────────────────────────────────
-    console.print("[bold red]PHASE 2 — Drift injected[/bold red]  [dim](deploy at 2:17am)[/dim]")
-    console.print("  [dim]Injecting drifted events: amount renamed, timestamp format changed, new PII field...[/dim]")
-    time.sleep(1)
+        for _ in range(3):
+            sample = reservoir_sample(baseline, 50)
+            detect_drift(baseline_schema, sample, STREAM_NAME)  # always clean
+            ts = datetime.now().strftime("%H:%M:%S")
+            console.print(
+                f"  [[dim]{ts}[/dim]] [green]✓[/green] {STREAM_NAME} — "
+                f"[dim]50 events sampled — schema clean[/dim]"
+            )
+            time.sleep(0.9)
 
-    drifted = drifted_payment_events(n=drift_size, seed=99)
-    sample  = reservoir_sample(drifted, min(200, len(drifted)))
-    ts      = datetime.now().strftime("%H:%M:%S")
+        console.print()
 
-    drift_report = detect_drift(baseline_schema, sample, STREAM_NAME)
+        # ── Phase 2 ────────────────────────────────────────────────────────────
+        console.print("[bold red]PHASE 2 — Drift injected[/bold red]  [dim](deploy at 2:17am)[/dim]")
+        console.print("  [dim]amount renamed · timestamp format changed · card_last_four PII appears[/dim]")
+        time.sleep(1.2)
 
-    if drift_report is None:
-        console.print(f"  [[dim]{ts}[/dim]] [green]✓[/green] No drift detected.")
-        return
+        sample       = reservoir_sample(drifted, min(200, len(drifted)))
+        ts           = datetime.now().strftime("%H:%M:%S")
+        drift_report = detect_drift(baseline_schema, sample, STREAM_NAME)
 
-    # Tier banner
-    highest = drift_report.highest_tier.value
-    color   = tier_colors.get(highest, "white")
-    if highest == 3:
-        console.print(
-            f"\n  [[dim]{ts}[/dim]] [bold red]🔴 {STREAM_NAME} — TIER 3 DRIFT — human action required[/bold red]"
-        )
-    else:
-        console.print(
-            f"\n  [[dim]{ts}[/dim]] [bold yellow]⚠  {STREAM_NAME} — DRIFT DETECTED — Tier {highest}[/bold yellow]"
-        )
+        if drift_report is None:
+            console.print(f"  [[dim]{ts}[/dim]] [green]✓[/green] No drift detected (unexpected).")
+            return
 
-    console.print()
-    for d in drift_report.drifts:
-        c = tier_colors.get(d.tier.value, "white")
-        lbl = f"[{c}][TIER {d.tier.value}][/{c}]"
-
-        if d.drift_type == "type_changed":
-            detail = (f"type changed: [cyan]{d.previous_type.value}[/cyan] → "
-                      f"[red]{d.observed_type.value}[/red]  ({d.affected_event_rate:.0%} of events)")
-        elif d.drift_type == "field_removed":
-            detail = (f"field [bold red]REMOVED[/bold red] — was "
-                      f"[cyan]{(d.previous_presence_rate or 0):.0%}[/cyan] present, now "
-                      f"[red]{(d.observed_presence_rate or 0):.0%}[/red]")
-        elif d.drift_type == "field_added":
-            pres = d.observed_presence_rate or 0
-            kind = "required" if pres >= 0.8 else "optional"
-            detail = f"new {kind} field added ({pres:.0%} presence)"
-        elif d.drift_type == "new_pii":
-            detail = "[red bold]NEW PII FIELD[/red bold] — GDPR/CCPA review required"
-        elif d.drift_type == "enum_changed":
-            detail = f"new enum values in {d.affected_event_rate:.0%} of events"
-        elif d.drift_type == "presence_drop":
-            detail = (f"presence dropped: {(d.previous_presence_rate or 0):.0%} → "
-                      f"{(d.observed_presence_rate or 0):.0%}")
+        highest = drift_report.highest_tier.value
+        if highest == 3:
+            console.print(
+                f"\n  [[dim]{ts}[/dim]] [bold red]🔴 {STREAM_NAME} — TIER 3 DRIFT — human action required[/bold red]"
+            )
         else:
-            detail = d.drift_type
+            console.print(
+                f"\n  [[dim]{ts}[/dim]] [bold yellow]⚠  {STREAM_NAME} — DRIFT DETECTED — Tier {highest}[/bold yellow]"
+            )
 
-        console.print(f"    {lbl} [cyan]{d.field_path}[/cyan] — {detail}")
+        console.print()
+        for d in drift_report.drifts:
+            c   = tier_colors.get(d.tier.value, "white")
+            lbl = f"[{c}][TIER {d.tier.value}][/{c}]"
+            if d.drift_type == "type_changed":
+                detail = (f"type changed: [cyan]{d.previous_type.value}[/cyan] → "
+                          f"[red]{d.observed_type.value}[/red]  ({d.affected_event_rate:.0%} of events)")
+            elif d.drift_type == "field_removed":
+                detail = (f"field [bold red]REMOVED[/bold red] — was "
+                          f"[cyan]{(d.previous_presence_rate or 0):.0%}[/cyan] present, now "
+                          f"[red]{(d.observed_presence_rate or 0):.0%}[/red]")
+            elif d.drift_type == "field_added":
+                pres = d.observed_presence_rate or 0
+                detail = f"new {'required' if pres >= 0.8 else 'optional'} field added ({pres:.0%} presence)"
+            elif d.drift_type == "new_pii":
+                detail = "[red bold]NEW PII FIELD[/red bold] — GDPR/CCPA review required"
+            elif d.drift_type == "presence_drop":
+                detail = (f"presence dropped: {(d.previous_presence_rate or 0):.0%} → "
+                          f"{(d.observed_presence_rate or 0):.0%}")
+            else:
+                detail = d.drift_type
+            console.print(f"    {lbl} [cyan]{d.field_path}[/cyan] — {detail}")
 
-    console.print()
+        console.print()
 
-    if write_report:
-        report_path = write_drift_report(drift_report, "drift_reports")
-        console.print(f"  ✓ Report saved: [green]{report_path}[/green]")
+        if write_report:
+            report_path = write_drift_report(drift_report, "drift_reports")
+            console.print(f"  ✓ Report saved: [green]{report_path}[/green]")
 
-    console.rule()
-    console.print(
-        f"\n[bold]That would have been a 3am page.[/bold]\n"
-        f"Instead: a blocked PR and a Slack alert to [cyan]#payments-oncall[/cyan].\n\n"
-        f"Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard."
-    )
+        console.rule()
+        console.print(
+            f"\n[bold]That would have been a 3am page.[/bold]\n"
+            f"Instead: a blocked PR and a Slack alert to [cyan]#payments-oncall[/cyan].\n"
+        )
+
+        if loop:
+            console.print("[dim]Restarting in 5 seconds... (Ctrl+C to stop)[/dim]")
+            time.sleep(5)
+
+    # ── Run once or loop until KeyboardInterrupt ───────────────────────────────
+    if loop:
+        i = 1
+        try:
+            while True:
+                _run_one_cycle(i)
+                i += 1
+        except KeyboardInterrupt:
+            console.print("\n[dim]Demo stopped.[/dim]")
+    else:
+        _run_one_cycle(1)
+        console.print(
+            f"Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard.\n"
+            f"Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode."
+        )
 
 
 if __name__ == "__main__":

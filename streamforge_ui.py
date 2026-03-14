@@ -464,12 +464,41 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def render_fleet_overview():
+    from datetime import datetime as _dt
+    _now = _dt.now().strftime("%H:%M:%S")
+
     st.markdown(
         '<div style="padding:32px 0 8px 0">'
         '<h1 style="font-size:2.6rem;font-weight:700;letter-spacing:-0.03em;color:#1D1D1F;margin:0">⚡ StreamForge</h1>'
         '<p style="font-size:1.15rem;color:#6E6E73;margin:8px 0 0 0;font-weight:400">'
         'AI-native schema intelligence for event streams at any scale.'
-        '</p></div>',
+        '</p>'
+        '<p style="font-size:13px;color:#1D1D1F;margin:12px 0 0 0;font-weight:400;'
+        'background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:10px 14px;display:inline-block">'
+        '💡 <strong>The math:</strong> One Tier 3 drift incident costs ~$7,200 in engineer time '
+        '(6 hrs × 4 engineers × $300/hr). StreamForge prevents it. '
+        '<strong>ROI in the first avoided incident.</strong>'
+        '</p>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Live monitoring status bar
+    n_drift_now = len(_drift_streams)
+    scan_color  = "#FF3B30" if n_drift_now else "#34C759"
+    scan_icon   = "🔴" if n_drift_now else "✅"
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:16px;padding:10px 16px;margin:12px 0 0 0;'
+        f'background:#FFFFFF;border-radius:10px;border:1px solid rgba(210,210,215,0.5);'
+        f'box-shadow:0 1px 4px rgba(0,0,0,0.04);font-size:12px;color:#6E6E73">'
+        f'<span>{scan_icon} <strong style="color:{scan_color}">'
+        f'{"Drift active on " + str(n_drift_now) + " stream(s)" if n_drift_now else "All streams clean"}'
+        f'</strong></span>'
+        f'<span style="color:#D2D2D7">·</span>'
+        f'<span>📡 Last scanned: <strong style="color:#1D1D1F">{_now}</strong></span>'
+        f'<span style="color:#D2D2D7">·</span>'
+        f'<span>Auto-refreshes every 30s</span>'
+        f'</div>',
         unsafe_allow_html=True,
     )
     st.markdown("---")
@@ -622,6 +651,153 @@ def render_fleet_overview():
                 f'</div>',
                 unsafe_allow_html=True,
             )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BLAST RADIUS — parse drift report + cross-reference consumers
+# ══════════════════════════════════════════════════════════════════════════════
+
+import re as _re
+
+def _parse_drifted_fields(content: str) -> list[dict]:
+    """
+    Extract drifted field records from a drift report markdown.
+
+    The report_writer formats each field as:
+        ### `field.path`
+        - **Drift type**: `type_changed`
+        - **Tier**: Tier 3 — Critical ...
+
+    Returns list of dicts: {path, tier (int), drift_type (str)}.
+    """
+    fields = []
+    sections = _re.split(r'^###\s+', content, flags=_re.MULTILINE)
+    for section in sections[1:]:
+        lines = section.strip().split('\n')
+        path = lines[0].strip().strip('`')
+        if not path or path.startswith('#'):
+            continue
+        tier       = None
+        drift_type = None
+        for line in lines[1:]:
+            tm = _re.search(r'\*\*Tier\*\*:\s*Tier\s*(\d)', line)
+            if tm:
+                tier = int(tm.group(1))
+            dm = _re.search(r'\*\*Drift type\*\*:\s*`?(\w+)`?', line)
+            if dm:
+                drift_type = dm.group(1)
+        fields.append({'path': path, 'tier': tier, 'drift_type': drift_type})
+    return fields
+
+
+def _render_impact_assessment(drifted_fields: list[dict], consumers_data: dict) -> str:
+    """
+    Build the HTML Impact Assessment card — who breaks, what field, who to call.
+
+    Cross-references drifted field paths against each consumer's fields_used list.
+    Consumers are sorted by criticality (tier1 first = highest urgency).
+    """
+    if not consumers_data or not drifted_fields:
+        return ""
+
+    drifted_map = {f['path']: f for f in drifted_fields}
+    crit_order  = {"tier1": 0, "tier2": 1, "tier3": 2}
+
+    rows = []
+    for c in sorted(consumers_data.get("consumers", []),
+                    key=lambda x: crit_order.get(x.get("criticality", "tier3"), 9)):
+        crit      = c.get("criticality", "tier3")
+        name      = c.get("name", "?")
+        team      = c.get("team", "?")
+        contact   = c.get("contact", "—")
+        runbook   = c.get("runbook", "")
+        used      = c.get("fields_used", [])
+
+        # Find which of this consumer's fields are drifted
+        hits = []
+        for f in used:
+            fpath = f.get("path", "")
+            if fpath in drifted_map:
+                drift    = drifted_map[fpath]
+                required = f.get("required", False)
+                hard     = required and drift.get("drift_type") in (
+                    "field_removed", "type_changed", "presence_drop"
+                )
+                hits.append({
+                    "path":       fpath,
+                    "required":   required,
+                    "hard_break": hard,
+                    "drift_type": drift.get("drift_type", ""),
+                    "tier":       drift.get("tier"),
+                })
+
+        if not hits:
+            continue  # consumer unaffected
+
+        has_hard = any(h["hard_break"] for h in hits)
+        crit_color = {"tier1": "#FF3B30", "tier2": "#FF9F0A", "tier3": "#34C759"}.get(crit, "#6E6E73")
+        crit_label = {"tier1": "P0", "tier2": "P1", "tier3": "P2"}.get(crit, crit)
+        row_bg     = "#FFF5F5" if has_hard else "#FFFBF0"
+        border_col = "#FF3B30" if has_hard else "#FF9F0A"
+        status_icon = "🔴" if has_hard else "⚠️"
+
+        # Build field impact lines
+        field_lines = ""
+        for h in hits:
+            dt_label = {
+                "field_removed":  "REMOVED",
+                "type_changed":   "type changed",
+                "field_added":    "new field",
+                "new_pii":        "NEW PII",
+                "enum_changed":   "enum changed",
+                "presence_drop":  "presence dropped",
+            }.get(h["drift_type"], h["drift_type"])
+            req_label = "required: true" if h["required"] else "optional"
+            break_label = " → <strong style='color:#FF3B30'>HARD BREAK</strong>" if h["hard_break"] else ""
+            field_lines += (
+                f'<div style="font-size:12px;color:#6E6E73;margin-top:4px;padding-left:8px;'
+                f'border-left:2px solid {border_col}">'
+                f'<code style="color:#1D1D1F">{h["path"]}</code> '
+                f'<span style="color:{border_col};font-weight:600">({dt_label})</span> '
+                f'<span style="color:#AEAEB2">{req_label}</span>'
+                f'{break_label}'
+                f'</div>'
+            )
+
+        runbook_html = (
+            f'<a href="{runbook}" style="font-size:11px;color:#0071E3;text-decoration:none">'
+            f'📖 Runbook</a>' if runbook else ""
+        )
+
+        rows.append(
+            f'<div style="background:{row_bg};border-radius:10px;padding:14px 16px;'
+            f'margin-bottom:8px;border-left:4px solid {border_col}">'
+            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+            f'<span style="font-size:16px">{status_icon}</span>'
+            f'<strong style="font-size:14px;color:#1D1D1F">{name}</strong>'
+            f'<span style="background:{crit_color};color:white;font-size:10px;font-weight:700;'
+            f'padding:2px 8px;border-radius:980px">{crit_label}</span>'
+            f'<span style="font-size:12px;color:#6E6E73">{team}</span>'
+            f'<div style="flex:1"></div>'
+            f'<code style="font-size:11px;color:#6E6E73">{contact.split("|")[0].strip()}</code>'
+            f'{" " + runbook_html if runbook_html else ""}'
+            f'</div>'
+            f'{field_lines}'
+            f'</div>'
+        )
+
+    if not rows:
+        return ""
+
+    return (
+        '<div style="background:#FFFFFF;border-radius:14px;padding:20px;'
+        'box-shadow:0 2px 12px rgba(255,59,48,0.10);border:1px solid rgba(255,59,48,0.25);'
+        'margin-bottom:20px">'
+        '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;'
+        'color:#FF3B30;margin-bottom:14px">🚨 Impact Assessment — Who Breaks</div>'
+        + "".join(rows)
+        + "</div>"
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -814,6 +990,28 @@ def render_stream_detail(stream_name: str):
                 'Run <code>streamforge watch</code> to monitor continuously.</div></div>',
                 unsafe_allow_html=True)
         else:
+            # ── Impact Assessment — shown FIRST, before the raw report ─────────
+            # Parse the most recent drift report and cross-reference consumers
+            _most_recent_content = drift_reports[0][1]
+            _drifted_fields      = _parse_drifted_fields(_most_recent_content)
+            _impact_html         = _render_impact_assessment(_drifted_fields, consumers_data)
+            if _impact_html:
+                st.markdown(_impact_html, unsafe_allow_html=True)
+            elif consumers_data:
+                st.success("✅ No registered consumers are affected by this drift.")
+            else:
+                st.info(
+                    "💡 Add `consumers.yaml` to see which services break and who to page. "
+                    f"Template path: `schemas/{stream_name}/consumers.yaml`"
+                )
+
+            # ── Drift reports (expandable, newest first) ───────────────────────
+            st.markdown(
+                f'<div style="font-size:12px;font-weight:600;text-transform:uppercase;'
+                f'letter-spacing:0.08em;color:#AEAEB2;margin:16px 0 10px 0">'
+                f'{len(drift_reports)} Drift Report(s)</div>',
+                unsafe_allow_html=True,
+            )
             for i, (fname, content) in enumerate(drift_reports):
                 tc = "#FF3B30" if "tier 3" in content.lower() else "#FF9F0A" if "tier 2" in content.lower() else "#34C759"
                 with st.expander(f"{'🆕' if i==0 else '📋'} {fname}", expanded=(i==0)):
