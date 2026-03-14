@@ -5,7 +5,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from .models import FieldSchema, FieldType, InferredSchema
+from .models import FieldSchema, FieldType, InferredSchema, SubSchema
 from .pii_detector import detect_pii
 
 logger = logging.getLogger(__name__)
@@ -291,4 +291,63 @@ def infer_schema(
         top_level_event_types=event_type_values if event_type_values else None,
         inference_model=model,
         inference_confidence=overall_confidence,
+    )
+
+
+def infer_sub_schema(
+    cluster_id: str,
+    events: list[dict],
+    detection_method: str,
+    total_stream_events: int,
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+    base_url: str = DEFAULT_BASE_URL,
+) -> SubSchema:
+    """
+    Infer schema for one cluster of structurally similar events.
+
+    Uses LLM when cluster has >=5 events; statistical fallback for tiny clusters.
+    Presence rates are computed within this cluster only, not across the full stream.
+    """
+    from .sampler import get_all_field_paths, reservoir_sample
+
+    # Strip internal metadata (_partial_extract etc) before profiling
+    clean = [{k: v for k, v in e.items() if not k.startswith("_")} for e in events]
+    sample = reservoir_sample(clean, 200) if len(clean) > 200 else clean
+
+    field_stats, presence_rates = get_all_field_paths(sample)
+
+    # Summarise top-level keys by frequency
+    key_counts: dict[str, int] = {}
+    for e in sample:
+        for k in e:
+            key_counts[k] = key_counts.get(k, 0) + 1
+    top_keys = sorted(key_counts, key=lambda k: -key_counts[k])[:15]
+
+    if len(sample) < 5:
+        fields = statistical_inference(field_stats, presence_rates)
+        confidence = min(0.5, 0.1 + 0.08 * len(sample))
+    else:
+        inferred = infer_schema(
+            stream_name=cluster_id,
+            field_stats=field_stats,
+            sample_events=sample[:10],
+            presence_rates=presence_rates,
+            api_key=api_key,
+            model=model,
+            base_url=base_url,
+        )
+        fields = inferred.fields
+        confidence = inferred.inference_confidence
+
+    sample_rate = len(events) / total_stream_events if total_stream_events > 0 else 1.0
+
+    return SubSchema(
+        cluster_id=cluster_id,
+        detection_method=detection_method,
+        event_count=len(events),
+        sample_rate=round(sample_rate, 4),
+        fields=fields,
+        inference_confidence=confidence,
+        top_keys=top_keys,
     )

@@ -89,3 +89,23 @@ class DriftReport(BaseModel):
     drifts: list[FieldDrift]
     highest_tier: DriftTier
     summary: str
+
+
+class SubSchema(BaseModel):
+    cluster_id: str
+    detection_method: str        # "event_type_field" | "structural_fingerprint" | "single"
+    event_count: int
+    sample_rate: float           # fraction of total stream events this cluster represents
+    fields: list[FieldSchema]
+    inference_confidence: float
+    top_keys: list[str]          # top-level keys seen in this cluster
+
+
+class StreamProfile(BaseModel):
+    stream_name: str
+    profiled_at: str
+    total_events_sampled: int
+    parse_success_rate: float    # (clean + partial) / total lines attempted
+    discovery_method: str        # "event_type_field" | "structural_fingerprint" | "single"
+    sub_schemas: list[SubSchema]
+    profile_model: str
