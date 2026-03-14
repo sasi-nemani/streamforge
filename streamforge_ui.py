@@ -387,6 +387,8 @@ if "selected_stream" not in st.session_state:
     st.session_state.selected_stream = None
 if "view" not in st.session_state:
     st.session_state.view = "fleet"
+if "registry_search" not in st.session_state:
+    st.session_state.registry_search = ""
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -418,6 +420,12 @@ with st.sidebar:
     if st.button("🏠  Fleet Overview", use_container_width=True,
                  type="primary" if st.session_state.view == "fleet" else "secondary"):
         st.session_state.view = "fleet"
+        st.session_state.selected_stream = None
+        st.rerun()
+
+    if st.button("🗂  Schema Registry", use_container_width=True,
+                 type="primary" if st.session_state.view == "registry" else "secondary"):
+        st.session_state.view = "registry"
         st.session_state.selected_stream = None
         st.rerun()
 
@@ -1095,10 +1103,408 @@ def render_stream_detail(stream_name: str):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# SCHEMA REGISTRY
+# ══════════════════════════════════════════════════════════════════════════════
+
+def render_registry():
+    """
+    Cross-stream field index — every field from every schema in one searchable table.
+
+    Design goals (Stripe data engineering style):
+      - High information density: stream, path, type, required, presence, PII, notes in one row
+      - Search is substring across field path + stream name + type + notes simultaneously
+      - Filters are additive (AND): PII only, required only, type, stream
+      - Field Insights: cross-stream analysis — which field names span multiple streams?
+        Type conflicts flagged in orange (same field name, different types = standardisation risk)
+      - Click "View stream" to navigate to stream detail
+      - Sort by: stream (default), field path, presence rate, confidence
+    """
+    from collections import defaultdict
+
+    # ── Build flat field index across all schemas ──────────────────────────────
+    all_rows: list[dict] = []
+    for sn, sd in schemas.items():
+        for f in sd.get("fields", []):
+            all_rows.append({
+                "stream":        sn,
+                "path":          f.get("path", ""),
+                "type":          f.get("type", "string"),
+                "required":      f.get("required", False),
+                "presence_rate": f.get("presence_rate", 0.0),
+                "confidence":    f.get("confidence", 0.0),
+                "pii":           f.get("pii", []),
+                "notes":         f.get("notes") or "",
+            })
+
+    # ── Aggregate stats ────────────────────────────────────────────────────────
+    total_fields    = len(all_rows)
+    unique_paths    = len({r["path"] for r in all_rows})
+    pii_field_count = sum(1 for r in all_rows if r["pii"])
+    streams_covered = len({r["stream"] for r in all_rows})
+
+    st.markdown(
+        '<div style="padding:24px 0 4px 0">'
+        '<h1 style="font-size:2rem;font-weight:700;letter-spacing:-0.03em;color:#1D1D1F;margin:0">'
+        '🗂 Schema Registry</h1>'
+        '<p style="font-size:13px;color:#6E6E73;margin:6px 0 0 0">'
+        'Every field across every stream — searchable, filterable, cross-referenced. '
+        'Find where a field is defined, which streams share a name, and where PII lives.'
+        '</p></div>',
+        unsafe_allow_html=True,
+    )
+
+    rm1, rm2, rm3, rm4 = st.columns(4)
+    rm1.metric("Total Fields",    total_fields)
+    rm2.metric("Unique Names",    unique_paths)
+    rm3.metric("PII Fields",      pii_field_count)
+    rm4.metric("Streams Indexed", streams_covered)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if not all_rows:
+        st.info("No schemas found. Run `streamforge init` on your event streams first.")
+        return
+
+    # ── Search + filter controls ───────────────────────────────────────────────
+    fc1, fc2, fc3, fc4 = st.columns([3, 1.2, 1.2, 1.2])
+
+    with fc1:
+        query = st.text_input(
+            "Search fields",
+            placeholder="field name, stream, type, or keyword in notes…",
+            label_visibility="collapsed",
+        )
+    with fc2:
+        pii_only = st.toggle("PII fields only", value=False)
+    with fc3:
+        req_only = st.toggle("Required only", value=False)
+    with fc4:
+        all_types = sorted({r["type"] for r in all_rows})
+        type_filter = st.selectbox(
+            "Type", ["All types"] + all_types, label_visibility="collapsed"
+        )
+
+    # Stream filter — own row, full width
+    all_stream_opts = ["All streams"] + sorted({r["stream"] for r in all_rows})
+    stream_filter   = st.selectbox(
+        "Stream", all_stream_opts, label_visibility="collapsed"
+    )
+
+    # ── Apply filters ──────────────────────────────────────────────────────────
+    q = query.strip().lower()
+    filtered = all_rows
+    if q:
+        filtered = [
+            r for r in filtered
+            if q in r["path"].lower()
+            or q in r["stream"].lower()
+            or q in r["type"].lower()
+            or q in r["notes"].lower()
+        ]
+    if pii_only:
+        filtered = [r for r in filtered if r["pii"]]
+    if req_only:
+        filtered = [r for r in filtered if r["required"]]
+    if type_filter != "All types":
+        filtered = [r for r in filtered if r["type"] == type_filter]
+    if stream_filter != "All streams":
+        filtered = [r for r in filtered if r["stream"] == stream_filter]
+
+    # ── Sort: stream asc, then path asc ───────────────────────────────────────
+    filtered.sort(key=lambda r: (r["stream"], r["path"]))
+
+    # ── Result count ──────────────────────────────────────────────────────────
+    st.markdown(
+        f'<div style="font-size:12px;color:#6E6E73;margin:10px 0 8px 0">'
+        f'Showing <strong style="color:#1D1D1F">{len(filtered)}</strong> of '
+        f'<strong>{total_fields}</strong> fields'
+        + (f' — filtered by <code>{query}</code>' if q else "")
+        + '</div>',
+        unsafe_allow_html=True,
+    )
+
+    if not filtered:
+        st.markdown(
+            '<div style="background:#F5F5F7;border-radius:12px;padding:32px;text-align:center">'
+            '<div style="font-size:32px;margin-bottom:8px">🔍</div>'
+            '<div style="font-size:15px;font-weight:600;color:#1D1D1F">No fields match</div>'
+            '<div style="font-size:13px;color:#6E6E73;margin-top:6px">Try a broader search term or clear the filters.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    # ── Field table ───────────────────────────────────────────────────────────
+    TH = ('font-size:11px;font-weight:600;text-transform:uppercase;'
+          'letter-spacing:0.06em;color:#6E6E73;border-bottom:1px solid #E5E5EA;'
+          'padding:10px 12px;text-align:left')
+    TD = 'padding:9px 12px;vertical-align:middle;border-bottom:1px solid #F0F0F0'
+
+    # Alternate row backgrounds for readability (Stripe table style)
+    rows_html = []
+    prev_stream = None
+    for i, r in enumerate(filtered):
+        # Zebra stripe — but group by stream (all rows of same stream share same tint)
+        stream_changed = r["stream"] != prev_stream
+        prev_stream    = r["stream"]
+        row_bg = "transparent" if i % 2 == 0 else "#FAFAFA"
+
+        # Stream cell — show only on first row of each stream group
+        stream_html = (
+            f'<span style="font-size:12px;font-weight:600;color:#0071E3;'
+            f'background:#EAF4FF;padding:2px 9px;border-radius:980px;cursor:pointer">'
+            f'{r["stream"]}</span>'
+        ) if stream_changed else (
+            f'<span style="font-size:11px;color:#AEAEB2">↳</span>'
+        )
+
+        # Field path — monospace, highlight search term
+        path_display = r["path"]
+        if q and q in path_display.lower():
+            idx = path_display.lower().index(q)
+            path_display = (
+                path_display[:idx]
+                + f'<mark style="background:#FFF176;border-radius:2px">'
+                + path_display[idx:idx+len(q)]
+                + '</mark>'
+                + path_display[idx+len(q):]
+            )
+
+        # Presence bar
+        pct   = int(r["presence_rate"] * 100)
+        bar_c = "#34C759" if pct >= 80 else "#FF9F0A" if pct >= 50 else "#FF3B30"
+        pres_html = (
+            f'<div style="display:flex;align-items:center;gap:5px">'
+            f'<div style="width:44px;height:4px;background:#EBEBEB;border-radius:2px;overflow:hidden">'
+            f'<div style="width:{pct}%;height:100%;background:{bar_c};border-radius:2px"></div></div>'
+            f'<span style="font-size:11px;color:#6E6E73;font-variant-numeric:tabular-nums">{pct}%</span>'
+            f'</div>'
+        )
+
+        # Confidence
+        conf     = int(r["confidence"] * 100)
+        conf_col = "#34C759" if conf >= 80 else "#FF9F0A" if conf >= 60 else "#FF3B30"
+        conf_html = f'<span style="font-size:11px;color:{conf_col};font-weight:500">{conf}%</span>'
+
+        # Required dot
+        req_html = (
+            '<span style="color:#34C759;font-size:14px;font-weight:700">●</span>'
+            if r["required"] else
+            '<span style="color:#D2D2D7;font-size:14px">○</span>'
+        )
+
+        # PII badge
+        pii = r["pii"]
+        if pii:
+            label = ", ".join(str(p) for p in pii[:2]) + (f" +{len(pii)-2}" if len(pii) > 2 else "")
+            pii_html = (
+                f'<span style="background:#FFE5E5;color:#C0392B;padding:2px 8px;'
+                f'border-radius:980px;font-size:10px;font-weight:700;white-space:nowrap">{label}</span>'
+            )
+        else:
+            pii_html = '<span style="color:#D2D2D7;font-size:12px">—</span>'
+
+        # Notes — truncated, search term highlighted
+        notes = r["notes"]
+        if len(notes) > 60:
+            notes = notes[:60] + "…"
+        if q and q in notes.lower():
+            idx = notes.lower().index(q)
+            notes = (
+                notes[:idx]
+                + f'<mark style="background:#FFF176;border-radius:2px">'
+                + notes[idx:idx+len(q)]
+                + '</mark>'
+                + notes[idx+len(q):]
+            )
+
+        rows_html.append(
+            f'<tr style="background:{row_bg}">'
+            f'<td style="{TD}">{stream_html}</td>'
+            f'<td style="{TD};font-family:\'SF Mono\',\'Fira Code\',monospace;font-size:12px;color:#1D1D1F">{path_display}</td>'
+            f'<td style="{TD}">{_type_badge(r["type"])}</td>'
+            f'<td style="{TD};text-align:center">{req_html}</td>'
+            f'<td style="{TD}">{pres_html}</td>'
+            f'<td style="{TD};text-align:right">{conf_html}</td>'
+            f'<td style="{TD}">{pii_html}</td>'
+            f'<td style="{TD};max-width:220px;font-size:11px;color:#6E6E73">{notes}</td>'
+            f'</tr>'
+        )
+
+    table_html = (
+        '<div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(210,210,215,0.5);'
+        'box-shadow:0 1px 6px rgba(0,0,0,0.05);margin-bottom:32px">'
+        '<table style="width:100%;border-collapse:collapse;font-family:Inter,-apple-system,sans-serif">'
+        '<thead><tr style="background:#F5F5F7">'
+        f'<th style="{TH}">Stream</th>'
+        f'<th style="{TH}">Field Path</th>'
+        f'<th style="{TH}">Type</th>'
+        f'<th style="{TH};text-align:center">Req</th>'
+        f'<th style="{TH}">Presence</th>'
+        f'<th style="{TH};text-align:right">Conf.</th>'
+        f'<th style="{TH}">PII</th>'
+        f'<th style="{TH}">Notes</th>'
+        '</tr></thead>'
+        f'<tbody>{"".join(rows_html)}</tbody>'
+        '</table></div>'
+    )
+    st.markdown(table_html, unsafe_allow_html=True)
+
+    # Navigate to stream on button click — one button per visible unique stream
+    visible_streams = sorted({r["stream"] for r in filtered})
+    if len(visible_streams) > 1:
+        nav_cols = st.columns(min(len(visible_streams), 5))
+        for i, sn in enumerate(visible_streams):
+            with nav_cols[i % 5]:
+                if st.button(f"Open {sn}", key=f"reg_nav_{sn}"):
+                    st.session_state.selected_stream = sn
+                    st.session_state.view = "stream"
+                    st.rerun()
+    elif len(visible_streams) == 1:
+        sn = visible_streams[0]
+        if st.button(f"Open stream detail → {sn}"):
+            st.session_state.selected_stream = sn
+            st.session_state.view = "stream"
+            st.rerun()
+
+    # ── Field Insights: cross-stream analysis ─────────────────────────────────
+    st.markdown("---")
+    st.markdown(
+        '<h2 style="font-size:1.1rem;font-weight:600;margin:0 0 4px 0">Field Insights</h2>'
+        '<p style="font-size:13px;color:#6E6E73;margin:0 0 16px 0">'
+        'Fields that appear in multiple streams — standardisation opportunities and type conflicts.'
+        '</p>',
+        unsafe_allow_html=True,
+    )
+
+    # Build field name → list[(stream, type)] map across ALL rows (not just filtered)
+    field_map: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for r in all_rows:
+        field_map[r["path"]].append((r["stream"], r["type"]))
+
+    # Only paths that appear in more than one stream
+    cross_stream = {
+        path: entries
+        for path, entries in field_map.items()
+        if len({s for s, _ in entries}) > 1
+    }
+
+    if not cross_stream:
+        st.info("No field names are shared across streams yet. As you add more streams, cross-stream field analysis will appear here.")
+    else:
+        # Separate: consistent (same type everywhere) vs. conflicting (different types)
+        consistent  = {}
+        conflicting = {}
+        for path, entries in cross_stream.items():
+            types = {t for _, t in entries}
+            if len(types) > 1:
+                conflicting[path] = entries
+            else:
+                consistent[path] = entries
+
+        # ── Type conflicts first — highest signal ──────────────────────────────
+        if conflicting:
+            st.markdown(
+                f'<div style="background:#FFF8E1;border-radius:10px;padding:14px 16px;'
+                f'border-left:4px solid #FF9F0A;margin-bottom:16px">'
+                f'<div style="font-size:12px;font-weight:700;color:#F57F17;'
+                f'text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">'
+                f'⚠ Type Conflicts — {len(conflicting)} field(s) with inconsistent types across streams'
+                f'</div>'
+                f'<div style="font-size:12px;color:#6E6E73">'
+                f'Same field name, different types. Standardise before consumers cross-reference these streams.'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+            conf_rows = []
+            for path, entries in sorted(conflicting.items()):
+                by_stream = ", ".join(
+                    f'<code>{s}</code> → {_type_badge(t)}'
+                    for s, t in sorted(entries, key=lambda x: x[0])
+                )
+                conf_rows.append(
+                    f'<tr>'
+                    f'<td style="{TD};font-family:monospace;font-size:12px;font-weight:600">{path}</td>'
+                    f'<td style="{TD};font-size:12px">{by_stream}</td>'
+                    f'<td style="{TD};text-align:center">'
+                    f'<span style="background:#FFF3E0;color:#E65100;font-size:10px;font-weight:700;'
+                    f'padding:2px 8px;border-radius:980px">CONFLICT</span>'
+                    f'</td>'
+                    f'</tr>'
+                )
+            st.markdown(
+                '<div style="overflow-x:auto;border-radius:10px;border:1px solid #FFE082;margin-bottom:20px">'
+                '<table style="width:100%;border-collapse:collapse;font-family:Inter,-apple-system,sans-serif">'
+                '<thead><tr style="background:#FFFDE7">'
+                f'<th style="{TH}">Field Path</th>'
+                f'<th style="{TH}">Type per Stream</th>'
+                f'<th style="{TH};text-align:center">Status</th>'
+                '</tr></thead>'
+                f'<tbody>{"".join(conf_rows)}</tbody>'
+                '</table></div>',
+                unsafe_allow_html=True,
+            )
+
+        # ── Consistent cross-stream fields — shared vocabulary ─────────────────
+        if consistent:
+            n_streams_total = len(stream_names) or 1
+            consist_rows = []
+            for path, entries in sorted(
+                consistent.items(),
+                key=lambda x: -len({s for s, _ in x[1]})  # most common first
+            ):
+                streams_with = sorted({s for s, _ in entries})
+                coverage     = len(streams_with) / n_streams_total
+                ftype        = entries[0][1]
+                freq_bar     = int(coverage * 100)
+                freq_html    = (
+                    f'<div style="display:flex;align-items:center;gap:6px">'
+                    f'<div style="width:60px;height:4px;background:#EBEBEB;border-radius:2px;overflow:hidden">'
+                    f'<div style="width:{freq_bar}%;height:100%;background:#0071E3;border-radius:2px"></div></div>'
+                    f'<span style="font-size:11px;color:#6E6E73">{len(streams_with)}/{n_streams_total} streams</span>'
+                    f'</div>'
+                )
+                streams_html = " · ".join(
+                    f'<span style="background:#EAF4FF;color:#0071E3;padding:1px 7px;'
+                    f'border-radius:980px;font-size:10px">{s}</span>'
+                    for s in streams_with
+                )
+                consist_rows.append(
+                    f'<tr>'
+                    f'<td style="{TD};font-family:monospace;font-size:12px">{path}</td>'
+                    f'<td style="{TD}">{_type_badge(ftype)}</td>'
+                    f'<td style="{TD}">{freq_html}</td>'
+                    f'<td style="{TD};font-size:11px">{streams_html}</td>'
+                    f'</tr>'
+                )
+
+            st.markdown(
+                f'<div style="font-size:12px;font-weight:600;color:#6E6E73;'
+                f'text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">'
+                f'Shared Fields — {len(consistent)} field name(s) consistent across streams</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                '<div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(210,210,215,0.5)">'
+                '<table style="width:100%;border-collapse:collapse;font-family:Inter,-apple-system,sans-serif">'
+                '<thead><tr style="background:#F5F5F7">'
+                f'<th style="{TH}">Field Path</th>'
+                f'<th style="{TH}">Type</th>'
+                f'<th style="{TH}">Coverage</th>'
+                f'<th style="{TH}">Streams</th>'
+                '</tr></thead>'
+                f'<tbody>{"".join(consist_rows)}</tbody>'
+                '</table></div>',
+                unsafe_allow_html=True,
+            )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ROUTER
 # ══════════════════════════════════════════════════════════════════════════════
 
-if st.session_state.view == "fleet" or not st.session_state.selected_stream:
+if st.session_state.view == "registry":
+    render_registry()
+elif st.session_state.view == "fleet" or not st.session_state.selected_stream:
     render_fleet_overview()
 else:
     render_stream_detail(st.session_state.selected_stream)
