@@ -44,7 +44,7 @@ INFERENCE_TOOL = {
                             "confidence": {"type": "number", "minimum": 0, "maximum": 1},
                             "enum_values": {
                                 "anyOf": [
-                                    {"type": "array", "items": {"type": "string"}},
+                                    {"type": "array", "items": {"anyOf": [{"type": "string"}, {"type": "number"}, {"type": "boolean"}]}},
                                     {"type": "null"}
                                 ],
                                 "description": "ONLY include if field has <15 distinct values. Omit or set null otherwise."
