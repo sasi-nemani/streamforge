@@ -1,0 +1,121 @@
+# StreamForge Schema — flights.stream
+# Version: 1.0.0
+# Inferred: 2026-03-13T21:52:58.091882+00:00
+# Events sampled: 200
+# Overall confidence: 60%
+#
+# This file is the source of truth for stream: flights.stream
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: flights.stream
+version: 1.0.0
+inferred_at: '2026-03-13T21:52:58.091882+00:00'
+inference_confidence: 0.6
+inference_model: llama-3.3-70b-versatile(statistical-fallback)
+event_count_sampled: 200
+fields:
+- path: event_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: event_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: flight_number
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: origin
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: destination
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: scheduled_departure
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: actual_departure
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: delay_minutes
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: status
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: gate
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: aircraft_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: passenger_count
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: timestamp
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: severity
+  type: string
+  required: false
+  nullable: false
+  presence_rate: 0.335
+  confidence: 0.567
+  notes: Statistically inferred (LLM fallback)
+- path: crew_captain
+  type: string
+  required: false
+  nullable: false
+  presence_rate: 0.22
+  confidence: 0.544
+  notes: Statistically inferred (LLM fallback)

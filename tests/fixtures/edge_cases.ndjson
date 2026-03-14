@@ -1,0 +1,5 @@
+{"event_id": "ec-001", "amount": null, "tags": ["a", "b"], "nested": {"deep": {"value": 42}}, "mixed_field": "hello"}
+{"event_id": "ec-002", "amount": 100, "tags": ["c"], "nested": {"deep": {"value": 43}}, "mixed_field": 123}
+{"event_id": "ec-003", "tags": [], "nested": {"deep": {"value": null}}, "mixed_field": true}
+{"event_id": "ec-004", "amount": 200, "nested": {"deep": {"value": 44}}, "mixed_field": "world"}
+{"event_id": "ec-005", "amount": null, "tags": ["d", "e", "f"], "nested": {"deep": {"value": 45}}, "mixed_field": 456}

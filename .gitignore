@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+
+# Live tap output — runtime, not committed
+events/*/live/
+
+# Real GitHub event data (contains public issue bodies with potential secret patterns)
+events/github/
+
+# Drift reports — runtime output
+drift_reports/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

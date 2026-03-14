@@ -1,0 +1,159 @@
+# StreamForge Schema — stream_v1
+# Version: 1.0.0
+# Inferred: 2026-03-14T09:59:39.642605+00:00
+# Events sampled: 300
+# Overall confidence: 95%
+#
+# This file is the source of truth for stream: stream_v1
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: stream_v1
+version: 1.0.0
+inferred_at: '2026-03-14T09:59:39.642605+00:00'
+inference_confidence: 0.95
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 300
+event_types:
+- payment.processed
+fields:
+- path: event_id
+  type: uuid
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: Unique identifier for the event
+- path: event_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  enum_values:
+  - payment.processed
+  notes: Type of the event
+- path: timestamp
+  type: timestamp_epoch_ms
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: Timestamp of the event in Unix epoch milliseconds
+- path: transaction_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: Unique identifier for the transaction
+- path: amount
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: Amount of the transaction
+- path: currency
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  enum_values:
+  - EUR
+  - GBP
+  - USD
+  notes: Currency of the transaction
+- path: status
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  enum_values:
+  - COMPLETED
+  - FAILED
+  - PENDING
+  notes: Status of the transaction
+- path: payment_method
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  enum_values:
+  - APPLE_PAY
+  - CARD
+  - BANK_TRANSFER
+  - GOOGLE_PAY
+  notes: Method of payment
+- path: user.user_id
+  type: string
+  required: false
+  nullable: true
+  presence_rate: 0.9633
+  confidence: 0.96
+  notes: Unique identifier for the user
+- path: user.email
+  type: email
+  required: false
+  nullable: true
+  presence_rate: 0.9633
+  confidence: 0.96
+  pii:
+  - email
+  notes: Email address of the user
+- path: user.name
+  type: string
+  required: false
+  nullable: true
+  presence_rate: 0.9633
+  confidence: 0.96
+  pii:
+  - name
+  notes: Name of the user
+- path: metadata.ip_address
+  type: string
+  required: false
+  nullable: true
+  presence_rate: 0.9
+  confidence: 0.9
+  pii:
+  - ip_address
+  notes: IP address of the user
+- path: metadata.user_agent
+  type: string
+  required: false
+  nullable: true
+  presence_rate: 0.9
+  confidence: 0.9
+  enum_values:
+  - Mozilla/5.0
+  notes: User agent of the user
+- path: metadata.region
+  type: string
+  required: false
+  nullable: true
+  presence_rate: 0.9
+  confidence: 0.9
+  enum_values:
+  - UK
+  - US
+  - EU
+  notes: Region of the user
+- path: user_id
+  type: string
+  required: false
+  nullable: true
+  presence_rate: 0.0367
+  confidence: 0.04
+  notes: Unique identifier for the user (duplicate field)
+- path: user_email
+  type: email
+  required: false
+  nullable: true
+  presence_rate: 0.0367
+  confidence: 0.04
+  pii:
+  - email
+  notes: Email address of the user (duplicate field)
