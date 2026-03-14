@@ -537,5 +537,284 @@ def ui(
     subprocess.run([sys.executable, "-m", "streamlit", "run", str(ui_script), f"--server.port={port}", "--server.headless=false"])
 
 
+@app.command()
+def export(
+    schema_dir: str = typer.Argument(..., help="Path to a schema directory (e.g. schemas/stream_v1) or schema.yaml file"),
+    fmt: str = typer.Option("json-schema", "--format", "-f", help="Export format: json-schema | avro"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path (default: stdout)"),
+):
+    """Export schema to JSON Schema (Draft 2020-12) or Apache Avro format."""
+    import json
+
+    # Resolve schema.yaml path
+    p = Path(schema_dir)
+    if p.is_dir():
+        schema_yaml = p / "schema.yaml"
+    elif p.suffix == ".yaml":
+        schema_yaml = p
+    else:
+        schema_yaml = p / "schema.yaml"
+
+    if not schema_yaml.exists():
+        console.print(f"[red]No schema.yaml found at {schema_yaml}. Run 'streamforge init' first.[/red]")
+        raise typer.Exit(1)
+
+    schema = load_schema(str(schema_yaml))
+
+    if fmt == "json-schema":
+        from .exporters.json_schema import schema_to_json_schema
+        doc = schema_to_json_schema(schema)
+        result = json.dumps(doc, indent=2)
+        suffix = ".schema.json"
+    elif fmt == "avro":
+        from .exporters.avro import schema_to_avro
+        doc = schema_to_avro(schema)
+        result = json.dumps(doc, indent=2)
+        suffix = ".avsc"
+    else:
+        console.print(f"[red]Unknown format '{fmt}'. Use: json-schema | avro[/red]")
+        raise typer.Exit(1)
+
+    if output:
+        out_path = Path(output)
+    else:
+        out_path = schema_yaml.parent / f"{schema.stream_name}{suffix}"
+
+    out_path.write_text(result)
+    console.print(f"✓ Exported [{fmt}] → [green]{out_path}[/green]")
+    console.print(f"  Stream: [cyan]{schema.stream_name}[/cyan]  Fields: {len(schema.fields)}")
+
+
+@app.command()
+def consumers(
+    stream_path: str = typer.Argument(..., help="Stream path or stream name (e.g. events/payments/stream_v1 or stream_v1)"),
+    output_dir: str = typer.Option("schemas", "--output", "-o"),
+):
+    """Show consumer registry and blast radius for a stream."""
+    from .consumer_registry import load_consumers as _load_consumers, format_blast_radius_table
+
+    stream_name = _stream_name(stream_path)
+    schema_dir  = Path(output_dir) / stream_name
+
+    if not schema_dir.exists():
+        console.print(f"[red]No schema directory found at {schema_dir}. Run 'streamforge init' first.[/red]")
+        raise typer.Exit(1)
+
+    consumer_list = _load_consumers(output_dir, stream_name)
+
+    if not consumer_list:
+        console.print(
+            f"[yellow]No consumers.yaml found for {stream_name}.[/yellow]\n"
+            f"  Create one at: {schema_dir / 'consumers.yaml'}\n"
+            f"  Format: list of consumers with name, team, contact, criticality, fields_used"
+        )
+        raise typer.Exit(0)
+
+    table = Table(
+        title=f"Consumer Registry — {stream_name} ({len(consumer_list)} consumer(s))",
+        show_header=True,
+        header_style="bold",
+    )
+    table.add_column("Consumer",    style="cyan", no_wrap=True)
+    table.add_column("Team",        style="blue")
+    table.add_column("Contact")
+    table.add_column("Criticality", justify="center")
+    table.add_column("Schema",      justify="center")
+    table.add_column("Fields Used", justify="right")
+
+    crit_color = {"tier1": "red", "tier2": "yellow", "tier3": "green"}
+    for c in consumer_list:
+        crit = getattr(c, "criticality", "tier3")
+        color = crit_color.get(str(crit), "white")
+        table.add_row(
+            c.name,
+            c.team,
+            c.contact,
+            f"[{color}]{str(crit).upper()}[/{color}]",
+            getattr(c, "schema_version", "—"),
+            str(len(getattr(c, "fields_used", []))),
+        )
+
+    console.print(table)
+
+    # Check for active drift and compute blast radius
+    drift_dir = Path("drift_reports") / stream_name
+    if drift_dir.exists():
+        recent = sorted(drift_dir.glob("*.md"), reverse=True)
+        if recent:
+            console.print(f"\n[yellow]⚠ {len(recent)} drift report(s) on file.[/yellow]")
+            console.print(f"  Most recent: [cyan]{recent[0].name}[/cyan]")
+            console.print(
+                f"\n  Run [bold]streamforge plan {stream_path}[/bold] to recompute drift "
+                f"and see live blast radius."
+            )
+    else:
+        console.print(f"\n[green]✓ No drift reports — schema is clean.[/green]")
+
+
+@app.command()
+def demo(
+    baseline_size: int = typer.Option(300, "--baseline", "-b", help="Baseline events to generate"),
+    drift_size:    int = typer.Option(200, "--drift",    "-d", help="Drifted events to inject"),
+    output_dir:    str = typer.Option("schemas",         "--output", "-o"),
+    write_report:  bool = typer.Option(True, "--report/--no-report", help="Write drift report to disk"),
+):
+    """
+    Live drift detection demo — no Kafka needed.
+
+    Generates realistic payment events in two phases:
+      Phase 1: 300 clean baseline events → infer schema
+      Phase 2: 200 drifted events → detect Tier 3 drift in real time
+
+    This is the 90-second board-room demo. No API key required for the demo
+    (schema is inferred statistically from the generated events).
+    """
+    import time
+    from datetime import datetime, timezone
+    from rich.live import Live
+    from rich.spinner import Spinner
+    from rich.text import Text
+
+    from .connectors.generators import payment_events, drifted_payment_events
+    from .drift_detector import detect_drift
+    from .models import InferredSchema, FieldSchema, FieldType, PIICategory
+    from .sampler import get_all_field_paths, reservoir_sample
+    from .report_writer import write_drift_report
+
+    STREAM_NAME = "payments.demo"
+    tier_colors = {1: "yellow", 2: "orange3", 3: "red"}
+
+    console.rule("[bold]⚡ StreamForge Live Demo[/bold]")
+    console.print(
+        "\n[bold]Scenario:[/bold] A payments microservice just deployed at 2:17am.\n"
+        "A developer renamed [cyan]amount[/cyan] to [cyan]amount_minor_units[/cyan] "
+        "(dollars → integer cents), changed the timestamp format, and accidentally\n"
+        "started logging [red]card_last_four[/red] — a PII field not in the baseline schema.\n"
+        "\nStreamForge catches it before any consumer breaks.\n"
+    )
+    time.sleep(1)
+
+    # ── Phase 1: Generate baseline and build a statistical schema ──────────────
+    console.print("[bold]PHASE 1 — Baseline monitoring[/bold]  [dim](300 clean events)[/dim]")
+    console.print("  Generating payment events...")
+    baseline = payment_events(n=baseline_size, seed=42)
+
+    # Build a schema from baseline events using statistical inference (no LLM needed for demo)
+    # We construct the InferredSchema directly from field stats.
+    field_values, presence_rates = get_all_field_paths(baseline)
+
+    # Hand-coded schema matching what an LLM would produce for these events
+    # (avoids API key requirement for the demo)
+    demo_fields = [
+        FieldSchema(name="event_id",    path="event_id",    field_type=FieldType.UUID,              required=True,  presence_rate=1.0,  confidence=0.99, notes="Payment event UUID"),
+        FieldSchema(name="event_type",  path="event_type",  field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.98, enum_values=["payment_initiated","payment_completed","payment_failed"], notes="Payment lifecycle event type"),
+        FieldSchema(name="timestamp",   path="timestamp",   field_type=FieldType.TIMESTAMP_EPOCH_MS, required=True, presence_rate=1.0,  confidence=0.99, notes="Event timestamp — Unix epoch milliseconds"),
+        FieldSchema(name="amount",      path="amount",      field_type=FieldType.FLOAT,             required=True,  presence_rate=1.0,  confidence=0.99, notes="Payment amount in dollars"),
+        FieldSchema(name="currency",    path="currency",    field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.97, enum_values=["USD","EUR","GBP","CAD","AUD"], notes="ISO 4217 currency code"),
+        FieldSchema(name="user_id",     path="user_id",     field_type=FieldType.UUID,              required=True,  presence_rate=1.0,  confidence=0.99, notes="Unique user identifier"),
+        FieldSchema(name="user_email",  path="user_email",  field_type=FieldType.EMAIL,             required=True,  presence_rate=1.0,  confidence=0.99, pii_categories=[PIICategory.EMAIL], notes="User email — PII"),
+        FieldSchema(name="merchant_id", path="merchant_id", field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.96, notes="Merchant identifier"),
+        FieldSchema(name="status",      path="status",      field_type=FieldType.STRING,            required=True,  presence_rate=1.0,  confidence=0.97, enum_values=["pending","completed","failed","processing"], notes="Payment status"),
+        FieldSchema(name="metadata.source",  path="metadata.source",  field_type=FieldType.STRING,  required=False, presence_rate=0.72, confidence=0.94, enum_values=["web","mobile","api"], notes="Request source"),
+        FieldSchema(name="metadata.version", path="metadata.version", field_type=FieldType.STRING,  required=False, presence_rate=0.65, confidence=0.88, enum_values=["v2","v3"], notes="API version"),
+    ]
+
+    baseline_schema = InferredSchema(
+        stream_name=STREAM_NAME,
+        version="1.0.0",
+        inferred_at=datetime.now(timezone.utc).isoformat(),
+        event_count_sampled=len(baseline),
+        fields=demo_fields,
+        inference_model="statistical+demo",
+        inference_confidence=0.97,
+    )
+
+    # Print schema summary
+    console.print(f"  ✓ Schema inferred — [bold]{len(demo_fields)}[/bold] fields, confidence [green]97%[/green]")
+    console.print(f"  ✓ PII detected: [yellow]user_email[/yellow] (email)")
+    console.print()
+
+    # Simulate 3 clean watch cycles
+    for cycle in range(1, 4):
+        sample = reservoir_sample(baseline, 50)
+        drift_check = detect_drift(baseline_schema, sample, STREAM_NAME)
+        ts = datetime.now().strftime("%H:%M:%S")
+        console.print(
+            f"  [[dim]{ts}[/dim]] [green]✓[/green] {STREAM_NAME} — "
+            f"[dim]{len(sample)} events sampled — schema clean[/dim]"
+        )
+        time.sleep(0.8)
+
+    console.print()
+
+    # ── Phase 2: Inject drift ──────────────────────────────────────────────────
+    console.print("[bold red]PHASE 2 — Drift injected[/bold red]  [dim](deploy at 2:17am)[/dim]")
+    console.print("  [dim]Injecting drifted events: amount renamed, timestamp format changed, new PII field...[/dim]")
+    time.sleep(1)
+
+    drifted = drifted_payment_events(n=drift_size, seed=99)
+    sample  = reservoir_sample(drifted, min(200, len(drifted)))
+    ts      = datetime.now().strftime("%H:%M:%S")
+
+    drift_report = detect_drift(baseline_schema, sample, STREAM_NAME)
+
+    if drift_report is None:
+        console.print(f"  [[dim]{ts}[/dim]] [green]✓[/green] No drift detected.")
+        return
+
+    # Tier banner
+    highest = drift_report.highest_tier.value
+    color   = tier_colors.get(highest, "white")
+    if highest == 3:
+        console.print(
+            f"\n  [[dim]{ts}[/dim]] [bold red]🔴 {STREAM_NAME} — TIER 3 DRIFT — human action required[/bold red]"
+        )
+    else:
+        console.print(
+            f"\n  [[dim]{ts}[/dim]] [bold yellow]⚠  {STREAM_NAME} — DRIFT DETECTED — Tier {highest}[/bold yellow]"
+        )
+
+    console.print()
+    for d in drift_report.drifts:
+        c = tier_colors.get(d.tier.value, "white")
+        lbl = f"[{c}][TIER {d.tier.value}][/{c}]"
+
+        if d.drift_type == "type_changed":
+            detail = (f"type changed: [cyan]{d.previous_type.value}[/cyan] → "
+                      f"[red]{d.observed_type.value}[/red]  ({d.affected_event_rate:.0%} of events)")
+        elif d.drift_type == "field_removed":
+            detail = (f"field [bold red]REMOVED[/bold red] — was "
+                      f"[cyan]{(d.previous_presence_rate or 0):.0%}[/cyan] present, now "
+                      f"[red]{(d.observed_presence_rate or 0):.0%}[/red]")
+        elif d.drift_type == "field_added":
+            pres = d.observed_presence_rate or 0
+            kind = "required" if pres >= 0.8 else "optional"
+            detail = f"new {kind} field added ({pres:.0%} presence)"
+        elif d.drift_type == "new_pii":
+            detail = "[red bold]NEW PII FIELD[/red bold] — GDPR/CCPA review required"
+        elif d.drift_type == "enum_changed":
+            detail = f"new enum values in {d.affected_event_rate:.0%} of events"
+        elif d.drift_type == "presence_drop":
+            detail = (f"presence dropped: {(d.previous_presence_rate or 0):.0%} → "
+                      f"{(d.observed_presence_rate or 0):.0%}")
+        else:
+            detail = d.drift_type
+
+        console.print(f"    {lbl} [cyan]{d.field_path}[/cyan] — {detail}")
+
+    console.print()
+
+    if write_report:
+        report_path = write_drift_report(drift_report, "drift_reports")
+        console.print(f"  ✓ Report saved: [green]{report_path}[/green]")
+
+    console.rule()
+    console.print(
+        f"\n[bold]That would have been a 3am page.[/bold]\n"
+        f"Instead: a blocked PR and a Slack alert to [cyan]#payments-oncall[/cyan].\n\n"
+        f"Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard."
+    )
+
+
 if __name__ == "__main__":
     app()

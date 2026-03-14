@@ -187,6 +187,25 @@ code {
 footer           { visibility:hidden !important; }
 header           { visibility:hidden !important; }
 [data-testid="stDeployButton"] { display:none !important; }
+
+/* ── Drift pulse animation — applied to Tier 3 fleet cards ── */
+@keyframes drift-pulse {
+    0%   { box-shadow: 0 0 0 0   rgba(255,59,48,0.55), 0 2px 12px rgba(0,0,0,0.07); }
+    50%  { box-shadow: 0 0 0 10px rgba(255,59,48,0),   0 2px 12px rgba(0,0,0,0.07); }
+    100% { box-shadow: 0 0 0 0   rgba(255,59,48,0),    0 2px 12px rgba(0,0,0,0.07); }
+}
+.sf-drift-pulse {
+    animation: drift-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite !important;
+}
+
+/* ── Status dot pulse — sidebar and header dots ── */
+@keyframes dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.6; transform: scale(1.35); }
+}
+.sf-dot-live {
+    animation: dot-pulse 1.8s ease-in-out infinite !important;
+}
 </style>
 """
 
@@ -269,10 +288,20 @@ def _pii_badge(cats: list) -> str:
 
 def _status_dot(has_drift: bool, has_pii: bool) -> str:
     if has_drift:
-        return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#FF3B30;box-shadow:0 0 6px #FF3B3088;flex-shrink:0"></span>'
+        # Pulsing red — active drift requires immediate attention
+        return (
+            '<span class="sf-dot-live" style="display:inline-block;width:10px;height:10px;'
+            'border-radius:50%;background:#FF3B30;box-shadow:0 0 8px #FF3B3099;flex-shrink:0"></span>'
+        )
     if has_pii:
-        return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#FF9F0A;box-shadow:0 0 6px #FF9F0A88;flex-shrink:0"></span>'
-    return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#34C759;box-shadow:0 0 6px #34C75988;flex-shrink:0"></span>'
+        return (
+            '<span style="display:inline-block;width:10px;height:10px;'
+            'border-radius:50%;background:#FF9F0A;box-shadow:0 0 6px #FF9F0A88;flex-shrink:0"></span>'
+        )
+    return (
+        '<span style="display:inline-block;width:10px;height:10px;'
+        'border-radius:50%;background:#34C759;box-shadow:0 0 6px #34C75988;flex-shrink:0"></span>'
+    )
 
 
 def render_field_table(fields: list[dict]) -> str:
@@ -540,13 +569,25 @@ def render_fleet_overview():
             else:
                 border_c, status_icon, status_label = "#34C759", "✅", "Schema Clean"
 
+            # Build a "DRIFT ACTIVE" badge for streams with reports
+            drift_badge = ""
+            if has_drift:
+                drift_badge = (
+                    '<span style="background:#FF3B30;color:white;font-size:9px;font-weight:700;'
+                    'letter-spacing:0.08em;padding:2px 8px;border-radius:980px;'
+                    'text-transform:uppercase;margin-left:6px">DRIFT ACTIVE</span>'
+                )
+
+            pulse_class = "sf-drift-pulse" if has_drift else ""
+
             with cols[idx % 3]:
                 st.markdown(
-                    f'<div style="background:#FFFFFF;border-radius:16px;padding:22px 20px;'
+                    f'<div class="{pulse_class}" style="background:#FFFFFF;border-radius:16px;padding:22px 20px;'
                     f'box-shadow:0 2px 12px rgba(0,0,0,0.07);border:1px solid rgba(210,210,215,0.5);'
                     f'border-top:3px solid {border_c};margin-bottom:16px">'
                     f'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
-                    f'<div style="font-size:14px;font-weight:600;color:#1D1D1F;word-break:break-word">{sn}</div>'
+                    f'<div style="font-size:14px;font-weight:600;color:#1D1D1F;word-break:break-word">'
+                    f'{sn}{drift_badge}</div>'
                     f'<span style="font-size:18px">{status_icon}</span></div>'
                     f'<div style="font-size:12px;font-weight:500;color:{border_c};margin-bottom:12px">{status_label}</div>'
                     f'<div style="font-size:12px;color:#6E6E73;display:flex;flex-direction:column;gap:4px">'
@@ -614,12 +655,14 @@ def render_stream_detail(stream_name: str):
     )
 
     # ── Metrics ────────────────────────────────────────────────────────────────
-    mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+    consumer_count = len(consumers_data.get("consumers", [])) if consumers_data else 0
+    mc1, mc2, mc3, mc4, mc5, mc6 = st.columns(6)
     mc1.metric("Fields",        len(all_fields))
     mc2.metric("Confidence",    f'{sd.get("inference_confidence",0):.0%}')
     mc3.metric("PII Fields",    len(pii_fields))
     mc4.metric("Drift Reports", len(drift_reports))
     mc5.metric("Sub-schemas",   len(profile_data.get("sub_schemas",[])) if profile_data else "—")
+    mc6.metric("Consumers",     consumer_count)
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Tabs ───────────────────────────────────────────────────────────────────
