@@ -420,7 +420,7 @@ schemas from messy data and then outputting to the formats teams already use.
           │
           ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  Dashboard (streamforge_ui.py)                      │
+│                  Dashboard (streamforge/ui.py)                      │
 │  Fleet Overview  │  Schema  │  Sub-schemas  │  PII  │  Policy      │
 │  Apple Design System. Pure file reader. No backend.                 │
 └─────────────────────────────────────────────────────────────────────┘
