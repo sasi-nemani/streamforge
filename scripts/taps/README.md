@@ -4,6 +4,8 @@ Three scripts that pull live public data streams and write them as NDJSON files 
 
 No API keys required for any of these.
 
+These are the fastest way to demo that StreamForge is source-agnostic without needing Kafka on day one.
+
 ---
 
 ## Wikipedia — live edits
@@ -114,7 +116,36 @@ streamforge init events/opensky/live
 streamforge ui
 ```
 
-All three streams appear in the dashboard sidebar.
+All three streams appear in the dashboard sidebar and give you a visually varied fleet:
+
+- `wikipedia/live` → text-heavy content events
+- `coinbase/live` → numeric market data
+- `opensky/live` → telemetry and geospatial data
+
+## Recommended pitch demo
+
+If you want one clean flow for a live meeting:
+
+```bash
+# 1. Collect data in separate terminals
+python3 taps/wikipedia.py --max 200
+python3 taps/coinbase.py --max 200
+python3 taps/opensky.py --max 300
+
+# 2. Infer contracts
+streamforge init events/wikipedia/live
+streamforge init events/coinbase/live
+streamforge init events/opensky/live
+
+# 3. Launch dashboard
+streamforge ui
+```
+
+What to say while this runs:
+
+1. StreamForge is not tied to a single broker or registry.
+2. The same contract engine works across editorial events, market ticks, and flight telemetry.
+3. The output is not just a dashboard; it is a Git-committable contract plus continuous enforcement.
 
 ---
 
