@@ -1,10 +1,102 @@
 import json
 import logging
 import random
+import re
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def parse_resilient(line: str) -> tuple[dict, float]:
+    """
+    Extract a dict from any raw line with a confidence score.
+    Returns (event_dict, confidence):
+      1.0 — clean JSON object
+      0.7 — JSON fragment found inside a log-style prefix (e.g. "2024-01-01 INFO {...}")
+      0.5 — partial key:value extraction via regex
+      0.0 — unparseable (returns empty dict)
+    """
+    line = line.strip()
+    if not line:
+        return {}, 0.0
+
+    # 1. Clean JSON
+    try:
+        obj = json.loads(line)
+        if isinstance(obj, dict):
+            return obj, 1.0
+    except json.JSONDecodeError:
+        pass
+
+    # 2. Embedded JSON object — find the outermost {...} in a log-prefixed line
+    m = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}', line)
+    if m:
+        try:
+            obj = json.loads(m.group())
+            if isinstance(obj, dict) and len(obj) >= 2:
+                return obj, 0.7
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Partial key:value extraction: match "key": value patterns
+    pairs: dict = {}
+    for kv in re.finditer(
+        r'"([^"]{1,60})"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+\.?\d*|true|false|null)',
+        line
+    ):
+        try:
+            pairs[kv.group(1)] = json.loads(kv.group(2))
+        except json.JSONDecodeError:
+            pairs[kv.group(1)] = kv.group(2)
+    if len(pairs) >= 2:
+        return pairs, 0.5
+
+    return {}, 0.0
+
+
+def load_events_resilient(folder_path: str) -> tuple[list[dict], dict]:
+    """
+    Load events from folder using the resilient parser.
+    Returns (events, parse_stats) where parse_stats keys:
+      total_lines, parsed_clean, parsed_partial, skipped
+    Partial events get a '_partial_extract' flag (stripped before LLM calls).
+    """
+    folder = Path(folder_path)
+    files = sorted(
+        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
+    )
+    events: list[dict] = []
+    stats = {"total_lines": 0, "parsed_clean": 0, "parsed_partial": 0, "skipped": 0}
+
+    for file_path in files:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    stats["total_lines"] += 1
+                    obj, confidence = parse_resilient(stripped)
+                    if confidence == 1.0:
+                        events.append(obj)
+                        stats["parsed_clean"] += 1
+                    elif confidence >= 0.5:
+                        obj["_partial_extract"] = True
+                        events.append(obj)
+                        stats["parsed_partial"] += 1
+                        logger.debug("Partial extract from %s: %.60s", file_path, stripped)
+                    else:
+                        stats["skipped"] += 1
+                        logger.debug("Unparseable line in %s: %.60s", file_path, stripped)
+        except OSError as e:
+            logger.warning("Could not read file %s: %s", file_path, e)
+
+    logger.info(
+        "Resilient load: %d clean, %d partial, %d skipped from %d files",
+        stats["parsed_clean"], stats["parsed_partial"], stats["skipped"], len(files),
+    )
+    return events, stats
 
 
 def load_events_from_folder(folder_path: str) -> list[dict]:

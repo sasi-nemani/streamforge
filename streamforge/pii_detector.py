@@ -37,7 +37,6 @@ PII_NAME_HINTS: dict[PIICategory, list[str]] = {
 
 def _path_segments(path: str) -> list[str]:
     """Split dot-notation path into individual segments, stripping array brackets."""
-    import re
     return [s for s in re.split(r'[.\[\]]+', path.lower()) if s]
 
 

@@ -1,9 +1,9 @@
 # Inference Report — stream_v1
 
-**Inferred:** 2026-03-14T09:59:39.642605+00:00  
+**Inferred:** 2026-03-14T11:16:21.181828+00:00  
 **Model:** llama-3.3-70b-versatile  
 **Events sampled:** 300  
-**Overall confidence:** 95%
+**Overall confidence:** 85%
 
 ---
 
@@ -11,22 +11,20 @@
 
 | Field | Type | Required | Confidence | PII |
 |-------|------|----------|------------|-----|
-| `event_id` | uuid | ✓ | 100% | — |
-| `event_type` | string | ✓ | 100% | — |
-| `timestamp` | timestamp_epoch_ms | ✓ | 100% | — |
-| `transaction_id` | string | ✓ | 100% | — |
-| `amount` | float | ✓ | 100% | — |
-| `currency` | string | ✓ | 100% | — |
-| `status` | string | ✓ | 100% | — |
-| `payment_method` | string | ✓ | 100% | — |
-| `user.user_id` | string | ○ | 96% | — |
-| `user.email` | email | ○ | 96% | email |
-| `user.name` | string | ○ | 96% | name |
-| `metadata.ip_address` | string | ○ | 90% | ip_address |
-| `metadata.user_agent` | string | ○ | 90% | — |
-| `metadata.region` | string | ○ | 90% | — |
-| `user_id` | string | ○ | 4% | — |
-| `user_email` | email | ○ | 4% | email |
+| `event_id` | uuid | ✓ | 95% | — |
+| `event_type` | string | ✓ | 95% | — |
+| `timestamp` | timestamp_epoch_ms | ✓ | 95% | — |
+| `transaction_id` | string | ✓ | 95% | — |
+| `amount` | mixed | ✓ | 80% | — |
+| `currency` | string | ✓ | 90% | — |
+| `status` | string | ✓ | 90% | — |
+| `payment_method` | string | ✓ | 90% | — |
+| `user.user_id` | string | ○ | 80% | — |
+| `user.email` | email | ○ | 80% | email |
+| `user.name` | string | ○ | 80% | name |
+| `metadata.ip_address` | string | ○ | 70% | ip_address |
+| `metadata.user_agent` | string | ○ | 70% | — |
+| `metadata.region` | string | ○ | 70% | — |
 
 ---
 
@@ -35,18 +33,17 @@
 - **`user.email`** — email
 - **`user.name`** — name
 - **`metadata.ip_address`** — ip_address
-- **`user_email`** — email
 
 ---
 
 ## Low Confidence Fields (< 80%)
 
-- **`user_id`** — 4% confidence — Unique identifier for the user (duplicate field)
-- **`user_email`** — 4% confidence — Email address of the user (duplicate field)
+- **`metadata.ip_address`** — 70% confidence — IP address of the user
+- **`metadata.user_agent`** — 70% confidence — User agent of the user
+- **`metadata.region`** — 70% confidence — Region of the user
 
 ---
 
-## Rare Fields (< 10% presence)
+## Mixed Type Fields
 
-- **`user_id`** — present in 4% of events
-- **`user_email`** — present in 4% of events
+- **`amount`** — Transaction amount, sometimes string and sometimes number

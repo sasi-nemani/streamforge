@@ -1,0 +1,222 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# StreamForge Schema Guard — GitHub Actions Workflow
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# PURPOSE:
+#   Automatically checks schema drift every time a producer service pushes code.
+#   Acts like "terraform plan" for your event streams — shows exactly what would
+#   break before it hits production.
+#
+# HOW IT WORKS:
+#   1. Checks out the repo (which contains schemas/ with committed schema.yaml)
+#   2. Installs StreamForge CLI
+#   3. Runs `streamforge plan` against the event data in the PR
+#   4. Fails the PR if Tier 3 (critical) drift is detected
+#   5. Posts a summary to the PR as a comment (optional, requires GITHUB_TOKEN)
+#
+# SETUP:
+#   1. Add GROQ_API_KEY to your repo's Secrets (Settings → Secrets → Actions)
+#   2. Optionally add SLACK_WEBHOOK_URL for Slack notifications on drift
+#   3. Commit schema.yaml files to your repo (run `streamforge init` first)
+#   4. Adjust the `stream_paths` matrix below to match your event directories
+#
+# REQUIRED SECRETS:
+#   GROQ_API_KEY    — Groq API key (free tier at console.groq.com)
+#
+# OPTIONAL SECRETS:
+#   SLACK_WEBHOOK_URL  — Slack incoming webhook for drift notifications
+#   OPENAI_API_KEY     — Alternative to Groq (slower, more expensive)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: StreamForge Schema Guard
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      # Only run when event data or schemas change — not on README edits
+      - 'events/**'
+      - 'schemas/**'
+      - '.github/workflows/schema-guard.yml'
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    paths:
+      - 'events/**'
+      - 'schemas/**'
+
+  # Allow manual trigger from the Actions tab (useful for debugging)
+  workflow_dispatch:
+    inputs:
+      stream_path:
+        description: 'Stream path to check (e.g., events/payments/stream_v1)'
+        required: false
+        default: ''
+
+# Cancel in-progress runs on the same branch (saves CI minutes)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema-guard:
+    name: Schema Drift Check — ${{ matrix.stream_name }}
+    runs-on: ubuntu-latest
+
+    # ── Stream matrix: one job per stream ───────────────────────────────────
+    # Add your streams here. Each entry maps a stream path to its schema.
+    # Format: "stream_path|schema_path" (separated by pipe)
+    strategy:
+      fail-fast: false    # Run all streams even if one fails
+      matrix:
+        stream:
+          - "events/payments/stream_v1|schemas/stream_v1/schema.yaml"
+          - "events/flights/stream|schemas/flights.stream/schema.yaml"
+          - "events/bookings/stream|schemas/bookings.stream/schema.yaml"
+          # Add more streams here:
+          # - "events/your-stream|schemas/your-stream/schema.yaml"
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1    # Shallow clone — we only need current state
+
+      # ── 2. Python setup ────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ── 3. Install StreamForge ─────────────────────────────────────────────
+      - name: Install StreamForge CLI
+        run: |
+          pip install --quiet streamforge-cli
+          # If running from source (e.g., in the streamforge-mvp repo itself):
+          # pip install --quiet -e .
+
+      # ── 4. Parse matrix entry ──────────────────────────────────────────────
+      - name: Parse stream configuration
+        id: config
+        run: |
+          STREAM_PATH=$(echo "${{ matrix.stream }}" | cut -d'|' -f1)
+          SCHEMA_PATH=$(echo "${{ matrix.stream }}" | cut -d'|' -f2)
+          STREAM_NAME=$(basename $(dirname $STREAM_PATH))/$(basename $STREAM_PATH)
+
+          echo "stream_path=$STREAM_PATH" >> $GITHUB_OUTPUT
+          echo "schema_path=$SCHEMA_PATH" >> $GITHUB_OUTPUT
+          echo "stream_name=$STREAM_NAME" >> $GITHUB_OUTPUT
+
+          echo "Checking stream: $STREAM_PATH"
+          echo "Against schema:  $SCHEMA_PATH"
+
+      # ── 5. Check if stream and schema exist ────────────────────────────────
+      - name: Verify stream and schema exist
+        id: verify
+        run: |
+          if [ ! -d "${{ steps.config.outputs.stream_path }}" ]; then
+            echo "::warning::Stream path not found: ${{ steps.config.outputs.stream_path }} — skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [ ! -f "${{ steps.config.outputs.schema_path }}" ]; then
+            echo "::warning::Schema not found: ${{ steps.config.outputs.schema_path }}"
+            echo "::warning::Run 'streamforge init ${{ steps.config.outputs.stream_path }}' and commit schema.yaml"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      # ── 6. Run schema guard ────────────────────────────────────────────────
+      - name: Run StreamForge plan
+        if: steps.verify.outputs.skip != 'true'
+        id: plan
+        env:
+          GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY:       ${{ secrets.OPENAI_API_KEY }}   # Fallback
+          SLACK_WEBHOOK_URL:    ${{ secrets.SLACK_WEBHOOK_URL }}
+          STREAMFORGE_LOG_LEVEL: INFO
+        run: |
+          # Run plan and capture exit code (non-zero = Tier 3 drift detected)
+          streamforge plan \
+            "${{ steps.config.outputs.stream_path }}" \
+            --schema "${{ steps.config.outputs.schema_path }}" \
+            --sample-size 200 \
+            --output schemas/ \
+            2>&1 | tee plan_output.txt
+
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Save output for PR comment
+          echo "PLAN_OUTPUT<<EOF" >> $GITHUB_ENV
+          cat plan_output.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          exit $EXIT_CODE
+
+      # ── 7. Post PR comment (requires GITHUB_TOKEN) ─────────────────────────
+      - name: Post drift report to PR
+        if: always() && github.event_name == 'pull_request' && steps.verify.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const streamName = '${{ steps.config.outputs.stream_name }}';
+            const exitCode   = '${{ steps.plan.outputs.exit_code }}';
+            const output     = process.env.PLAN_OUTPUT || 'No output captured';
+
+            const status = exitCode === '0'
+              ? '✅ Schema clean — no breaking drift detected'
+              : exitCode === ''
+              ? '⏭️ Skipped — stream or schema not found'
+              : '🔴 Drift detected — see details below';
+
+            const body = [
+              `## StreamForge Schema Guard — \`${streamName}\``,
+              '',
+              status,
+              '',
+              '<details>',
+              '<summary>Full plan output</summary>',
+              '',
+              '```',
+              output.slice(0, 10000),  // GitHub comment limit ~65k, but keep it readable
+              '```',
+              '</details>',
+              '',
+              '> Run `streamforge plan` locally to reproduce this check.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner:    context.repo.owner,
+              repo:     context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+
+      # ── 8. Upload drift reports as artifacts ──────────────────────────────
+      - name: Upload drift reports
+        if: always() && steps.verify.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-reports-${{ matrix.stream_name || 'unknown' }}
+          path: drift_reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ── Summary job: fail if ANY stream had Tier 3 drift ──────────────────────
+  guard-summary:
+    name: Schema Guard Summary
+    runs-on: ubuntu-latest
+    needs: schema-guard
+    if: always()
+    steps:
+      - name: Check guard results
+        run: |
+          if [ "${{ needs.schema-guard.result }}" == "failure" ]; then
+            echo "::error::Schema guard failed — Tier 3 drift detected in one or more streams."
+            echo "::error::Fix the schema drift before merging this PR."
+            exit 1
+          fi
+          echo "✅ All streams passed schema guard."

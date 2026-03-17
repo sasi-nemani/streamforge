@@ -31,10 +31,9 @@ References:
   - Chi-squared: Pearson (1900), standard formulation.
 """
 
-import math
 import logging
+import math
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +60,7 @@ class TestResult:
     """
     is_significant: bool
     statistic: float
-    p_value: Optional[float]
+    p_value: float | None
     effect_size: float
     reason: str
     test_name: str
@@ -183,7 +182,7 @@ def psi(
     floor_obs = 1.0 / (n_obs * len(unique_edges))
 
     psi_value = 0.0
-    for bc, oc in zip(base_counts, obs_counts):
+    for bc, oc in zip(base_counts, obs_counts, strict=False):
         base_frac = max(bc / n_base, floor_base)
         obs_frac = max(oc / n_obs, floor_obs)
         psi_value += (obs_frac - base_frac) * math.log(obs_frac / base_frac)
@@ -381,7 +380,7 @@ def chi_squared_test(
     small_exp = 0.0
     small_obs = 0
 
-    for e, o in zip(expected, observed):
+    for e, o in zip(expected, observed, strict=False):
         if e < min_expected:
             small_exp += e
             small_obs += o
@@ -408,7 +407,7 @@ def chi_squared_test(
     # Pearson chi-squared statistic
     chi2 = sum(
         (o - e) ** 2 / e
-        for e, o in zip(big_expected, big_observed)
+        for e, o in zip(big_expected, big_observed, strict=False)
     )
 
     df = k - 1
@@ -542,7 +541,7 @@ class FieldTestSummary:
     field_path: str
     drift_detected: bool
     tests: list[TestResult]
-    dominant_test: Optional[str]
+    dominant_test: str | None
     max_effect: float
 
 
@@ -558,7 +557,7 @@ def summarise_field_tests(
     """
     significant = [r for r in results if r.is_significant]
     drift_detected = len(significant) > 0
-    dominant: Optional[str] = None
+    dominant: str | None = None
     max_effect = 0.0
 
     if significant:

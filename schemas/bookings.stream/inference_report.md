@@ -1,9 +1,9 @@
 # Inference Report — bookings.stream
 
-**Inferred:** 2026-03-13T21:52:59.096027+00:00  
-**Model:** llama-3.3-70b-versatile(statistical-fallback)  
-**Events sampled:** 200  
-**Overall confidence:** 60%
+**Inferred:** 2026-03-14T11:18:37.520943+00:00  
+**Model:** llama-3.3-70b-versatile  
+**Events sampled:** 250  
+**Overall confidence:** 85%
 
 ---
 
@@ -11,70 +11,45 @@
 
 | Field | Type | Required | Confidence | PII |
 |-------|------|----------|------------|-----|
-| `event_id` | string | ✓ | 70% | — |
-| `event_type` | string | ✓ | 70% | — |
-| `booking_reference` | string | ✓ | 70% | — |
-| `created_at` | mixed | ✓ | 70% | — |
-| `total_price` | mixed | ✓ | 70% | — |
-| `currency` | string | ✓ | 70% | — |
-| `cabin_class` | string | ✓ | 70% | — |
-| `passengers` | array | ✓ | 69% | — |
-| `passengers[].title` | string | ✓ | 69% | — |
-| `passengers[].first_name` | string | ✓ | 69% | name |
-| `passengers[].last_name` | string | ✓ | 69% | name |
-| `passengers[].date_of_birth` | string | ✓ | 69% | phone, date_of_birth |
-| `passengers[].passport_number` | string | ✓ | 69% | passport |
-| `contact_email` | string | ✓ | 70% | email |
-| `contact_phone` | string | ✓ | 70% | phone |
-| `flights` | array | ✓ | 70% | — |
-| `loyalty_number` | string | ✓ | 70% | loyalty_number, passport |
-| `passenger_name` | string | ○ | 51% | name |
+| `event_id` | uuid | ✓ | 90% | — |
+| `event_type` | string | ✓ | 90% | — |
+| `booking_reference` | string | ✓ | 90% | — |
+| `created_at` | mixed | ✓ | 80% | — |
+| `total_price` | float | ✓ | 90% | — |
+| `currency` | string | ✓ | 90% | — |
+| `cabin_class` | string | ✓ | 90% | — |
+| `contact_email` | email | ✓ | 90% | email |
+| `contact_phone` | phone | ✓ | 90% | phone |
+| `flights` | array | ✓ | 90% | — |
+| `flights[]` | string | ✓ | 90% | — |
+| `loyalty_number` | string | ○ | 80% | passport, loyalty_number |
+| `passengers` | array | ○ | 80% | — |
+| `passengers[].title` | string | ○ | 80% | — |
+| `passengers[].first_name` | string | ○ | 80% | name |
+| `passengers[].last_name` | string | ○ | 80% | name |
+| `passengers[].date_of_birth` | string | ○ | 80% | date_of_birth, phone |
+| `passengers[].passport_number` | string | ○ | 80% | passport |
 
 ---
 
 ## PII Fields
 
-- **`passengers[].first_name`** — name
-- **`passengers[].last_name`** — name
-- **`passengers[].date_of_birth`** — phone, date_of_birth
-- **`passengers[].passport_number`** — passport
 - **`contact_email`** — email
 - **`contact_phone`** — phone
-- **`loyalty_number`** — loyalty_number, passport
-- **`passenger_name`** — name
-
----
-
-## Low Confidence Fields (< 80%)
-
-- **`event_id`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`event_type`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`booking_reference`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`created_at`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`total_price`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`currency`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`cabin_class`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`passengers`** — 69% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].title`** — 69% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].first_name`** — 69% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].last_name`** — 69% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].date_of_birth`** — 69% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].passport_number`** — 69% confidence — Statistically inferred (LLM fallback)
-- **`contact_email`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`contact_phone`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`flights`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`loyalty_number`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`passenger_name`** — 51% confidence — Statistically inferred (LLM fallback)
+- **`loyalty_number`** — passport, loyalty_number
+- **`passengers[].first_name`** — name
+- **`passengers[].last_name`** — name
+- **`passengers[].date_of_birth`** — date_of_birth, phone
+- **`passengers[].passport_number`** — passport
 
 ---
 
 ## Mixed Type Fields
 
-- **`created_at`** — Statistically inferred (LLM fallback)
-- **`total_price`** — Statistically inferred (LLM fallback)
+- **`created_at`** — Timestamp of event creation, sometimes in ISO8601 format and sometimes in Unix epoch milliseconds
 
 ---
 
 ## Rare Fields (< 10% presence)
 
-- **`passenger_name`** — present in 6% of events
+- **`flights[]`** — present in 0% of events

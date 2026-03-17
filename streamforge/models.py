@@ -1,9 +1,10 @@
+from enum import Enum, StrEnum
+from typing import Any
+
 from pydantic import BaseModel
-from typing import Any, Optional
-from enum import Enum
 
 
-class FieldType(str, Enum):
+class FieldType(StrEnum):
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -21,7 +22,7 @@ class FieldType(str, Enum):
     MIXED = "mixed"
 
 
-class PIICategory(str, Enum):
+class PIICategory(StrEnum):
     EMAIL = "email"
     PHONE = "phone"
     NAME = "name"
@@ -48,10 +49,10 @@ class FieldSchema(BaseModel):
     required: bool = True
     presence_rate: float = 1.0
     sample_values: list[Any] = []
-    enum_values: Optional[list[str]] = None
+    enum_values: list[str] | None = None
     pii_categories: list[PIICategory] = []
     confidence: float = 1.0
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class InferredSchema(BaseModel):
@@ -60,7 +61,7 @@ class InferredSchema(BaseModel):
     inferred_at: str
     event_count_sampled: int
     fields: list[FieldSchema]
-    top_level_event_types: Optional[list[str]] = None
+    top_level_event_types: list[str] | None = None
     inference_model: str
     inference_confidence: float
 
@@ -68,17 +69,18 @@ class InferredSchema(BaseModel):
 class FieldDrift(BaseModel):
     field_path: str
     drift_type: str
-    previous_type: Optional[FieldType] = None
-    observed_type: Optional[FieldType] = None
-    previous_presence_rate: Optional[float] = None
-    observed_presence_rate: Optional[float] = None
-    previous_enum_values: Optional[list[str]] = None
-    observed_enum_values: Optional[list[str]] = None
+    previous_type: FieldType | None = None
+    observed_type: FieldType | None = None
+    previous_presence_rate: float | None = None
+    observed_presence_rate: float | None = None
+    previous_enum_values: list[str] | None = None
+    observed_enum_values: list[str] | None = None
     affected_event_rate: float
     tier: DriftTier
     auto_correctable: bool
-    proposed_correction: Optional[str] = None
-    correction_confidence: Optional[float] = None
+    proposed_correction: str | None = None
+    correction_confidence: float | None = None
+    cluster_id: str | None = None  # sub-schema cluster this drift belongs to; None = flat schema path
 
 
 class DriftReport(BaseModel):
@@ -89,3 +91,133 @@ class DriftReport(BaseModel):
     drifts: list[FieldDrift]
     highest_tier: DriftTier
     summary: str
+
+
+class SubSchema(BaseModel):
+    cluster_id: str
+    detection_method: str        # "event_type_field" | "structural_fingerprint" | "single"
+    event_count: int
+    sample_rate: float           # fraction of total stream events this cluster represents
+    fields: list[FieldSchema]
+    inference_confidence: float
+    top_keys: list[str]          # top-level keys seen in this cluster
+
+
+class StreamProfile(BaseModel):
+    stream_name: str
+    profiled_at: str
+    total_events_sampled: int
+    parse_success_rate: float    # (clean + partial) / total lines attempted
+    discovery_method: str        # "event_type_field" | "structural_fingerprint" | "single"
+    routing_field: str | None = None  # explicit field name used for event routing (e.g. "event_type")
+    sub_schemas: list[SubSchema]
+    profile_model: str
+
+
+# ---------------------------------------------------------------------------
+# History, Velocity, and Proposal models
+# ---------------------------------------------------------------------------
+
+class TrendStatus(StrEnum):
+    STABLE            = "stable"
+    RISING            = "rising"
+    DECLINING         = "declining"
+    VOLATILE          = "volatile"
+    INSUFFICIENT_DATA = "insufficient_data"
+
+
+class SnapshotMeta(BaseModel):
+    stream_name: str
+    snapshot_date: str           # YYYY-MM-DD
+    profiled_at: str             # original profile.profiled_at
+    total_events_sampled: int
+    cluster_ids: list[str]
+    field_count: int
+    triggered_by: str = "manual" # "manual" | "cron" | "watch"
+
+
+class FieldDiffEntry(BaseModel):
+    field_path: str
+    cluster_id: str | None = None
+    # "added" | "removed" | "type_changed" | "presence_changed"
+    # | "enum_changed" | "pii_added" | "pii_removed" | "required_changed"
+    # | "new_cluster" | "cluster_removed"
+    change_type: str
+    before: dict | None = None   # serialised snapshot of the left-side field
+    after: dict | None = None    # serialised snapshot of the right-side field
+    # Pre-computed deltas for quick consumption
+    delta_presence_rate: float | None = None  # after - before
+    delta_confidence: float | None = None
+    enum_added: list[str] | None = None
+    enum_removed: list[str] | None = None
+    # "breaking" | "non_breaking" | "informational"
+    significance: str = "informational"
+
+
+class ProfileDiff(BaseModel):
+    stream_name: str
+    left_date: str
+    right_date: str
+    days_between: int
+    changes: list[FieldDiffEntry]
+    breaking_count: int = 0
+    non_breaking_count: int = 0
+    informational_count: int = 0
+    fields_stable_count: int = 0
+    summary: str = ""
+
+
+class FieldVelocity(BaseModel):
+    field_path: str
+    cluster_id: str | None = None
+    trend: TrendStatus = TrendStatus.INSUFFICIENT_DATA
+    trend_slope: float | None = None  # presence_rate change per day (+ = rising)
+    current_presence_rate: float = 0.0
+    baseline_presence_rate: float = 0.0
+    presence_rates: list[float] = []     # chronological, oldest first
+    snapshot_dates: list[str] = []       # matching dates
+    confidence_history: list[float] = []
+    type_changes: list[str] = []         # ["YYYY-MM-DD: string → integer", ...]
+    enum_history: list[dict] = []        # [{"date": ..., "values": [...]}, ...]
+    enum_growth_rate: float | None = None  # new distinct values per 30 days
+    alert: str | None = None          # non-None = alert message
+    weeks_of_data: int = 0
+
+
+class VelocityReport(BaseModel):
+    stream_name: str
+    computed_at: str
+    snapshot_count: int
+    snapshot_dates: list[str] = []
+    fields: list[FieldVelocity] = []
+    alerts: list[str] = []              # consolidated for quick CI/grep scanning
+    schema_stability_score: float = 1.0 # 0.0 (chaotic) – 1.0 (perfectly stable)
+
+
+class ProposalAction(StrEnum):
+    PROMOTE_TO_REQUIRED = "promote_to_required"
+    DEMOTE_TO_OPTIONAL  = "demote_to_optional"
+    REMOVE_FIELD        = "remove_field"
+    FLAG_NEW_PII        = "flag_new_pii"
+    WIDEN_TYPE          = "widen_type"
+
+
+class BaselineProposal(BaseModel):
+    field_path: str
+    cluster_id: str | None = None
+    action: ProposalAction
+    current_schema_value: str | None = None  # human description of current state
+    proposed_value: str | None = None        # human description of proposed state
+    evidence: str = ""
+    confidence: float = 0.0
+    weeks_of_evidence: int = 0
+
+
+class ProposalReport(BaseModel):
+    stream_name: str
+    generated_at: str
+    weeks_of_history: int
+    proposals: list[BaselineProposal] = []
+    auto_appliable: list[BaselineProposal] = []   # confidence >= threshold, non-breaking
+    requires_review: list[BaselineProposal] = []
+    summary: str = ""

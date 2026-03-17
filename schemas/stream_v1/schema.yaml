@@ -1,64 +1,60 @@
 # StreamForge Schema — stream_v1
 # Version: 1.0.0
-# Inferred: 2026-03-14T09:59:39.642605+00:00
+# Inferred: 2026-03-14T11:16:21.181828+00:00
 # Events sampled: 300
-# Overall confidence: 95%
+# Overall confidence: 85%
 #
 # This file is the source of truth for stream: stream_v1
 # Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
 
 stream: stream_v1
 version: 1.0.0
-inferred_at: '2026-03-14T09:59:39.642605+00:00'
-inference_confidence: 0.95
+inferred_at: '2026-03-14T11:16:21.181828+00:00'
+inference_confidence: 0.85
 inference_model: llama-3.3-70b-versatile
 event_count_sampled: 300
-event_types:
-- payment.processed
 fields:
 - path: event_id
   type: uuid
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
-  notes: Unique identifier for the event
+  confidence: 0.95
+  notes: Unique event identifier
 - path: event_type
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
-  enum_values:
-  - payment.processed
-  notes: Type of the event
+  confidence: 0.95
+  notes: Type of event
 - path: timestamp
   type: timestamp_epoch_ms
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
-  notes: Timestamp of the event in Unix epoch milliseconds
+  confidence: 0.95
+  notes: Timestamp of the event in milliseconds
 - path: transaction_id
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
-  notes: Unique identifier for the transaction
+  confidence: 0.95
+  notes: Unique transaction identifier
 - path: amount
-  type: float
+  type: mixed
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
-  notes: Amount of the transaction
+  confidence: 0.8
+  notes: Transaction amount, sometimes string and sometimes number
 - path: currency
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
+  confidence: 0.9
   enum_values:
   - EUR
   - GBP
@@ -69,7 +65,7 @@ fields:
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
+  confidence: 0.9
   enum_values:
   - COMPLETED
   - FAILED
@@ -80,7 +76,7 @@ fields:
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 1.0
+  confidence: 0.9
   enum_values:
   - APPLE_PAY
   - CARD
@@ -91,33 +87,33 @@ fields:
   type: string
   required: false
   nullable: true
-  presence_rate: 0.9633
-  confidence: 0.96
-  notes: Unique identifier for the user
+  presence_rate: 0.965
+  confidence: 0.8
+  notes: Unique user identifier
 - path: user.email
   type: email
   required: false
   nullable: true
-  presence_rate: 0.9633
-  confidence: 0.96
+  presence_rate: 0.965
+  confidence: 0.8
   pii:
   - email
-  notes: Email address of the user
+  notes: User email address
 - path: user.name
   type: string
   required: false
   nullable: true
-  presence_rate: 0.9633
-  confidence: 0.96
+  presence_rate: 0.965
+  confidence: 0.8
   pii:
   - name
-  notes: Name of the user
+  notes: User name
 - path: metadata.ip_address
   type: string
   required: false
   nullable: true
-  presence_rate: 0.9
-  confidence: 0.9
+  presence_rate: 0.91
+  confidence: 0.7
   pii:
   - ip_address
   notes: IP address of the user
@@ -125,35 +121,17 @@ fields:
   type: string
   required: false
   nullable: true
-  presence_rate: 0.9
-  confidence: 0.9
-  enum_values:
-  - Mozilla/5.0
+  presence_rate: 0.91
+  confidence: 0.7
   notes: User agent of the user
 - path: metadata.region
   type: string
   required: false
   nullable: true
-  presence_rate: 0.9
-  confidence: 0.9
+  presence_rate: 0.91
+  confidence: 0.7
   enum_values:
   - UK
-  - US
   - EU
+  - US
   notes: Region of the user
-- path: user_id
-  type: string
-  required: false
-  nullable: true
-  presence_rate: 0.0367
-  confidence: 0.04
-  notes: Unique identifier for the user (duplicate field)
-- path: user_email
-  type: email
-  required: false
-  nullable: true
-  presence_rate: 0.0367
-  confidence: 0.04
-  pii:
-  - email
-  notes: Email address of the user (duplicate field)

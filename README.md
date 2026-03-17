@@ -1,14 +1,18 @@
 # StreamForge
 
-**AI-native schema inference and drift detection for event streams.**
+**Schema contract infrastructure for event streams.**
 
-Point it at a folder of events. It infers the schema, detects PII, and alerts you when the data changes in production — before your pipelines break.
+StreamForge infers a contract from production data, stores it as code, and continuously detects drift before downstream systems break.
 
 ```
-streamforge init   events/payments/stream_v1   # infer schema → schema.yaml
-streamforge plan   events/payments/stream_v2   # one-shot drift check (CI gate)
-streamforge watch  events/payments/stream_v1   # continuous monitoring
-streamforge ui                                  # open the visual dashboard
+streamforge init   events/payments/stream_v1       # infer schema → schema.yaml
+streamforge plan   events/payments/stream_v2_drift  # one-shot drift check (CI gate)
+streamforge watch  events/payments/stream_v1        # continuous monitoring
+```
+
+Try it without an API key:
+```bash
+streamforge demo   # generates synthetic payments, injects drift, shows detection live
 ```
 
 ---
@@ -23,55 +27,65 @@ cd streamforge-mvp
 pip install -e .
 ```
 
-### 2. Get an API key
+### 2. Get an API key (free, no credit card)
 
-Free tier (recommended for dev):
 ```bash
-export GROQ_API_KEY=gsk_...   # https://console.groq.com — free, no card
+export GROQ_API_KEY=gsk_...   # https://console.groq.com — free tier
 ```
 
-Or run fully local with Ollama (zero cost, no internet):
+Any OpenAI-compatible endpoint also works:
 ```bash
-ollama pull qwen2.5-coder:7b
+# Ollama local, OpenRouter, Together, etc.
 streamforge init events/payments/stream_v1 \
-  --base-url http://localhost:11434/v1 \
-  --model qwen2.5-coder:7b \
-  --api-key ollama
+  --base-url http://localhost:11434/v1 --model qwen2.5-coder:7b --api-key ollama
 ```
 
-### 3. Infer schemas
+### 3. Infer schemas from your event streams
 
 ```bash
 streamforge init events/payments/stream_v1 --sample-size 300
-streamforge init events/flights/stream     --sample-size 200
-streamforge init events/bookings/stream    --sample-size 200
+streamforge init events/flights/stream
+streamforge init events/bookings/stream
+streamforge init events/iot/stream
 ```
 
-Each produces:
+Each run produces:
 ```
 schemas/
   stream_v1/
-    schema.yaml           ← source of truth, git-committable
-    stream_policy.yaml    ← controls alert thresholds and actions
-    inference_report.md   ← confidence per field, PII flags
+    profile.yaml          ← discovery metadata — all sub-schemas found, routing field
+    schema.yaml           ← enforced contract — git-committable, reviewed in PRs
+    stream_policy.yaml    ← per-stream enforcement rules (alert/block thresholds)
+    inference_report.md   ← confidence per field, PII flags, ingest quality
+    profile_report.md     ← per-cluster breakdown for multi-event-type streams
 ```
 
-### 4. Check for drift
+### 4. Gate deployments on drift (CI integration)
 
 ```bash
-# One-shot (use in CI/CD — exits 1 on Tier 3 drift)
+# Exits 1 on Tier 3 drift: required field removed, type incompatibility, new PII
 streamforge plan events/payments/stream_v2_drift \
   --schema schemas/stream_v1/schema.yaml
+```
 
-# Continuous watch
+Add to `.github/workflows/ci.yml`:
+```yaml
+- name: Schema drift check
+  run: streamforge plan ${{ env.STREAM_PATH }} --schema ${{ env.SCHEMA_PATH }}
+  env:
+    GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+```
+
+### 5. Run continuous monitoring
+
+```bash
 streamforge watch events/payments/stream_v1 --interval 30
 ```
 
-### 5. Open the dashboard
+### 6. Open the dashboard
 
 ```bash
 streamforge ui
-# → opens http://localhost:8501
 ```
 
 ---
@@ -80,26 +94,45 @@ streamforge ui
 
 | Command | What it does |
 |---------|-------------|
-| `init <path>` | Infer schema from events. Writes `schema.yaml`, `stream_policy.yaml`, `inference_report.md` |
+| `init <path>` | Infer schema from events. Writes `profile.yaml`, `schema.yaml`, `stream_policy.yaml`, `inference_report.md` |
 | `plan <path>` | One-shot drift check. Exits 1 on policy-blocked drift. Use as CI gate |
 | `watch <path>` | Continuous drift monitoring. Writes dated reports to `drift_reports/` |
 | `report <path>` | Print schema and drift history to terminal |
-| `profile <path>` | Field stats without LLM — type, presence rate, cardinality |
-| `ui` | Launch visual dashboard (Streamlit) |
+| `profile <path>` | Field stats without LLM — type, presence rate, cardinality, cluster discovery |
+| `export <dir>` | Export `schema.yaml` to JSON Schema (Draft 2020-12) or Apache Avro |
+| `consumers <path>` | Show consumer registry and drift blast radius |
+| `history diff` | Compare two profile snapshots — classify each change as breaking/non-breaking |
+| `history velocity` | Compute per-field trend analysis from historical snapshots |
+| `history propose` | Generate schema update proposals from trend evidence |
+| `demo` | Synthetic demo — no API key, no Kafka. Generates events, injects drift, detects live |
+| `ui` | Visual dashboard — live schema viewer, drift timeline |
+
+---
+
+## Contract artifacts
+
+Two files, one purpose:
+
+| File | Role |
+|------|------|
+| `profile.yaml` | **Discovery metadata.** All event families found in the stream, with field distributions and the routing field used to distinguish them. |
+| `schema.yaml` | **Enforced contract.** Human-editable. Git-committable. This is what `watch` and `plan` enforce. |
+
+The pattern: **infer** from production data → **declare** the contract in code → **enforce** continuously.
 
 ---
 
 ## Drift tiers
 
-| Tier | Meaning | Default action |
+| Tier | Examples | Default action |
 |------|---------|---------------|
-| **Tier 1** | Non-breaking — new optional field, presence increase | Log only |
-| **Tier 2** | Breaking but auto-correctable — type widened, enum expanded, field renamed | Alert |
-| **Tier 3** | Critical — required field removed, new PII, incompatible type change | Block (exit 1) |
+| **Tier 1** | New optional field added, presence rate increased | Log only |
+| **Tier 2** | Type widened (int → float), enum expanded, timestamp format changed | Alert + report |
+| **Tier 3** | Required field removed, incompatible type break, new PII field | Block (exit 1 in CI) |
 
 ---
 
-## stream_policy.yaml
+## `stream_policy.yaml`
 
 Generated by `init`. Edit to tune behaviour per stream.
 
@@ -107,7 +140,6 @@ Generated by `init`. Edit to tune behaviour per stream.
 stream: stream_v1
 sample_size: 300
 poll_interval_seconds: 30
-alert_tier: 2          # 1=all drifts, 2=breaking+, 3=critical only
 
 actions:
   tier_1: log          # write report, dim output
@@ -119,59 +151,151 @@ webhook_url: null      # POST drift report JSON here on detection
 
 ---
 
-## Run the full demo
+## Test fixtures
 
+| Stream | Events | Drift scenario |
+|--------|--------|----------------|
+| `events/payments/stream_v1` | 300 | Clean baseline. PII: email, name, IP |
+| `events/payments/stream_v2_drift` | 200 | `amount` renamed → `amount_minor_units`, timestamp format epoch→ISO, new `card_last_four` PII |
+| `events/flights/stream` | 400 | Multi-event-type: booking, cancellation, check-in |
+| `events/bookings/stream` | 250 | Heavy PII: passport, DOB, loyalty number |
+| `events/iot/stream` | 500 | Sensor telemetry — sparse optional fields, mixed types |
+
+Run the full demo pipeline:
 ```bash
 export GROQ_API_KEY=gsk_...
-bash demo.sh
+bash scripts/demo.sh
 ```
 
 ---
 
-## Test streams included
+## Live public data taps
 
-| Stream | Events | Notes |
-|--------|--------|-------|
-| `events/payments/stream_v1` | 300 | Clean payments. PII: email, name, IP |
-| `events/payments/stream_v2_drift` | 200 | Drifted: `amount` renamed, timestamp format changed, new `card_last_four` PII |
-| `events/flights/stream` | 400 | Flight events |
-| `events/bookings/stream` | 250 | Bookings with heavy PII (passport, DOB, loyalty number) |
-| `events/iot/stream` | 500 | Sensor events |
+Three scripts in `scripts/taps/` stream live public data — no API keys required. Use them to demo source-agnostic schema inference without Kafka.
+
+```bash
+# Terminal 1 — Wikipedia edits (SSE)
+python3 scripts/taps/wikipedia.py --max 200
+
+# Terminal 2 — Coinbase market ticks (WebSocket)
+python3 scripts/taps/coinbase.py --max 200
+
+# Terminal 3 — OpenSky flight positions (HTTPS)
+python3 scripts/taps/opensky.py --max 300
+```
+
+Then infer schemas and view the dashboard:
+```bash
+streamforge init events/wikipedia/live
+streamforge init events/coinbase/live
+streamforge init events/opensky/live
+streamforge ui
+```
+
+See `scripts/taps/README.md` for options and demo flow.
 
 ---
 
-## Architecture
+## How it works
 
 ```
-event source (files / Kafka / SQS)
-        ↓
-  StreamConnector  ← swappable adapter layer
-        ↓
-  reservoir_sample()
-        ↓
-  ┌─────────────────────────────────┐
-  │  ONBOARDING (first run)         │
-  │  LLM infers schema → schema.yaml│
-  │  PII detection (pattern-first)  │
-  └─────────────────────────────────┘
-        ↓ (schema exists)
-  ┌─────────────────────────────────┐
-  │  PRODUCTION (watch loop)        │
-  │  Statistical drift detection    │
-  │  • Binomial z-test (presence)   │
-  │  • Chi-squared (type dist.)     │
-  │  • PSI (numeric distribution)   │
-  │  LLM NOT in hot path            │
-  └─────────────────────────────────┘
-        ↓
-  DriftReport → policy action (log / alert / block / webhook)
+  EVENT SOURCE
+  (files / Kafka / SQS / any connector)
+         │
+         ▼
+  ┌────────────────────────────────────────────────────┐
+  │  INIT (runs once or after a schema change)         │
+  │                                                    │
+  │  resilient parser → cluster discovery → LLM        │
+  │                                                    │
+  │  • 3-tier parser handles broken JSON, log prefixes │
+  │  • Structural fingerprinting groups event families │
+  │  • LLM infers schema per cluster (tool-calling)    │
+  │  • PII detection runs pattern-first, no API call   │
+  │                                                    │
+  │  Output: profile.yaml, schema.yaml, policy, report │
+  └────────────────────────────────────────────────────┘
+         │  schema.yaml + profile.yaml → enforced contract
+         ▼
+  ┌────────────────────────────────────────────────────┐
+  │  WATCH / PLAN (LLM-free hot path)                  │
+  │                                                    │
+  │  Rolling EventWindow (2,000 events) per cluster    │
+  │                                                    │
+  │  • Binomial z-test — presence rate changes         │
+  │  • Chi-squared — type and enum distribution        │
+  │  • PSI — value distribution (numeric fields)       │
+  │                                                    │
+  │  DriftReport → policy action (log/alert/block)     │
+  └────────────────────────────────────────────────────┘
 ```
 
 **Key design decisions:**
-- LLM called once at onboarding, never during drift detection
-- Drift detection is pure statistics — deterministic, fast (<5ms), no API cost
-- `schema.yaml` is git-committable — treat your schema like infrastructure code
-- Connector abstraction: swap file reader for Kafka/SQS with zero changes upstream
+- LLM is called once at `init`, never during drift detection — zero API cost in the monitoring hot path
+- Drift detection is statistical — deterministic, <5ms per check, no network dependency
+- Rolling `EventWindow` persists to checkpoint — restarts pick up where they left off
+- Connector abstraction: swap file reader for Kafka/SQS with zero changes to inference or drift layers
+
+---
+
+## Why not existing tools?
+
+| Tool | Gap |
+|------|-----|
+| **Great Expectations / Soda** | You write the rules. StreamForge infers them from production data. |
+| **Monte Carlo / Bigeye** | Watches warehouse tables, not event streams. Wrong layer, wrong latency. |
+| **Confluent Schema Registry** | Enforces schemas you've already written. No inference, no drift detection. |
+| **Homegrown checks** | Work until the person who wrote them leaves. No contract, no history, no CI gate. |
+
+---
+
+## Repository structure
+
+```
+streamforge-mvp/
+├── streamforge/              # Package
+│   ├── __main__.py           # CLI entry point (Typer)
+│   ├── models.py             # Pydantic data models
+│   ├── config.py             # Layered configuration system
+│   ├── sampler.py            # Resilient NDJSON parser + reservoir sampling
+│   ├── profiler.py           # Sub-schema discovery (structural fingerprinting)
+│   ├── inference.py          # LLM schema inference engine
+│   ├── pii_detector.py       # PII detection (pattern-first, no API call)
+│   ├── schema_writer.py      # Schema YAML generation
+│   ├── drift_detector.py     # Statistical drift detection + watch loop
+│   ├── statistical_tests.py  # PSI, binomial z-test, chi-squared
+│   ├── report_writer.py      # Drift report markdown generation
+│   ├── history.py            # Snapshot, diff, velocity, proposals
+│   ├── policy.py             # Per-stream enforcement rules
+│   ├── consumer_registry.py  # Blast radius engine
+│   ├── generator.py          # Synthetic event generation
+│   ├── logging_config.py     # Structured + human-readable logging
+│   ├── ui.py                 # Streamlit dashboard
+│   ├── connectors/           # Pluggable event source adapters
+│   │   ├── base.py           # Abstract StreamConnector interface
+│   │   ├── file.py           # Local NDJSON files
+│   │   ├── kafka.py          # Kafka consumer (kafka-python / confluent-kafka)
+│   │   ├── generators.py     # Live tap generators (Wikipedia, Coinbase, OpenSky)
+│   │   └── mock.py           # Test mock
+│   ├── exporters/            # Schema format converters
+│   │   ├── json_schema.py    # JSON Schema Draft 2020-12
+│   │   └── avro.py           # Apache Avro IDL
+│   └── notifications/        # Alerting integrations
+│       └── slack.py          # Slack Block Kit webhooks
+├── tests/                    # Test suite (250 tests, no API calls)
+├── docs/                     # Documentation
+│   ├── ARCHITECTURE.md       # Architecture Decision Records (ADR-001–ADR-015)
+│   ├── PRODUCT_OVERVIEW.md   # Feature reference
+│   ├── KAFKA_DEPLOYMENT.md   # Kafka production deployment guide
+│   └── reference/            # Non-core supporting material
+├── scripts/                  # Standalone scripts (not part of the package)
+│   ├── generate_events.py    # Generate test event fixtures
+│   ├── demo.sh               # End-to-end demo pipeline
+│   └── taps/                 # Live public data collection scripts
+├── events/                   # Test event fixtures (NDJSON)
+├── config.yaml               # Default configuration template
+└── pyproject.toml
+```
 
 ---
 
@@ -179,14 +303,18 @@ event source (files / Kafka / SQS)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GROQ_API_KEY` | — | Groq API key (or use `LLM_API_KEY` / `OPENAI_API_KEY`) |
+| `GROQ_API_KEY` | — | Groq API key (free tier at console.groq.com) |
+| `OPENAI_API_KEY` | — | OpenAI-compatible key (Groq, OpenAI, or proxy) |
+| `LLM_API_KEY` | — | Generic fallback if neither of the above is set |
 | `STREAMFORGE_LOG_LEVEL` | `WARNING` | `DEBUG` / `INFO` / `WARNING` |
-| `STREAMFORGE_STAT_ALPHA` | `0.01` | Statistical significance threshold (1%) |
+| `STREAMFORGE_STAT_ALPHA` | `0.01` | Statistical significance threshold (1% false positive rate) |
+| `KAFKA_BOOTSTRAP_SERVERS` | — | Kafka brokers for `watch kafka://topic` |
+| `SLACK_WEBHOOK_URL` | — | Slack webhook for drift notifications |
 
 ---
 
 ## Requirements
 
 - Python 3.11+
-- API key for schema inference (Groq free tier / OpenAI / Ollama local)
-- No database, no broker, no Docker required
+- API key for `init` only — Groq free tier, OpenAI, or any OpenAI-compatible endpoint
+- No database, no broker, no Docker required for file-based use

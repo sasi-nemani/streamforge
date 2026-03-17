@@ -5,7 +5,7 @@
 stream: bookings.stream
 
 # How many events to sample per watch cycle
-sample_size: 200
+sample_size: 500
 
 # Watch loop cadence (seconds)
 poll_interval_seconds: 30

@@ -1,0 +1,143 @@
+# StreamForge Consumer Registry — stream_v1 (Payments)
+# ─────────────────────────────────────────────────────
+# Declares which services read this stream and which fields they depend on.
+# Used by `streamforge consumers` and blast radius analysis.
+#
+# criticality: tier1 = P0 (page immediately), tier2 = P1 (alert), tier3 = P2 (log)
+# fields_used: list the exact field paths consumed. required: true = hard dependency.
+#
+# Run `streamforge consumers events/payments/stream_v1` to view the registry.
+
+stream: stream_v1
+
+consumers:
+
+  - name: fraud-detection-service
+    team: fraud-eng
+    contact: "slack:#fraud-oncall | pagerduty:fraud-pd-key"
+    criticality: tier1
+    schema_version: "1.0.0"
+    description: >
+      Real-time fraud scoring on every payment event. Scores based on amount,
+      user_email velocity, and merchant_id pattern matching. A missing `amount`
+      field causes null-pointer exceptions and drops the fraud score to 0 —
+      all transactions pass as "clean" until redeployed.
+    runbook: "https://wiki.internal/runbooks/fraud-null-amount"
+    fields_used:
+      - path: event_id
+        required: true
+        transform: null
+      - path: event_type
+        required: true
+        transform: null
+      - path: timestamp
+        required: true
+        transform: "parse_timestamp(value)"
+      - path: amount
+        required: true
+        transform: null
+      - path: currency
+        required: true
+        transform: null
+      - path: user_id
+        required: true
+        transform: null
+      - path: user_email
+        required: true
+        transform: "hash_pii(value)"
+      - path: merchant_id
+        required: true
+        transform: null
+      - path: status
+        required: false
+        transform: null
+
+  - name: payments-processor
+    team: payments-platform
+    contact: "slack:#payments-oncall | pagerduty:payments-pd-key"
+    criticality: tier1
+    schema_version: "1.0.0"
+    description: >
+      Core settlement engine. Reads `amount` and `currency` to compute settlement
+      totals and post to the ledger. If `amount` is missing, the settlement job
+      fails silently and merchants are not paid. Downstream: bank reconciliation.
+    runbook: "https://wiki.internal/runbooks/settlement-amount-missing"
+    fields_used:
+      - path: event_id
+        required: true
+        transform: null
+      - path: event_type
+        required: true
+        transform: null
+      - path: amount
+        required: true
+        transform: "round(value, 2)"
+      - path: currency
+        required: true
+        transform: "iso4217_validate(value)"
+      - path: merchant_id
+        required: true
+        transform: null
+      - path: status
+        required: true
+        transform: null
+      - path: timestamp
+        required: true
+        transform: "to_epoch_ms(value)"
+
+  - name: analytics-reporting-service
+    team: data-platform
+    contact: "slack:#data-platform | email:data-eng@company.com"
+    criticality: tier2
+    schema_version: "1.0.0"
+    description: >
+      Builds daily revenue dashboards and monthly merchant reports.
+      Uses amount, currency, and merchant_id. Impact of breakage: delayed
+      reports (hours to days), not real-time failure. P1 severity.
+    runbook: "https://wiki.internal/runbooks/reporting-delayed"
+    fields_used:
+      - path: event_type
+        required: true
+        transform: null
+      - path: amount
+        required: true
+        transform: null
+      - path: currency
+        required: false
+        transform: null
+      - path: merchant_id
+        required: true
+        transform: null
+      - path: timestamp
+        required: true
+        transform: null
+
+  - name: compliance-audit-logger
+    team: security-compliance
+    contact: "slack:#compliance | email:compliance@company.com"
+    criticality: tier2
+    schema_version: "1.0.0"
+    description: >
+      Logs all payment events to immutable audit trail for PCI-DSS and SOX.
+      Requires all fields but can tolerate format changes with a schema update.
+      PII fields are tokenised before storage. Impact: regulatory gap if logger
+      is down — must be restored within 24h per audit policy.
+    fields_used:
+      - path: event_id
+        required: true
+        transform: null
+      - path: event_type
+        required: true
+        transform: null
+      - path: user_id
+        required: true
+        transform: "tokenise_pii(value)"
+      - path: user_email
+        required: true
+        transform: "tokenise_pii(value)"
+      - path: amount
+        required: false
+        transform: null
+      - path: timestamp
+        required: true
+        transform: null
