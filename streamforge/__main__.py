@@ -1,8 +1,7 @@
 import logging
 import os
-import sys
+from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -10,15 +9,26 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .drift_detector import detect_drift
-from .inference import DEFAULT_BASE_URL, DEFAULT_MODEL, infer_schema, infer_sub_schema
-from .models import DriftTier, StreamProfile
+from .inference import DEFAULT_BASE_URL, DEFAULT_MODEL, infer_sub_schema
+from .models import DriftReport, DriftTier, StreamProfile
 from .policy import StreamPolicy, load_policy, write_policy
 from .profiler import discover_clusters, get_detection_method, get_routing_field
 from .report_writer import write_drift_report
-from .sampler import get_all_field_paths, load_events_from_folder, load_events_resilient, reservoir_sample, split_by_quality
+from .sampler import (
+    get_all_field_paths,
+    load_events_from_folder,
+    load_events_resilient,
+    reservoir_sample,
+    split_by_quality,
+)
 from .schema_writer import (
-    load_profile, load_schema, write_inference_report, write_profile, write_profile_report,
-    write_samples, write_schema,
+    load_profile,
+    load_schema,
+    write_inference_report,
+    write_profile,
+    write_profile_report,
+    write_samples,
+    write_schema,
 )
 
 app = typer.Typer(
@@ -27,6 +37,7 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+logger = logging.getLogger(__name__)
 
 logging.basicConfig(
     level=os.environ.get("STREAMFORGE_LOG_LEVEL", "WARNING"),
@@ -37,7 +48,7 @@ logging.basicConfig(
 _KEY_ENV_VARS = ["LLM_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY"]
 
 
-def _resolve_api_key(api_key: Optional[str]) -> str:
+def _resolve_api_key(api_key: str | None) -> str:
     key = api_key
     if not key:
         for var in _KEY_ENV_VARS:
@@ -61,7 +72,7 @@ def _stream_name(stream_path: str) -> str:
     return p.name
 
 
-def _auto_detect_schema(stream_path: str, output_dir: str) -> Optional[str]:
+def _auto_detect_schema(stream_path: str, output_dir: str) -> str | None:
     """Try to find schema.yaml for the given stream path."""
     candidate = Path(output_dir) / _stream_name(stream_path) / "schema.yaml"
     if candidate.exists():
@@ -74,7 +85,7 @@ def init(
     stream_path: str = typer.Argument(..., help="Path to folder containing NDJSON event files"),
     sample_size: int = typer.Option(500, "--sample-size", "-n", help="Number of events to sample"),
     output_dir: str = typer.Option("schemas", "--output", "-o", help="Output directory for schema files"),
-    api_key: Optional[str] = typer.Option(None, "--api-key", help="LLM API key (or set GROQ_API_KEY / OPENAI_API_KEY)"),
+    api_key: str | None = typer.Option(None, "--api-key", help="LLM API key (or set GROQ_API_KEY / OPENAI_API_KEY)"),
     model: str = typer.Option(DEFAULT_MODEL, "--model", "-m", help="Model name"),
     base_url: str = typer.Option(DEFAULT_BASE_URL, "--base-url", help="OpenAI-compatible API base URL"),
     allow_partial_inference: bool = typer.Option(
@@ -88,7 +99,7 @@ def init(
     ),
 ):
     """Infer schema from event stream. Produces profile.yaml, profile_report.md, and schema.yaml."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     _MIN_CLEAN_EVENTS = 20  # floor below which inference quality is unreliable
 
@@ -191,7 +202,7 @@ def init(
         )
 
     if all_pii:
-        console.print(f"\n[yellow]⚠ PII detected:[/yellow]")
+        console.print("\n[yellow]⚠ PII detected:[/yellow]")
         for cid, path, cats in all_pii:
             cat_str = ", ".join(p.value for p in cats)
             console.print(f"   [yellow]{cid}[/yellow] → [cyan]{path}[/cyan] ({cat_str})")
@@ -202,7 +213,7 @@ def init(
     # Assemble StreamProfile
     profile = StreamProfile(
         stream_name=stream_name,
-        profiled_at=datetime.now(timezone.utc).isoformat(),
+        profiled_at=datetime.now(UTC).isoformat(),
         total_events_sampled=len(sample),
         parse_success_rate=round(parse_success_rate, 4),
         discovery_method=method,
@@ -245,12 +256,12 @@ def init(
 @app.command()
 def watch(
     stream_path: str = typer.Argument(..., help="Folder path or kafka://topic URI"),
-    schema_path: Optional[str] = typer.Option(None, "--schema", help="Path to schema.yaml (auto-detected if not set)"),
+    schema_path: str | None = typer.Option(None, "--schema", help="Path to schema.yaml (auto-detected if not set)"),
     interval: int = typer.Option(30, "--interval", "-i", help="Poll interval in seconds"),
     sample_size: int = typer.Option(200, "--sample-size", "-n"),
     window_capacity: int = typer.Option(2000, "--window", help="Rolling event window size for drift comparison"),
-    webhook: Optional[str] = typer.Option(None, "--webhook", "-w", help="Webhook URL for drift notifications"),
-    brokers: Optional[str] = typer.Option(
+    webhook: str | None = typer.Option(None, "--webhook", "-w", help="Webhook URL for drift notifications"),
+    brokers: str | None = typer.Option(
         None, "--brokers",
         help="Comma-separated Kafka broker list (e.g. broker-1:9092,broker-2:9092). "
              "Only used when stream_path is a kafka:// URI. "
@@ -314,15 +325,15 @@ def watch(
 @app.command(name="kafka-ping")
 def kafka_ping(
     topic: str = typer.Argument(..., help="Kafka topic name to test"),
-    brokers: Optional[str] = typer.Option(
+    brokers: str | None = typer.Option(
         None, "--brokers",
         help="Comma-separated broker list (e.g. broker-1:9092,broker-2:9092)",
         envvar="KAFKA_BOOTSTRAP_SERVERS",
     ),
-    sasl_username: Optional[str] = typer.Option(None, "--sasl-username", envvar="KAFKA_SASL_USERNAME"),
-    sasl_password: Optional[str] = typer.Option(None, "--sasl-password", envvar="KAFKA_SASL_PASSWORD"),
+    sasl_username: str | None = typer.Option(None, "--sasl-username", envvar="KAFKA_SASL_USERNAME"),
+    sasl_password: str | None = typer.Option(None, "--sasl-password", envvar="KAFKA_SASL_PASSWORD"),
     security_protocol: str = typer.Option("PLAINTEXT", "--security-protocol"),
-    sasl_mechanism: Optional[str] = typer.Option(None, "--sasl-mechanism"),
+    sasl_mechanism: str | None = typer.Option(None, "--sasl-mechanism"),
     timeout: int = typer.Option(10, "--timeout", help="Connection timeout in seconds"),
 ):
     """Test connectivity to a Kafka broker and topic.
@@ -333,6 +344,7 @@ def kafka_ping(
     """
     import asyncio
     import json as _json
+
     from .config import KafkaConfig
     from .connectors.kafka import KafkaConnector, KafkaConnectorError
 
@@ -440,10 +452,10 @@ def report(
 @app.command()
 def plan(
     stream_path: str = typer.Argument(...),
-    schema_path: Optional[str] = typer.Option(None, "--schema"),
+    schema_path: str | None = typer.Option(None, "--schema"),
     output_dir: str = typer.Option("schemas", "--output", "-o"),
     sample_size: int = typer.Option(200, "--sample-size", "-n"),
-    api_key: Optional[str] = typer.Option(None, "--api-key"),
+    api_key: str | None = typer.Option(None, "--api-key"),
     model: str = typer.Option(DEFAULT_MODEL, "--model", "-m"),
     base_url: str = typer.Option(DEFAULT_BASE_URL, "--base-url"),
 ):
@@ -451,7 +463,7 @@ def plan(
     resolved_schema = schema_path or _auto_detect_schema(stream_path, output_dir)
     if not resolved_schema:
         console.print(
-            f"[red]No schema.yaml found. Run 'streamforge init' first or pass --schema.[/red]"
+            "[red]No schema.yaml found. Run 'streamforge init' first or pass --schema.[/red]"
         )
         raise typer.Exit(1)
 
@@ -549,7 +561,6 @@ def profile(
     show_values: bool = typer.Option(True, "--values/--no-values", help="Show sample values"),
 ):
     """Profile a stream: show field stats, types, presence rates — no LLM call."""
-    from collections import Counter
 
     stream_name = _stream_name(stream_path)
     console.print(f"[bold]StreamForge Profile[/bold] — [cyan]{stream_name}[/cyan]\n")
@@ -604,7 +615,7 @@ def profile(
             )
         console.print(ct)
     else:
-        console.print(f"\n[dim]Single schema stream (no distinct event types detected)[/dim]")
+        console.print("\n[dim]Single schema stream (no distinct event types detected)[/dim]")
 
     import re as _re
 
@@ -613,18 +624,27 @@ def profile(
             return "null"
         counts: dict[str, int] = {}
         for v in values[:50]:
-            if isinstance(v, bool): t = "boolean"
+            if isinstance(v, bool):
+                t = "boolean"
             elif isinstance(v, int):
                 t = "timestamp_epoch_ms" if 1_000_000_000_000 <= v <= 9_999_999_999_999 else "integer"
-            elif isinstance(v, float): t = "float"
-            elif isinstance(v, list): t = "array"
-            elif isinstance(v, dict): t = "object"
+            elif isinstance(v, float):
+                t = "float"
+            elif isinstance(v, list):
+                t = "array"
+            elif isinstance(v, dict):
+                t = "object"
             elif isinstance(v, str):
-                if _re.match(r'^\d{4}-\d{2}-\d{2}T', v): t = "timestamp_iso8601"
-                elif _re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-', v, _re.I): t = "uuid"
-                elif _re.match(r'^[^@]+@[^@]+\.[^@]+$', v): t = "email"
-                else: t = "string"
-            else: t = "null"
+                if _re.match(r'^\d{4}-\d{2}-\d{2}T', v):
+                    t = "timestamp_iso8601"
+                elif _re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-', v, _re.I):
+                    t = "uuid"
+                elif _re.match(r'^[^@]+@[^@]+\.[^@]+$', v):
+                    t = "email"
+                else:
+                    t = "string"
+            else:
+                t = "null"
             counts[t] = counts.get(t, 0) + 1
         types = [k for k in counts if counts[k] > 0]
         if len(types) > 1:
@@ -662,7 +682,7 @@ def profile(
             vals = field_values.get(path, [])
             null_count = sum(1 for v in vals if v is None)
             non_null = [v for v in vals if v is not None]
-            distinct = len(set(str(v) for v in non_null[:200]))
+            distinct = len({str(v) for v in non_null[:200]})
             inferred = _quick_type(non_null)
 
             rate_str = (
@@ -708,7 +728,8 @@ def ui(
     port: int = typer.Option(8501, "--port", "-p"),
 ):
     """Launch the visual dashboard (Streamlit)."""
-    import subprocess, sys
+    import subprocess
+    import sys
     ui_script = Path(__file__).parent / "ui.py"
     if not ui_script.exists():
         console.print("[red]streamforge/ui.py not found.[/red]")
@@ -721,7 +742,7 @@ def ui(
 def export(
     schema_dir: str = typer.Argument(..., help="Path to a schema directory (e.g. schemas/stream_v1) or schema.yaml file"),
     fmt: str = typer.Option("json-schema", "--format", "-f", help="Export format: json-schema | avro"),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path (default: stdout)"),
+    output: str | None = typer.Option(None, "--output", "-o", help="Output file path (default: stdout)"),
 ):
     """Export schema to JSON Schema (Draft 2020-12) or Apache Avro format."""
     import json
@@ -771,7 +792,7 @@ def consumers(
     output_dir: str = typer.Option("schemas", "--output", "-o"),
 ):
     """Show consumer registry and blast radius for a stream."""
-    from .consumer_registry import load_consumers as _load_consumers, format_blast_radius_table
+    from .consumer_registry import load_consumers as _load_consumers
 
     stream_name = _stream_name(stream_path)
     schema_dir  = Path(output_dir) / stream_name
@@ -829,7 +850,7 @@ def consumers(
                 f"and see live blast radius."
             )
     else:
-        console.print(f"\n[green]✓ No drift reports — schema is clean.[/green]")
+        console.print("\n[green]✓ No drift reports — schema is clean.[/green]")
 
 
 @app.command()
@@ -839,11 +860,11 @@ def generate(
         help="Path to schema.yaml, a schema directory, or a profile.yaml directory",
     ),
     count: int = typer.Option(10, "--count", "-n", help="Number of events to generate"),
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         None, "--output", "-o",
         help="Output NDJSON file path. Default: stdout",
     ),
-    cluster: Optional[str] = typer.Option(
+    cluster: str | None = typer.Option(
         None, "--cluster", "-c",
         help="Sub-schema cluster to generate for (from profile.yaml). "
              "Default: primary cluster. Use 'list' to see available clusters.",
@@ -852,7 +873,7 @@ def generate(
         False, "--required-only",
         help="Include only required fields. By default optional fields are included at their presence_rate.",
     ),
-    seed: Optional[int] = typer.Option(
+    seed: int | None = typer.Option(
         None, "--seed",
         help="Random seed for reproducible output.",
     ),
@@ -985,13 +1006,13 @@ def demo(
     Add --loop to run continuously during a presentation (Ctrl+C to stop).
     """
     import time
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    from .connectors.generators import payment_events, drifted_payment_events
+    from .connectors.generators import drifted_payment_events, payment_events
     from .drift_detector import detect_drift
-    from .models import InferredSchema, FieldSchema, FieldType, PIICategory
-    from .sampler import get_all_field_paths, reservoir_sample
+    from .models import FieldSchema, FieldType, InferredSchema, PIICategory
     from .report_writer import write_drift_report
+    from .sampler import reservoir_sample
 
     STREAM_NAME = "payments.demo"
     tier_colors = {1: "yellow", 2: "orange3", 3: "red"}
@@ -1028,7 +1049,7 @@ def demo(
     baseline_schema = InferredSchema(
         stream_name=STREAM_NAME,
         version="1.0.0",
-        inferred_at=datetime.now(timezone.utc).isoformat(),
+        inferred_at=datetime.now(UTC).isoformat(),
         event_count_sampled=baseline_size,
         fields=demo_fields,
         inference_model="statistical+demo",
@@ -1051,7 +1072,7 @@ def demo(
         console.print("[bold]PHASE 1 — Baseline monitoring[/bold]  [dim](clean schema)[/dim]")
         if iteration == 1:
             console.print(f"  ✓ Schema inferred — [bold]{len(demo_fields)}[/bold] fields, confidence [green]97%[/green]")
-            console.print(f"  ✓ PII detected: [yellow]user_email[/yellow] (email)")
+            console.print("  ✓ PII detected: [yellow]user_email[/yellow] (email)")
             console.print()
 
         for _ in range(3):
@@ -1120,8 +1141,8 @@ def demo(
 
         console.rule()
         console.print(
-            f"\n[bold]That would have been a 3am page.[/bold]\n"
-            f"Instead: a blocked PR and a Slack alert to [cyan]#payments-oncall[/cyan].\n"
+            "\n[bold]That would have been a 3am page.[/bold]\n"
+            "Instead: a blocked PR and a Slack alert to [cyan]#payments-oncall[/cyan].\n"
         )
 
         if loop:
@@ -1140,8 +1161,8 @@ def demo(
     else:
         _run_one_cycle(1)
         console.print(
-            f"Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard.\n"
-            f"Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode."
+            "Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard.\n"
+            "Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode."
         )
 
 
@@ -1465,6 +1486,7 @@ def _apply_baseline_proposals(
     Creates schema.yaml.bak before any modification.
     """
     import shutil as _shutil
+
     from .models import ProposalAction
 
     schema_path = Path(output_dir) / stream_name / "schema.yaml"
@@ -1502,10 +1524,8 @@ def _apply_baseline_proposals(
         console.print("[yellow]No changes applied (fields may have been manually edited).[/yellow]")
         return
 
-    # Atomic write: tmp → rename
-    tmp_path = schema_path.with_suffix(".yaml.tmp")
     schema.fields = list(field_map.values())
-    write_schema(schema, output_dir)  # write_schema writes to the correct path
+    write_schema(schema, output_dir)
     console.print(f"\n[green]Applied {applied} proposal(s) to {schema_path}[/green]")
     console.print(f"[dim]Original backed up to {bak_path}[/dim]")
 

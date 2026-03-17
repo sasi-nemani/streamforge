@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import random
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 # ── Fixture pools ──────────────────────────────────────────────────────────────
 
@@ -78,8 +78,8 @@ _STATUSES = ["pending", "completed", "failed", "processing"]
 _CARD_LAST_FOURS = ["4242", "5555", "3782", "6011", "1111", "9999", "7777"]
 
 # Base timestamp: March 14 2026 00:00:00 UTC (demo day)
-_BASE_TS_MS = int(datetime(2026, 3, 14, tzinfo=timezone.utc).timestamp() * 1000)
-_BASE_TS_DT = datetime(2026, 3, 14, tzinfo=timezone.utc)
+_BASE_TS_MS = int(datetime(2026, 3, 14, tzinfo=UTC).timestamp() * 1000)
+_BASE_TS_DT = datetime(2026, 3, 14, tzinfo=UTC)
 
 
 def _make_uuid(rng: random.Random) -> str:
@@ -108,7 +108,7 @@ def payment_events(n: int = 300, seed: int = 42) -> list[dict]:
     rng = random.Random(seed)
     events = []
 
-    for i in range(n):
+    for _ in range(n):
         offset_ms = rng.randint(0, 86_400_000 * 13)  # spread over 13 days
         ts_ms = _BASE_TS_MS - offset_ms  # events before demo day
 
@@ -156,7 +156,7 @@ def drifted_payment_events(n: int = 200, seed: int = 99) -> list[dict]:
     rng = random.Random(seed)
     events = []
 
-    for i in range(n):
+    for _ in range(n):
         # Timestamps now ISO8601 — the Tier 2 format drift
         offset_s = rng.randint(0, 3600 * 4)  # events within 4h window around 2am
         ts_dt = _BASE_TS_DT + timedelta(hours=2, minutes=17, seconds=offset_s)

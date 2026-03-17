@@ -50,10 +50,10 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
-from .base import StreamConnector
 from ..config import KafkaConfig
+from .base import StreamConnector
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,8 @@ _CONFLUENT_AVAILABLE = False
 _KAFKA_PYTHON_AVAILABLE = False
 
 try:
-    from confluent_kafka import Consumer as ConfluentConsumer, KafkaError, TopicPartition
+    from confluent_kafka import Consumer as ConfluentConsumer
+    from confluent_kafka import KafkaError
     _CONFLUENT_AVAILABLE = True
     logger.debug("Using confluent-kafka (C-based, production grade)")
 except ImportError:
@@ -117,7 +118,7 @@ class KafkaConnector(StreamConnector):
 
     # ── Context manager ────────────────────────────────────────────────────────
 
-    async def __aenter__(self) -> "KafkaConnector":
+    async def __aenter__(self) -> KafkaConnector:
         """Create and configure the Kafka consumer."""
         logger.info(
             "Connecting to Kafka",
@@ -249,8 +250,6 @@ class KafkaConnector(StreamConnector):
     def _read_kafka_python(self, max_messages: int, timeout_ms: int) -> list[dict]:
         """Poll using kafka-python consumer."""
         events: list[dict] = []
-        timeout_s = timeout_ms / 1_000
-
         # kafka-python poll() returns a dict of TopicPartition → [messages]
         raw = self._consumer.poll(timeout_ms=timeout_ms, max_records=max_messages)
 
@@ -266,7 +265,7 @@ class KafkaConnector(StreamConnector):
         self._messages_read += len(events)
         return events
 
-    def _parse_message(self, raw: Optional[bytes]) -> Optional[dict]:
+    def _parse_message(self, raw: bytes | None) -> dict | None:
         """
         Parse a raw Kafka message value into a dict.
 

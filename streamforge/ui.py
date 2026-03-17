@@ -15,10 +15,11 @@ Design tokens:
 from __future__ import annotations
 
 import re as _re
+import time as _time_mod
 from collections import defaultdict
-from datetime import datetime as _dt, timedelta
+from datetime import datetime as _dt
+from datetime import timedelta
 from pathlib import Path
-from typing import Optional
 
 import streamlit as st
 import yaml
@@ -321,13 +322,13 @@ def load_all_schemas() -> dict[str, dict]:
 
 
 @st.cache_data(ttl=30)
-def load_profile(stream_name: str) -> Optional[dict]:
+def load_profile(stream_name: str) -> dict | None:
     p = SCHEMAS_DIR / stream_name / "profile.yaml"
     return yaml.safe_load(p.read_text()) if p.exists() else None
 
 
 @st.cache_data(ttl=30)
-def load_consumers(stream_name: str) -> Optional[dict]:
+def load_consumers(stream_name: str) -> dict | None:
     p = SCHEMAS_DIR / stream_name / CONSUMERS_SUBDIR
     return yaml.safe_load(p.read_text()) if p.exists() else None
 
@@ -341,7 +342,7 @@ def load_drift_reports(stream_name: str) -> list[tuple[str, str]]:
 
 
 @st.cache_data(ttl=30)
-def load_policy(stream_name: str) -> Optional[dict]:
+def load_policy(stream_name: str) -> dict | None:
     p = SCHEMAS_DIR / stream_name / "stream_policy.yaml"
     return yaml.safe_load(p.read_text()) if p.exists() else None
 
@@ -484,13 +485,16 @@ def render_field_table(fields: list[dict]) -> str:
 # ACTIVITY FEED — generated from real filesystem data
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _time_ago(ts: "_dt") -> str:
+def _time_ago(ts: _dt) -> str:
     """Return human-readable relative time: '2m ago', '3h ago'."""
     delta = _dt.now() - ts
     secs  = int(delta.total_seconds())
-    if secs < 60:   return "just now"
-    if secs < 3600: return f"{secs // 60}m ago"
-    if secs < 86400: return f"{secs // 3600}h ago"
+    if secs < 60:
+        return "just now"
+    if secs < 3600:
+        return f"{secs // 60}m ago"
+    if secs < 86400:
+        return f"{secs // 3600}h ago"
     return f"{secs // 86400}d ago"
 
 
@@ -572,7 +576,8 @@ def _parse_drifted_fields(content: str) -> list[dict]:
         path  = lines[0].strip().strip('`')
         if not path or path.startswith('#'):
             continue
-        tier = None; drift_type = None
+        tier = None
+        drift_type = None
         for line in lines[1:]:
             tm = _re.search(r'\*\*Tier\*\*:\s*Tier\s*(\d)', line)
             if tm:
@@ -656,7 +661,7 @@ def _render_impact_assessment(drifted_fields: list[dict], consumers_data: dict) 
         has_hard    = any(h["hard_break"] for h in hits)
         crit_color  = {"tier1": _RED, "tier2": _ORANGE, "tier3": _GREEN}.get(crit, _TEXT2)
         crit_label  = {"tier1": "P0", "tier2": "P1", "tier3": "P2"}.get(crit, crit)
-        row_bg      = f"rgba(255,69,58,0.08)"  if has_hard else f"rgba(255,159,10,0.06)"
+        row_bg      = "rgba(255,69,58,0.08)"  if has_hard else "rgba(255,159,10,0.06)"
         border_col  = _RED if has_hard else _ORANGE
         status_icon = "🔴" if has_hard else "⚠️"
 
@@ -963,13 +968,12 @@ def render_incident_strip(drift_streams, schemas):
     }.get(top.get("drift_type", "") if top else "", "schema drift")
 
     field_path = top["path"] if top else "multiple fields"
-    tier_num   = top["tier"] if top else 3
 
     badge_map = {
-        "field_removed": f"P0 · FIELD REMOVED · DATA INTEGRITY RISK",
-        "new_pii":       f"P0 · NEW PII DETECTED · COMPLIANCE RISK",
-        "type_changed":  f"P1 · TYPE MISMATCH · CONSUMERS FAILING",
-        "presence_drop": f"P1 · PRESENCE DROP · PIPELINE DEGRADED",
+        "field_removed": "P0 · FIELD REMOVED · DATA INTEGRITY RISK",
+        "new_pii":       "P0 · NEW PII DETECTED · COMPLIANCE RISK",
+        "type_changed":  "P1 · TYPE MISMATCH · CONSUMERS FAILING",
+        "presence_drop": "P1 · PRESENCE DROP · PIPELINE DEGRADED",
     }
     badge_txt = badge_map.get(top.get("drift_type", "") if top else "",
                               "P0 · SCHEMA DRIFT · IMMEDIATE ACTION REQUIRED")
@@ -1103,7 +1107,7 @@ def render_story_hero():
     ]
 
     cols = st.columns(3)
-    for col, (label, color, title, body) in zip(cols, cards):
+    for col, (label, color, title, body) in zip(cols, cards, strict=False):
         with col:
             st.markdown(
                 f'<div style="background:{_SURF};border:1px solid {_BORDER};border-radius:14px;'
@@ -1129,7 +1133,7 @@ def render_fleet_overview():
 
     # ── Registry Snapshot — full-width table ─────────────────────────────────
     st.markdown(
-        f'<div style="height:18px"></div>',
+        '<div style="height:18px"></div>',
         unsafe_allow_html=True,
     )
 
@@ -1254,7 +1258,6 @@ def render_fleet_overview():
                 f' <span style="color:{_ORANGE};font-size:11px">· {len(pii_fields)} PII</span>'
                 if pii_fields else ""
             )
-            conf_color = _GREEN if confidence >= 0.85 else _ORANGE if confidence >= 0.70 else _RED
             fields_cell = (
                 f'<span style="font-size:12px;color:{_TEXT2}">{len(all_fields)} fields</span>'
                 f'{pii_frag}'
@@ -1294,7 +1297,7 @@ def render_fleet_overview():
 
         # ── Row navigation — one slim button per stream ────────────────────
         st.markdown(
-            f'<div style="height:10px"></div>',
+            '<div style="height:10px"></div>',
             unsafe_allow_html=True,
         )
         btn_cols = st.columns(len(stream_names))
@@ -1311,7 +1314,7 @@ def render_fleet_overview():
 
     # ── Live Activity feed — compact, below table ─────────────────────────────
     st.markdown(
-        f'<div style="height:20px"></div>',
+        '<div style="height:20px"></div>',
         unsafe_allow_html=True,
     )
 
@@ -1340,7 +1343,7 @@ def render_fleet_overview():
                 f'<div style="padding:8px 14px;{sep}">'
                 f'<div style="display:flex;align-items:center;gap:10px">'
                 + f'<span style="background:{pill_bg};color:{pill_fg};font-size:9.5px;font-weight:600;'
-                + f'letter-spacing:0.04em;padding:1px 7px;border-radius:980px;flex-shrink:0;'
+                + 'letter-spacing:0.04em;padding:1px 7px;border-radius:980px;flex-shrink:0;'
                 + f'white-space:nowrap">{pill_lbl}</span>'
                     + f'<div style="min-width:0;flex:1">'
                     f'<div style="font-size:11.5px;font-weight:500;color:{_TEXT2};'
@@ -1718,7 +1721,6 @@ def render_stream_detail(stream_name: str):
             if consumers_data:
                 for c in consumers_data.get("consumers", []):
                     crit = c.get("criticality", "tier3")
-                    cc   = {"tier1": _RED, "tier2": _ORANGE, "tier3": _GREEN}.get(crit, _TEXT2)
                     with st.expander(f"👤 {c.get('name','?')} — {c.get('team','?')} — {crit.upper()}"):
                         st.markdown(
                             f'**Contact:** {c.get("contact","—")}  \n'
@@ -2071,7 +2073,7 @@ def _node(label: str, sub: str = "", color: str = "", accent: str = "") -> str:
         f'padding:10px 13px;text-align:center">'
         f'<div style="font-size:12px;font-weight:600;color:{tc}">{label}</div>'
         + (f'<div style="font-size:10.5px;color:{_TEXT3};margin-top:2px">{sub}</div>' if sub else "")
-        + f'</div>'
+        + '</div>'
     )
 
 def _arrow_md(label: str = "", color: str = "") -> str:
@@ -2080,11 +2082,10 @@ def _arrow_md(label: str = "", color: str = "") -> str:
         f'<div style="text-align:center;padding:6px 0">'
         f'<div style="font-size:18px;color:{c}">→</div>'
         + (f'<div style="font-size:9.5px;color:{c};margin-top:2px">{label}</div>' if label else "")
-        + f'</div>'
+        + '</div>'
     )
 
 def render_about():
-    import time as _time
 
     # ── Hero ──────────────────────────────────────────────────────────────────
     st.markdown(
@@ -2127,7 +2128,7 @@ def render_about():
                 unsafe_allow_html=True,
             )
 
-    st.markdown(f'<div style="height:28px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
 
     # ── Architecture diagram — native columns, zero HTML rendering risk ────────
     st.markdown(
@@ -2192,7 +2193,7 @@ def render_about():
             f'<div style="font-size:11px;color:{_TEXT3};margin-top:2px">root cause unknown</div>'
             f'</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div style="height:18px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:18px"></div>', unsafe_allow_html=True)
 
     # ── WITH row ──────────────────────────────────────────────────────────────
     st.markdown(
@@ -2262,7 +2263,7 @@ def render_about():
             f'<div style="font-size:11px;color:{_TEXT3};margin-top:2px">no page · no outage</div>'
             f'</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div style="height:28px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
 
     # ── Setup guide — start to finish ─────────────────────────────────────────
     st.markdown(
@@ -2301,7 +2302,7 @@ def render_about():
             )
             st.code(cmd, language="bash")
 
-    st.markdown(f'<div style="height:28px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
 
     # ── 3 Capability cards ────────────────────────────────────────────────────
     st.markdown(
@@ -2349,7 +2350,7 @@ def render_about():
                 unsafe_allow_html=True,
             )
 
-    st.markdown(f'<div style="height:24px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:24px"></div>', unsafe_allow_html=True)
 
     # ── Technical details (engineers) ─────────────────────────────────────────
     with st.expander("For engineers — integration details and drift tier reference"):
@@ -2487,7 +2488,7 @@ def render_setup_guide():  # noqa: C901
         ("Files (CSV / XML)",  "3 sources",                "📄", _TEXT2,   3, "files"),
     ]
     cols = st.columns(5)
-    for col, (name, detail, icon, color, count, _) in zip(cols, sources):
+    for col, (name, detail, icon, color, count, _) in zip(cols, sources, strict=False):
         col.markdown(
             f'<div style="background:{_SURF};border:1px solid {_BORDER};border-radius:12px;'
             f'padding:16px;text-align:center">'
@@ -2783,7 +2784,7 @@ drift_reports/
     row_sources, row_arrow1, row_sf, row_arrow2, row_outputs = st.columns([5, 1, 3, 1, 5])
     with row_sources:
         st.markdown(f'<div style="font-size:11px;font-weight:700;color:{_TEXT3};margin-bottom:10px;text-transform:uppercase;letter-spacing:0.08em">Your Data Sources</div>', unsafe_allow_html=True)
-        for icon, label, color in [
+        for icon, label, _color in [
             ("⚡", "Kafka  (2 clusters, 10 topics)", _BLUE),
             ("🏦", "IBM MQ  (2 queues)",             _ORANGE),
             ("☁️", "Amazon SQS  (4 queues)",          _PURPLE),
@@ -2824,7 +2825,7 @@ drift_reports/
         )
     with row_outputs:
         st.markdown(f'<div style="font-size:11px;font-weight:700;color:{_TEXT3};margin-bottom:10px;text-transform:uppercase;letter-spacing:0.08em">StreamForge Outputs</div>', unsafe_allow_html=True)
-        for icon, label, color in [
+        for icon, label, _color in [
             ("📋", "schema.yaml — per stream, in git",        _GREEN),
             ("📈", "drift_reports/ — timestamped alerts",     _ORANGE),
             ("🔒", "PII flags — GDPR / compliance layer",     _RED),
@@ -2893,8 +2894,6 @@ else:
 # ══════════════════════════════════════════════════════════════════════════════
 # AUTO-REFRESH  — only on fleet view, only when toggle is on
 # ══════════════════════════════════════════════════════════════════════════════
-
-import time as _time_mod
 
 if st.session_state.get("auto_refresh", False) and st.session_state.view == "fleet":
     _time_mod.sleep(10)

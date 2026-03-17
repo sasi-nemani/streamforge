@@ -1,7 +1,6 @@
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 from openai import OpenAI
 
@@ -98,8 +97,7 @@ def build_inference_prompt(
 
     stats_budget = MAX_PROMPT_CHARS // 2  # half the budget for field stats
     stats_chars = 0
-    included = 0
-    for path in sorted_paths:
+    for included, path in enumerate(sorted_paths):
         values = field_stats[path]
         rate = presence_rates.get(path, 0.0)
         seen = []
@@ -115,7 +113,6 @@ def build_inference_prompt(
             break
         stat_lines.append(row)
         stats_chars += len(row)
-        included += 1
 
     stats_block = "\n".join(stat_lines)
 
@@ -281,7 +278,7 @@ def infer_schema(
         overall_confidence = 0.6
         model = f"{model}(statistical-fallback)"
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     return InferredSchema(
         stream_name=stream_name,
         version="1.0.0",

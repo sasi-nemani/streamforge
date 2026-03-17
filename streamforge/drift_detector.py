@@ -1,9 +1,11 @@
+import json as _json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from collections import deque
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -14,16 +16,12 @@ from .models import (
     FieldSchema,
     FieldType,
     InferredSchema,
-    PIICategory,
 )
 from .pii_detector import detect_pii
 from .sampler import get_all_field_paths, load_events_from_folder, reservoir_sample
 from .statistical_tests import (
-    TestResult,
     binomial_z_test,
     chi_squared_test,
-    psi,
-    summarise_field_tests,
 )
 
 logger = logging.getLogger(__name__)
@@ -165,7 +163,7 @@ def detect_drift(
     baseline_schema: InferredSchema,
     new_sample: list[dict],
     stream_name: str,
-) -> Optional[DriftReport]:
+) -> DriftReport | None:
     """Compare new_sample against baseline_schema. Returns DriftReport or None."""
     if not new_sample:
         return None
@@ -413,7 +411,7 @@ def detect_drift(
         return None
 
     highest = max(d.tier for d in drifts)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     summary_parts = []
     tier3 = [d for d in drifts if d.tier == DriftTier.TIER_3]
@@ -440,6 +438,384 @@ def detect_drift(
     )
 
 
+# ---------------------------------------------------------------------------
+# P1-B — Rolling event window
+# ---------------------------------------------------------------------------
+
+class EventWindow:
+    """
+    Bounded rolling buffer of recent stream events used as the drift comparison
+    population.  Each watch poll adds newly-seen events; the oldest fall off
+    when capacity is reached (collections.deque maxlen behaviour).
+
+    Sampling from the full window — rather than from only the latest batch —
+    gives statistically stable signals and makes slow drift (e.g. a field
+    presence rate falling from 80% to 60% over hours) detectable.
+    """
+
+    def __init__(self, capacity: int = 2000) -> None:
+        self._buf: deque[dict] = deque(maxlen=capacity)
+
+    def add(self, events: list[dict]) -> None:
+        """Append new events; oldest are evicted automatically when at capacity."""
+        self._buf.extend(events)
+
+    def sample(self, n: int) -> list[dict]:
+        """Reservoir-sample n events from the current window contents."""
+        return reservoir_sample(list(self._buf), n)
+
+    def __len__(self) -> int:
+        return len(self._buf)
+
+
+def _load_new_events(
+    stream_path: str,
+    file_line_counts: dict[str, int],
+) -> list[dict]:
+    """
+    Load only lines that have been appended to files since the last call.
+
+    Tracks the number of lines already read per file (not mtime), so:
+    - Files that have grown get their new lines read.
+    - Files that haven't changed are skipped cheaply.
+    - Rotated / replaced files (line count drops) are re-read in full.
+
+    Returns a flat list of successfully parsed event dicts.
+    """
+    folder = Path(stream_path)
+    files = sorted(
+        f for f in folder.rglob("*")
+        if f.suffix in (".ndjson", ".json") and f.is_file()
+    )
+    new_events: list[dict] = []
+
+    for file_path in files:
+        key = str(file_path)
+        prev_count = file_line_counts.get(key, 0)
+        try:
+            with open(file_path, encoding="utf-8") as fh:
+                all_lines = fh.readlines()
+        except OSError:
+            continue
+
+        current_count = len(all_lines)
+        if current_count < prev_count:
+            # File was truncated / rotated — read from the top
+            prev_count = 0
+
+        if current_count <= prev_count:
+            continue  # nothing new
+
+        for line in all_lines[prev_count:]:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                ev = _json.loads(stripped)
+                if isinstance(ev, dict):
+                    new_events.append(ev)
+            except _json.JSONDecodeError:
+                pass
+
+        file_line_counts[key] = current_count
+
+    return new_events
+
+
+# ---------------------------------------------------------------------------
+# P1-B — Window checkpoint (restart / failover recovery)
+# ---------------------------------------------------------------------------
+
+def _save_checkpoint(window: EventWindow, checkpoint_path: Path) -> None:
+    """
+    Persist the rolling window contents to disk as NDJSON.
+
+    Called after every successful poll cycle.  The file is overwritten in full
+    (not appended) so it always reflects the current window state.  If writing
+    fails (permissions, disk full) it logs a warning and continues — a stale or
+    missing checkpoint is safe; the watcher will simply reseed from stream files.
+    """
+    try:
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checkpoint_path, "w", encoding="utf-8") as fh:
+            for event in window._buf:
+                fh.write(_json.dumps(event) + "\n")
+        logger.debug("Checkpoint saved: %d events → %s", len(window), checkpoint_path)
+    except OSError as e:
+        logger.warning("Could not save window checkpoint (%s): %s", checkpoint_path, e)
+
+
+def _load_checkpoint(checkpoint_path: Path) -> list[dict]:
+    """
+    Load window events from a checkpoint file written by _save_checkpoint.
+
+    Returns an empty list when the file doesn't exist or can't be read.
+    Malformed lines are silently skipped — a partially-corrupt checkpoint is
+    better than crashing: the watcher will fill in missing events on the next
+    poll from the live stream files.
+    """
+    if not checkpoint_path.exists():
+        return []
+    events: list[dict] = []
+    try:
+        with open(checkpoint_path, encoding="utf-8") as fh:
+            for line in fh:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    ev = _json.loads(stripped)
+                    if isinstance(ev, dict):
+                        events.append(ev)
+                except _json.JSONDecodeError:
+                    pass
+        logger.info("Loaded %d events from checkpoint: %s", len(events), checkpoint_path)
+    except OSError as e:
+        logger.warning("Could not read window checkpoint (%s): %s", checkpoint_path, e)
+    return events
+
+
+# ---------------------------------------------------------------------------
+# P1-A — Multi-schema drift detection
+# ---------------------------------------------------------------------------
+
+# Type fields checked (in order) when routing events to clusters.
+# Mirrors the profiler's _TYPE_FIELDS list.
+_TYPE_FIELDS = ("type", "event_type", "schema", "kind", "_type", "record_type", "msg_type")
+
+
+def _find_cluster_field(profile: dict) -> str | None:
+    """
+    Return the routing_field stored explicitly in profile.yaml, or None.
+
+    The explicit field name was introduced alongside get_routing_field() in
+    profiler.py.  Older profile.yaml files omit it; in that case routing falls
+    back to the _TYPE_FIELDS scan inside _route_event_to_cluster().
+    """
+    return profile.get("routing_field")  # None for structural/legacy profiles
+
+
+def _route_event_to_cluster(event: dict, profile: dict) -> str | None:
+    """
+    Assign one event to a cluster_id.
+
+    Routing strategy (in priority order):
+    1. If profile.yaml contains an explicit routing_field (written since this fix
+       was introduced), look up that field's value directly — O(1), no hashing.
+    2. For structural_fingerprint streams (routing_field is None): recompute the
+       structural key hash — same algorithm as the profiler.
+    3. Backward-compat scan: for profiles written before routing_field existed,
+       scan _TYPE_FIELDS in order and return the first match.
+
+    Returns None when the event doesn't match any known cluster (new event family).
+    """
+    import hashlib
+
+    known = {sub["cluster_id"] for sub in profile.get("sub_schemas", [])}
+    visible = {k: v for k, v in event.items() if not k.startswith("_")}
+
+    routing_field: str | None = profile.get("routing_field")  # None if not set or structural
+
+    if routing_field is not None:
+        # Fix 1: explicit routing field — read directly, no scanning needed.
+        val = visible.get(routing_field)
+        if isinstance(val, str) and val.strip() in known:
+            return val.strip()
+        # Field present but value not in known clusters → new event family.
+        # Don't fall through to structural hash for event_type_field streams.
+        return None
+
+    # routing_field is None → structural fingerprint or legacy profile.yaml.
+
+    # Try _TYPE_FIELDS scan for legacy profiles (written before routing_field existed).
+    for field in _TYPE_FIELDS:
+        val = visible.get(field)
+        if isinstance(val, str) and val.strip() and val.strip() in known:
+            return val.strip()
+
+    # Structural fingerprint: recompute hash of sorted top-level key names.
+    if len(visible) >= 2:
+        key_sig = "|".join(sorted(str(k) for k in visible))
+        h = hashlib.md5(key_sig.encode()).hexdigest()[:8]
+        candidate = f"struct:{h}"
+        if candidate in known:
+            return candidate
+
+    return None  # no known cluster matches → new event family
+
+
+def _sub_schema_to_inferred_schema(cluster: dict, stream_name: str) -> InferredSchema:
+    """
+    Convert a single sub-schema dict (from profile.yaml) into an InferredSchema
+    so it can be passed to the existing detect_drift() function.
+    """
+    fields = []
+    for fd in cluster.get("fields", []):
+        from .models import PIICategory as _PII
+        fields.append(FieldSchema(
+            name=fd["path"].split(".")[-1],
+            path=fd["path"],
+            field_type=FieldType(fd["type"]),
+            nullable=fd.get("nullable", False),
+            required=fd.get("required", True),
+            presence_rate=fd.get("presence_rate", 1.0),
+            enum_values=fd.get("enum_values"),
+            pii_categories=[_PII(p) for p in fd.get("pii", [])],
+            confidence=fd.get("confidence", 1.0),
+            notes=fd.get("notes"),
+        ))
+
+    return InferredSchema(
+        stream_name=f"{stream_name}/{cluster['cluster_id']}",
+        version="1.0.0",
+        inferred_at=cluster.get("profiled_at", ""),
+        event_count_sampled=cluster.get("event_count", 0),
+        fields=fields,
+        inference_model="profile.yaml",
+        inference_confidence=cluster.get("inference_confidence", 1.0),
+    )
+
+
+def detect_drift_multi_schema(
+    profile: dict,
+    new_sample: list[dict],
+    stream_name: str,
+) -> list[DriftReport]:
+    """
+    Run per-cluster drift detection using the full profile.yaml.
+
+    For each sub-schema in the profile:
+      1. Route matching events from new_sample to this cluster.
+      2. Run detect_drift() against the cluster's baseline schema.
+      3. Tag every FieldDrift with cluster_id.
+
+    Also detects new event families: events that match no known cluster and
+    exceed 5% of the sample trigger a Tier-2 drift report.
+
+    Returns a list of DriftReports — one per affected cluster (plus one for
+    unknown events if applicable).  Returns an empty list when all clusters
+    are clean.
+    """
+    sub_schemas = profile.get("sub_schemas", [])
+    if not sub_schemas:
+        return []
+
+    # Route each event to a cluster
+    cluster_buckets: dict[str, list[dict]] = {s["cluster_id"]: [] for s in sub_schemas}
+    unknown: list[dict] = []
+
+    for event in new_sample:
+        cid = _route_event_to_cluster(event, profile)
+        if cid is not None:
+            cluster_buckets[cid].append(event)
+        else:
+            unknown.append(event)
+
+    reports: list[DriftReport] = []
+    now = datetime.now(UTC).isoformat()
+
+    for cluster in sub_schemas:
+        cid = cluster["cluster_id"]
+        cluster_events = cluster_buckets[cid]
+        baseline_rate = cluster.get("sample_rate", 0.0)
+
+        # ── Cluster routing regression (Fix 3) ────────────────────────────────
+        # A cluster that was significant at init time (≥10% of stream) but
+        # receives zero events in a large-enough sample is a first-class signal:
+        # the routing field may have been renamed, the event type deprecated, or
+        # the producer configuration changed.  Distinct from a new_cluster event
+        # (that is about events appearing; this is about events disappearing).
+        _REGRESSION_MIN_BASELINE = 0.10   # cluster must have been ≥10% at init
+        _REGRESSION_MIN_SAMPLE = 30       # sample must be large enough to trust
+        if (
+            baseline_rate >= _REGRESSION_MIN_BASELINE
+            and len(cluster_events) == 0
+            and len(new_sample) >= _REGRESSION_MIN_SAMPLE
+        ):
+            regression_drift = FieldDrift(
+                field_path="__cluster__",
+                drift_type="cluster_routing_regression",
+                cluster_id=cid,
+                previous_presence_rate=baseline_rate,
+                observed_presence_rate=0.0,
+                affected_event_rate=baseline_rate,
+                tier=DriftTier.TIER_2,
+                auto_correctable=False,
+                proposed_correction=(
+                    f"Cluster '{cid}' accounted for {baseline_rate:.0%} of events at "
+                    f"init time but received 0 events in the current sample of "
+                    f"{len(new_sample)}. Likely causes: routing field renamed, "
+                    f"event_type value changed, or producer stopped. "
+                    f"Run 'streamforge init' to rediscover clusters."
+                ),
+            )
+            reports.append(DriftReport(
+                stream_name=stream_name,
+                detected_at=now,
+                schema_version="profile.yaml",
+                events_sampled=len(new_sample),
+                drifts=[regression_drift],
+                highest_tier=DriftTier.TIER_2,
+                summary=(
+                    f"Cluster routing regression: '{cid}' (baseline {baseline_rate:.0%} "
+                    f"of stream) received no events — routing metadata may be stale."
+                ),
+            ))
+            continue  # nothing to drift-check without events
+
+        if len(cluster_events) < 5:
+            # Too few events — below statistical threshold.
+            logger.debug(
+                "cluster %s: only %d events in sample — skipping drift check "
+                "(need ≥5; consider increasing --sample-size)",
+                cid, len(cluster_events),
+            )
+            continue
+
+        sub = _sub_schema_to_inferred_schema(cluster, stream_name)
+        report = detect_drift(sub, cluster_events, stream_name)
+        if report is None:
+            continue
+
+        # Tag every drift with the cluster it came from
+        for d in report.drifts:
+            d.cluster_id = cid
+
+        reports.append(report)
+
+    # ── New event families ────────────────────────────────────────────────────
+    # Events that match no known cluster and exceed 5% of the sample indicate
+    # a new event type has appeared.  "new_cluster" semantics: something added.
+    # Contrast with "cluster_routing_regression": something disappeared.
+    unknown_rate = len(unknown) / max(len(new_sample), 1)
+    if unknown_rate >= 0.05:
+        new_family_drift = FieldDrift(
+            field_path="__cluster__",
+            drift_type="new_cluster",
+            affected_event_rate=unknown_rate,
+            tier=DriftTier.TIER_2,
+            auto_correctable=False,
+            proposed_correction=(
+                f"{len(unknown)} events ({unknown_rate:.0%}) do not match any known "
+                f"sub-schema. Run 'streamforge init' to rediscover clusters."
+            ),
+        )
+        reports.append(DriftReport(
+            stream_name=stream_name,
+            detected_at=now,
+            schema_version="profile.yaml",
+            events_sampled=len(new_sample),
+            drifts=[new_family_drift],
+            highest_tier=DriftTier.TIER_2,
+            summary=(
+                f"{unknown_rate:.0%} of sampled events ({len(unknown)}) match no known "
+                f"cluster — new event family may have been introduced."
+            ),
+        ))
+
+    return reports
+
+
 def post_webhook(drift_report: DriftReport, webhook_url: str) -> None:
     """POST drift report as JSON to webhook URL. Fire and forget."""
     try:
@@ -450,90 +826,326 @@ def post_webhook(drift_report: DriftReport, webhook_url: str) -> None:
         logger.warning("Webhook delivery failed: %s", e)
 
 
+def _print_drift_report(report: DriftReport, drift_output_dir: Path, webhook_url: str | None) -> None:
+    """Print one drift report to stdout and optionally post to webhook."""
+    from .report_writer import write_drift_report
+
+    now_str = datetime.now().strftime("%H:%M:%S")
+    stream_label = report.stream_name
+    tier_label = f"Tier {report.highest_tier.value}"
+    emoji = "🔴" if report.highest_tier == DriftTier.TIER_3 else "⚠"
+    cluster_note = ""
+    if report.drifts and report.drifts[0].cluster_id:
+        cluster_note = f" [{report.drifts[0].cluster_id}]"
+
+    print(
+        f"[{now_str}] {emoji} {stream_label}{cluster_note} — "
+        f"DRIFT DETECTED — {len(report.drifts)} field(s), {tier_label}"
+    )
+    for d in report.drifts:
+        cid_note = f" [{d.cluster_id}]" if d.cluster_id else ""
+        print(
+            f"           → {d.field_path}{cid_note}: {d.drift_type} "
+            f"({d.affected_event_rate:.0%} of events) [Tier {d.tier.value}]"
+        )
+
+    report_path = write_drift_report(report, str(drift_output_dir))
+    print(f"           → Report: {report_path}")
+
+    if webhook_url:
+        post_webhook(report, webhook_url)
+
+
 def watch_stream(
     stream_path: str,
     schema_path: str,
     poll_interval_seconds: int = 30,
     sample_size: int = 200,
-    webhook_url: Optional[str] = None,
+    window_capacity: int = 2000,
+    webhook_url: str | None = None,
 ) -> None:
-    """Main watch loop. Runs until Ctrl+C."""
-    from .report_writer import write_drift_report
-    from .schema_writer import load_schema
+    """
+    Main watch loop. Runs until Ctrl+C.
 
-    baseline = load_schema(schema_path)
+    P1-B fix: accumulates events in a rolling EventWindow (default 2000 events)
+    and samples drift candidates from the full window rather than only the
+    latest batch.  This makes slow drift (field presence fading over hours)
+    detectable and ensures each drift check has a statistically stable sample.
+
+    P1-A fix: if a profile.yaml exists alongside schema.yaml, routes events to
+    their sub-schema clusters and runs per-cluster drift detection.
+    """
+    from .schema_writer import load_profile, load_schema
+
+    schema_dir = Path(schema_path).parent
+    profile = load_profile(schema_dir)
+    multi_schema = profile is not None and len(profile.get("sub_schemas", [])) > 1
+
+    # Fix 4 — canonical contract: when profile.yaml exists, the primary sub-schema
+    # is the authoritative baseline.  Rebuilding it from profile avoids silent
+    # divergence when schema.yaml has been manually edited since the last init.
+    if multi_schema:
+        baseline = _sub_schema_to_inferred_schema(profile["sub_schemas"][0], "")
+        # Use the stream name from schema.yaml for consistent naming
+        baseline.stream_name = load_schema(schema_path).stream_name
+    else:
+        baseline = load_schema(schema_path)
+
     stream_name = baseline.stream_name
     drift_output_dir = Path("drift_reports")
 
-    logger.info("Watching %s every %ds (schema: %s)", stream_path, poll_interval_seconds, schema_path)
+    mode_note = (
+        f"multi-schema ({len(profile['sub_schemas'])} clusters, "
+        f"routing_field={profile.get('routing_field') or 'structural'})"
+        if multi_schema else "single-schema"
+    )
 
-    last_mtime: dict[str, float] = {}
+    # Checkpoint path — persists the rolling window across restarts
+    checkpoint_path = schema_dir / ".watch_state" / "window.ndjson"
+
+    logger.info(
+        "Watching %s every %ds (schema: %s, mode: %s, window: %d, checkpoint: %s)",
+        stream_path, poll_interval_seconds, schema_path, mode_note, window_capacity, checkpoint_path,
+    )
+    print(
+        f"[{datetime.now().strftime('%H:%M:%S')}] "
+        f"Watching {stream_name} — {mode_note} — "
+        f"window={window_capacity} events"
+    )
+
+    window = EventWindow(capacity=window_capacity)
+    file_line_counts: dict[str, int] = {}
+
+    # Fix 2 — restore window from checkpoint if available (restart recovery)
+    checkpoint_events = _load_checkpoint(checkpoint_path)
+    if checkpoint_events:
+        window.add(checkpoint_events)
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Restored {len(checkpoint_events)} events from checkpoint"
+        )
+
+    # Seed the window with all existing events on first run (augments or
+    # replaces checkpoint — deque evicts oldest automatically)
+    initial = load_events_from_folder(stream_path)
+    if initial:
+        window.add(initial)
+        # Populate line counts so subsequent polls only read new lines
+        for f in sorted(
+            p for p in Path(stream_path).rglob("*")
+            if p.suffix in (".ndjson", ".json") and p.is_file()
+        ):
+            try:
+                with open(f, encoding="utf-8") as fh:
+                    file_line_counts[str(f)] = sum(1 for _ in fh)
+            except OSError:
+                pass
 
     try:
         while True:
+            # Load only newly appended lines (P1-B: track by line count, not mtime)
+            new_events = _load_new_events(stream_path, file_line_counts)
+            if new_events:
+                window.add(new_events)
+
             now_str = datetime.now().strftime("%H:%M:%S")
 
-            # Load only modified files since last check
-            folder = Path(stream_path)
-            files = sorted(
-                [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
-            )
-
-            new_events = []
-            for file_path in files:
-                mtime = file_path.stat().st_mtime
-                prev_mtime = last_mtime.get(str(file_path), 0.0)
-                if mtime > prev_mtime:
-                    last_mtime[str(file_path)] = mtime
-                    # Load events from this file
-                    import json as _json
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as f:
-                            for line in f:
-                                line = line.strip()
-                                if not line:
-                                    continue
-                                try:
-                                    ev = _json.loads(line)
-                                    if isinstance(ev, dict):
-                                        new_events.append(ev)
-                                except _json.JSONDecodeError:
-                                    pass
-                    except OSError:
-                        pass
-
-            if not new_events:
-                # Re-read all if no new files yet (first run)
-                if not last_mtime:
-                    new_events = load_events_from_folder(stream_path)
-                    for file_path in files:
-                        last_mtime[str(file_path)] = file_path.stat().st_mtime
-
-            sample = reservoir_sample(new_events, sample_size) if new_events else []
-
-            if not sample:
-                print(f"[{now_str}] ○ {stream_name} — no events to sample")
+            if len(window) < 10:
+                print(f"[{now_str}] ○ {stream_name} — warming up ({len(window)} events in window)")
                 time.sleep(poll_interval_seconds)
                 continue
 
-            report = detect_drift(baseline, sample, stream_name)
+            sample = window.sample(sample_size)
 
-            if report is None:
-                print(f"[{now_str}] ✓ {stream_name} — {len(sample)} events sampled — schema clean")
+            if multi_schema:
+                # P1-A: run per-cluster drift detection
+                reports = detect_drift_multi_schema(profile, sample, stream_name)
+                if not reports:
+                    print(
+                        f"[{now_str}] ✓ {stream_name} — "
+                        f"{len(sample)} sampled / {len(window)} in window — all clusters clean"
+                    )
+                else:
+                    for report in reports:
+                        _print_drift_report(report, drift_output_dir, webhook_url)
             else:
-                tier_label = f"Tier {report.highest_tier.value}"
-                emoji = "🔴" if report.highest_tier == DriftTier.TIER_3 else "⚠"
-                print(f"[{now_str}] {emoji} {stream_name} — DRIFT DETECTED — {len(report.drifts)} field(s), {tier_label}")
-                for d in report.drifts:
-                    print(f"           → {d.field_path}: {d.drift_type} ({d.affected_event_rate:.0%} of events) [Tier {d.tier.value}]")
+                # Single-schema path — unchanged behaviour
+                report = detect_drift(baseline, sample, stream_name)
+                if report is None:
+                    print(
+                        f"[{now_str}] ✓ {stream_name} — "
+                        f"{len(sample)} sampled / {len(window)} in window — schema clean"
+                    )
+                else:
+                    _print_drift_report(report, drift_output_dir, webhook_url)
 
-                report_path = write_drift_report(report, str(drift_output_dir))
-                print(f"           → Report: {report_path}")
-
-                if webhook_url:
-                    post_webhook(report, webhook_url)
+            # Fix 2 — save window checkpoint after each successful poll
+            _save_checkpoint(window, checkpoint_path)
 
             time.sleep(poll_interval_seconds)
 
     except KeyboardInterrupt:
+        # Save one last checkpoint before exiting so the next restart picks up
+        # roughly where this session left off
+        _save_checkpoint(window, checkpoint_path)
         print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Watch stopped.")
+
+
+# ---------------------------------------------------------------------------
+# Kafka-backed watch loop
+# ---------------------------------------------------------------------------
+
+async def _watch_kafka_async(
+    topic: str,
+    kafka_cfg: Any,
+    schema_path: str,
+    poll_interval_seconds: int,
+    sample_size: int,
+    window_capacity: int,
+    webhook_url: str | None,
+) -> None:
+    """
+    Async Kafka watch loop — runs inside asyncio.run() from watch_stream_kafka().
+
+    Uses KafkaConnector.read_batch() + ack() instead of file polling.
+    The read_batch timeout IS the poll interval — no extra sleep needed.
+    Committed Kafka offsets are the primary recovery mechanism; the NDJSON
+    checkpoint pre-seeds the EventWindow on restart (warm-start optimisation).
+    """
+    from .connectors.kafka import KafkaConnector
+    from .schema_writer import load_profile, load_schema
+
+    schema_dir = Path(schema_path).parent
+    profile = load_profile(schema_dir)
+    multi_schema = profile is not None and len(profile.get("sub_schemas", [])) > 1
+
+    if multi_schema:
+        baseline = _sub_schema_to_inferred_schema(profile["sub_schemas"][0], "")
+        baseline.stream_name = load_schema(schema_path).stream_name
+    else:
+        baseline = load_schema(schema_path)
+
+    stream_name = baseline.stream_name
+    drift_output_dir = Path("drift_reports")
+    checkpoint_path = schema_dir / ".watch_state" / "window.ndjson"
+
+    mode_note = (
+        f"multi-schema ({len(profile['sub_schemas'])} clusters, "
+        f"routing_field={profile.get('routing_field') or 'structural'})"
+        if multi_schema else "single-schema"
+    )
+
+    print(
+        f"[{datetime.now().strftime('%H:%M:%S')}] "
+        f"Watching kafka://{topic} — {mode_note} — "
+        f"window={window_capacity} events"
+    )
+
+    window = EventWindow(capacity=window_capacity)
+
+    # Warm-start: restore rolling window from previous checkpoint
+    checkpoint_events = _load_checkpoint(checkpoint_path)
+    if checkpoint_events:
+        window.add(checkpoint_events)
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Restored {len(checkpoint_events)} events from checkpoint"
+        )
+
+    # Use "latest" offset reset for watch — only care about new events.
+    # The checkpoint pre-seeds the window so drift detection starts immediately.
+    kafka_cfg.auto_offset_reset = "latest"
+    kafka_cfg.consumer_group = "streamforge-watcher"
+
+    try:
+        async with KafkaConnector(topic, kafka_cfg) as conn:
+            print(
+                f"[{datetime.now().strftime('%H:%M:%S')}] "
+                f"Connected: {conn.source_id}"
+            )
+            while True:
+                # Poll for up to poll_interval_seconds — the timeout IS the interval
+                batch = await conn.read_batch(
+                    max_messages=kafka_cfg.max_poll_records,
+                    timeout_ms=poll_interval_seconds * 1_000,
+                )
+
+                if batch:
+                    window.add(batch)
+                    await conn.ack()  # commit offsets after adding to window
+
+                now_str = datetime.now().strftime("%H:%M:%S")
+
+                if len(window) < 10:
+                    print(f"[{now_str}] ○ {stream_name} — warming up ({len(window)} events in window)")
+                    continue
+
+                sample = window.sample(sample_size)
+
+                if multi_schema:
+                    reports = detect_drift_multi_schema(profile, sample, stream_name)
+                    if not reports:
+                        print(
+                            f"[{now_str}] ✓ {stream_name} — "
+                            f"{len(sample)} sampled / {len(window)} in window — all clusters clean"
+                        )
+                    else:
+                        for report in reports:
+                            _print_drift_report(report, drift_output_dir, webhook_url)
+                else:
+                    report = detect_drift(baseline, sample, stream_name)
+                    if report is None:
+                        print(
+                            f"[{now_str}] ✓ {stream_name} — "
+                            f"{len(sample)} sampled / {len(window)} in window — schema clean"
+                        )
+                    else:
+                        _print_drift_report(report, drift_output_dir, webhook_url)
+
+                _save_checkpoint(window, checkpoint_path)
+
+    except KeyboardInterrupt:
+        _save_checkpoint(window, checkpoint_path)
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Watch stopped.")
+
+
+def watch_stream_kafka(
+    topic: str,
+    kafka_cfg: Any,
+    schema_path: str,
+    poll_interval_seconds: int = 30,
+    sample_size: int = 200,
+    window_capacity: int = 2000,
+    webhook_url: str | None = None,
+) -> None:
+    """
+    Kafka-backed watch loop. Identical logic to watch_stream() but reads
+    from a Kafka topic via KafkaConnector instead of polling NDJSON files.
+
+    This is a thin synchronous wrapper — the real loop runs in asyncio.run()
+    so it can use the async KafkaConnector interface cleanly.
+
+    Recovery model:
+      Primary:   Kafka committed offsets (via ack() after each batch).
+                 On restart the broker serves events from the last committed
+                 offset — nothing is missed as long as the topic's retention
+                 window covers the outage.
+      Secondary: NDJSON window checkpoint at schema_dir/.watch_state/window.ndjson.
+                 Pre-seeds the EventWindow so drift detection is immediately
+                 statistically meaningful without waiting for 2000+ new events.
+
+    Args:
+        topic:                 Kafka topic name (without kafka:// prefix).
+        kafka_cfg:             KafkaConfig with broker/auth settings.
+        schema_path:           Path to schema.yaml (or profile.yaml directory).
+        poll_interval_seconds: How long read_batch() waits for each batch.
+        sample_size:           Events to reservoir-sample from the window per tick.
+        window_capacity:       Rolling window size (older events evicted first).
+        webhook_url:           Optional webhook for drift notifications.
+    """
+    import asyncio
+
+    asyncio.run(_watch_kafka_async(
+        topic, kafka_cfg, schema_path,
+        poll_interval_seconds, sample_size, window_capacity, webhook_url,
+    ))

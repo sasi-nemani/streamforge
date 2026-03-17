@@ -32,10 +32,8 @@ Incoming webhooks: https://api.slack.com/messaging/webhooks
 
 from __future__ import annotations
 
-import json
 import logging
 import time
-from typing import Optional
 
 import httpx
 
@@ -70,10 +68,10 @@ _TIER_LABEL = {
 
 def build_slack_payload(
     drift_report: DriftReport,
-    blast_radius_text: Optional[str] = None,
+    blast_radius_text: str | None = None,
     mention: str = "<!here>",
-    report_path: Optional[str] = None,
-    dashboard_url: Optional[str] = None,
+    report_path: str | None = None,
+    dashboard_url: str | None = None,
 ) -> dict:
     """
     Build a Slack Block Kit payload for a drift notification.
@@ -252,11 +250,11 @@ def build_slack_payload(
 def post_notification(
     webhook_url: str,
     drift_report: DriftReport,
-    blast_radius_text: Optional[str] = None,
+    blast_radius_text: str | None = None,
     mention: str = "<!here>",
     min_tier: int = 2,
-    report_path: Optional[str] = None,
-    dashboard_url: Optional[str] = None,
+    report_path: str | None = None,
+    dashboard_url: str | None = None,
 ) -> bool:
     """
     Post a drift notification to Slack via an incoming webhook.
