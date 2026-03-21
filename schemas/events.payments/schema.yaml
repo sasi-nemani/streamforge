@@ -1,0 +1,86 @@
+# StreamForge Schema — events.payments
+# Version: 1.0.0
+# Inferred: 2026-03-19T16:04:45.710762+00:00
+# Events sampled: 150
+# Overall confidence: 60%
+#
+# This file is the source of truth for stream: events.payments
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: events.payments
+version: 1.0.0
+inferred_at: '2026-03-19T16:04:45.710762+00:00'
+inference_confidence: 0.6
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 150
+event_types:
+- payment.failed
+- payment.created
+- payment.updated
+- payment
+fields:
+- path: event_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: event_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: user_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: merchant
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: currency
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: status
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: amount
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: timestamp
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: user_email
+  type: string
+  required: false
+  nullable: false
+  presence_rate: 0.7308
+  confidence: 0.6462
+  pii:
+  - email
+  notes: Statistically inferred (LLM fallback)

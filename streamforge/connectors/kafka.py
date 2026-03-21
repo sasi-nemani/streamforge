@@ -332,7 +332,8 @@ class KafkaConnector(StreamConnector):
             "enable_auto_commit":   False,       # Manual commit via ack()
             "max_poll_records":     self.cfg.max_poll_records,
             "session_timeout_ms":   self.cfg.session_timeout_ms,
-            "request_timeout_ms":   self.cfg.request_timeout_ms,
+            # kafka-python requires request_timeout_ms > session_timeout_ms
+            "request_timeout_ms":   max(self.cfg.request_timeout_ms, self.cfg.session_timeout_ms + 10_000),
             "value_deserializer":   None,        # We handle deserialization ourselves
             "security_protocol":    self.cfg.security_protocol,
         }

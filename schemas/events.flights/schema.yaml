@@ -1,0 +1,135 @@
+# StreamForge Schema — events.flights
+# Version: 1.0.0
+# Inferred: 2026-03-19T16:04:59.671314+00:00
+# Events sampled: 150
+# Overall confidence: 60%
+#
+# This file is the source of truth for stream: events.flights
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: events.flights
+version: 1.0.0
+inferred_at: '2026-03-19T16:04:59.671314+00:00'
+inference_confidence: 0.6
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 150
+fields:
+- path: icao24
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: callsign
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: origin_country
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: time_position
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: last_contact
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: longitude
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: latitude
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: baro_altitude
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: on_ground
+  type: boolean
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: velocity
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: true_track
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: vertical_rate
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: sensors
+  type: 'null'
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: geo_altitude
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: squawk
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: spi
+  type: boolean
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: position_source
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)

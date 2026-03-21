@@ -1,0 +1,19 @@
+# StreamForge — Topic Config: events.iot
+# ========================================
+# IoT sensor events — high volume, accept noisier data.
+
+watch:
+  interval_seconds: 120
+  sample_size: 500
+  window_capacity: 5000
+  alert_tier: 2
+  actions:
+    tier_1: log
+    tier_2: alert
+    tier_3: block
+
+drift:
+  # IoT data is messier — wider tolerances
+  type_change_threshold: 0.10
+  presence_drop_threshold: 0.25   # sensors go offline regularly
+  min_sample_for_stats: 50

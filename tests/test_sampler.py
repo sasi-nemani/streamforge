@@ -10,6 +10,7 @@ from streamforge.sampler import (
     get_all_field_paths,
     load_events_from_folder,
     reservoir_sample,
+    split_by_quality,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -85,3 +86,49 @@ def test_get_all_field_paths_presence_rates():
     assert rates["a"] == 1.0
     assert rates["b"] == 0.5
     assert set(values["a"]) == {1, 2, 3, 4}
+
+
+# ── split_by_quality tests ────────────────────────────────────────────────────
+
+def test_split_by_quality_separates_partial():
+    events = [
+        {"id": 1},
+        {"id": 2, "_partial_extract": True},
+        {"id": 3},
+        {"id": 4, "_partial_extract": True},
+    ]
+    clean, partial = split_by_quality(events)
+    assert len(clean) == 2
+    assert len(partial) == 2
+    assert all("_partial_extract" not in e for e in clean)
+    assert all(e.get("_partial_extract") for e in partial)
+
+
+def test_split_by_quality_all_clean():
+    events = [{"id": i} for i in range(5)]
+    clean, partial = split_by_quality(events)
+    assert len(clean) == 5
+    assert len(partial) == 0
+
+
+def test_split_by_quality_all_partial():
+    events = [{"id": i, "_partial_extract": True} for i in range(5)]
+    clean, partial = split_by_quality(events)
+    assert len(clean) == 0
+    assert len(partial) == 5
+
+
+def test_split_by_quality_preserves_other_fields():
+    events = [
+        {"a": 1, "b": 2},
+        {"a": 3, "_partial_extract": True, "c": 4},
+    ]
+    clean, partial = split_by_quality(events)
+    assert clean[0] == {"a": 1, "b": 2}
+    assert partial[0] == {"a": 3, "_partial_extract": True, "c": 4}
+
+
+def test_split_by_quality_empty():
+    clean, partial = split_by_quality([])
+    assert clean == []
+    assert partial == []

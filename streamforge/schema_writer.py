@@ -4,7 +4,16 @@ from pathlib import Path
 
 import yaml
 
-from .models import FieldSchema, FieldType, InferredSchema, StreamProfile
+from .models import (
+    DriftIncident,
+    DriftIncidentStatus,
+    DriftState,
+    FieldDrift,
+    FieldSchema,
+    FieldType,
+    InferredSchema,
+    StreamProfile,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -416,3 +425,185 @@ def load_schema(schema_path: str) -> InferredSchema:
         inference_model=doc.get("inference_model", "unknown"),
         inference_confidence=doc.get("inference_confidence", 1.0),
     )
+
+
+# ---------------------------------------------------------------------------
+# Drift-state persistence
+# ---------------------------------------------------------------------------
+
+_DRIFT_STATE_FILE = "drift_state.yaml"
+
+
+def load_drift_state(schema_dir: Path) -> DriftState:
+    """Load drift_state.yaml from schema_dir, or return a fresh empty state."""
+    p = schema_dir / _DRIFT_STATE_FILE
+    if not p.exists():
+        # peek at schema.yaml to get stream_name for the model
+        schema_p = schema_dir / "schema.yaml"
+        if schema_p.exists():
+            doc = yaml.safe_load(schema_p.read_text(encoding="utf-8"))
+            stream_name = doc.get("stream", schema_dir.name)
+        else:
+            stream_name = schema_dir.name
+        from datetime import UTC, datetime
+        return DriftState(stream_name=stream_name, updated_at=datetime.now(UTC).isoformat(), incidents=[])
+    doc = yaml.safe_load(p.read_text(encoding="utf-8"))
+    incidents = []
+    for inc in doc.get("incidents", []):
+        incidents.append(DriftIncident(**inc))
+    return DriftState(
+        stream_name=doc["stream_name"],
+        updated_at=doc["updated_at"],
+        incidents=incidents,
+    )
+
+
+def save_drift_state(schema_dir: Path, state: DriftState) -> None:
+    """Write drift_state.yaml to schema_dir."""
+    from datetime import UTC, datetime
+    state = state.model_copy(update={"updated_at": datetime.now(UTC).isoformat()})
+    schema_dir.mkdir(parents=True, exist_ok=True)
+    doc = {
+        "stream_name": state.stream_name,
+        "updated_at": state.updated_at,
+        "incidents": [inc.model_dump() for inc in state.incidents],
+    }
+    p = schema_dir / _DRIFT_STATE_FILE
+    with open(p, "w", encoding="utf-8") as f:
+        f.write("# StreamForge Drift State — managed automatically by 'streamforge watch'\n")
+        f.write("# Use 'streamforge accept' or 'streamforge suppress' to action incidents.\n\n")
+        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    logger.debug("Saved drift state: %s", p)
+
+
+# ---------------------------------------------------------------------------
+# Version bumping
+# ---------------------------------------------------------------------------
+
+def _bump_version(version: str, tier: int) -> str:
+    """
+    SemVer bump based on drift severity:
+      Tier 3 (critical/breaking)  → MAJOR
+      Tier 2 (breaking-manageable) → MINOR
+      Tier 1 (trivial)             → PATCH
+    """
+    try:
+        parts = [int(x) for x in version.split(".")]
+        if len(parts) != 3:
+            raise ValueError
+    except ValueError:
+        parts = [1, 0, 0]
+    if tier >= 3:
+        return f"{parts[0] + 1}.0.0"
+    if tier == 2:
+        return f"{parts[0]}.{parts[1] + 1}.0"
+    return f"{parts[0]}.{parts[1]}.{parts[2] + 1}"
+
+
+# ---------------------------------------------------------------------------
+# Accept drift — update schema.yaml to absorb accepted drift
+# ---------------------------------------------------------------------------
+
+def accept_drift(
+    schema_dir: Path,
+    incidents: list[DriftIncident],
+    drifts_by_id: dict[str, FieldDrift],
+) -> InferredSchema:
+    """
+    Apply a list of accepted drift incidents to schema.yaml:
+      - field_added     → add the field (or update type/PII) in schema
+      - field_removed   → remove the field
+      - type_changed    → update field_type
+      - new_pii         → add PII categories to field
+      - enum_changed    → update enum_values
+      - presence_drop   → update required flag
+
+    Bumps version based on the highest tier among accepted incidents.
+    Updates drift_state.yaml: marks accepted incidents as status=accepted.
+    Returns the updated InferredSchema.
+    """
+    from datetime import UTC, datetime
+
+    schema_path = schema_dir / "schema.yaml"
+    schema = load_schema(str(schema_path))
+
+    highest_tier = max((inc.tier for inc in incidents), default=1)
+    new_version = _bump_version(schema.version, highest_tier)
+    now = datetime.now(UTC).isoformat()
+
+    fields_by_path = {f.path: f for f in schema.fields}
+
+    for inc in incidents:
+        drift = drifts_by_id.get(inc.id)
+        dt = inc.drift_type
+
+        if dt == "field_removed":
+            fields_by_path.pop(inc.field_path, None)
+
+        elif dt in ("field_added", "type_changed", "format_changed"):
+            if inc.field_path in fields_by_path:
+                f = fields_by_path[inc.field_path]
+                if drift and drift.observed_type:
+                    fields_by_path[inc.field_path] = f.model_copy(
+                        update={"field_type": drift.observed_type, "confidence": 0.9}
+                    )
+            elif drift and drift.observed_type:
+                # New field — add it
+                fields_by_path[inc.field_path] = FieldSchema(
+                    name=inc.field_path.split(".")[-1],
+                    path=inc.field_path,
+                    field_type=drift.observed_type,
+                    required=(drift.observed_presence_rate or 0.0) >= 0.8,
+                    presence_rate=drift.observed_presence_rate or 0.0,
+                    pii_categories=[],
+                    confidence=0.85,
+                    notes=f"Accepted from drift incident {inc.id}",
+                )
+
+        elif dt in ("new_pii", "pii_detected"):
+            if inc.field_path in fields_by_path:
+                f = fields_by_path[inc.field_path]
+                # Infer PII category from drift type / field name
+                from .pii_detector import detect_pii
+                inferred = detect_pii(inc.field_path, [])
+                merged = list(set(list(f.pii_categories) + inferred))
+                fields_by_path[inc.field_path] = f.model_copy(update={"pii_categories": merged})
+
+        elif dt == "enum_changed":
+            if inc.field_path in fields_by_path and drift and drift.observed_enum_values:
+                f = fields_by_path[inc.field_path]
+                fields_by_path[inc.field_path] = f.model_copy(
+                    update={"enum_values": drift.observed_enum_values}
+                )
+
+        elif dt == "presence_drop" and inc.field_path in fields_by_path and drift:
+            new_rate = drift.observed_presence_rate or 0.0
+            f = fields_by_path[inc.field_path]
+            fields_by_path[inc.field_path] = f.model_copy(
+                update={"required": new_rate >= 0.8, "presence_rate": new_rate}
+            )
+
+    updated = schema.model_copy(update={
+        "version": new_version,
+        "inferred_at": now,
+        "fields": list(fields_by_path.values()),
+    })
+    write_schema(updated, str(schema_dir.parent))
+
+    # Mark incidents accepted in drift_state
+    state = load_drift_state(schema_dir)
+    accepted_ids = {inc.id for inc in incidents}
+    updated_incidents = []
+    for inc in state.incidents:
+        if inc.id in accepted_ids:
+            updated_incidents.append(inc.model_copy(update={
+                "status": DriftIncidentStatus.ACCEPTED,
+                "resolved_at": now,
+                "resolution_note": f"Schema updated to v{new_version}",
+            }))
+        else:
+            updated_incidents.append(inc)
+    save_drift_state(schema_dir, state.model_copy(update={"incidents": updated_incidents}))
+
+    logger.info("Accepted %d incident(s) — schema bumped to v%s", len(incidents), new_version)
+    return updated

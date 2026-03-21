@@ -1,0 +1,1171 @@
+# StreamForge Stream Profile — events.iot
+# Profiled: 2026-03-19T16:04:55.567580+00:00
+# Events sampled: 150
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 13
+# Discovery method: structural_fingerprint
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: events.iot
+profiled_at: '2026-03-19T16:04:55.567580+00:00'
+total_events_sampled: 150
+parse_success_rate: 1.0
+discovery_method: structural_fingerprint
+routing_field: null
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: struct:92ee5a55
+  detection_method: structural_fingerprint
+  event_count: 28
+  sample_rate: 0.1867
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - co2_ppm
+  - pm25
+  - pm10
+  - tvoc_ppb
+  - aqi
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: co2_ppm
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: pm25
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: pm10
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: tvoc_ppb
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: aqi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:533cf3de
+  detection_method: structural_fingerprint
+  event_count: 28
+  sample_rate: 0.1867
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - temperature_c
+  - temperature_f
+  - battery_pct
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: temperature_c
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: temperature_f
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: battery_pct
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:086e34d2
+  detection_method: structural_fingerprint
+  event_count: 26
+  sample_rate: 0.1733
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - humidity_pct
+  - dew_point_c
+  - battery_pct
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: humidity_pct
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: dew_point_c
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: battery_pct
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:80db632c
+  detection_method: structural_fingerprint
+  event_count: 23
+  sample_rate: 0.1533
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - pressure_hpa
+  - altitude_m
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: pressure_hpa
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: altitude_m
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:5f5c1e05
+  detection_method: structural_fingerprint
+  event_count: 17
+  sample_rate: 0.1133
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - motion_detected
+  - confidence
+  - zone
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: motion_detected
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: confidence
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: zone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:8115fb4c
+  detection_method: structural_fingerprint
+  event_count: 8
+  sample_rate: 0.0533
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - watts
+  - voltage
+  - current_amps
+  - power_factor
+  - kwh_today
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: watts
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: voltage
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: current_amps
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: power_factor
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: kwh_today
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:e07a853b
+  detection_method: structural_fingerprint
+  event_count: 8
+  sample_rate: 0.0533
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - watts
+  - voltage
+  - current_amps
+  - power_factor
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: watts
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: voltage
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: current_amps
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: power_factor
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:550925de
+  detection_method: structural_fingerprint
+  event_count: 5
+  sample_rate: 0.0333
+  inference_confidence: 0.6
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - co2_ppm
+  - pm25
+  - pm10
+  - tvoc_ppb
+  - aqi
+  - debug
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: co2_ppm
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: pm25
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: pm10
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: tvoc_ppb
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: aqi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+  - path: debug.rssi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.uptime_s
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.free_heap
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:e24e8c70
+  detection_method: structural_fingerprint
+  event_count: 2
+  sample_rate: 0.0133
+  inference_confidence: 0.26
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - temperature_c
+  - temperature_f
+  - battery_pct
+  - debug
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: temperature_c
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: temperature_f
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: battery_pct
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+  - path: debug.rssi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.uptime_s
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.free_heap
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:616dc770
+  detection_method: structural_fingerprint
+  event_count: 2
+  sample_rate: 0.0133
+  inference_confidence: 0.26
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - watts
+  - voltage
+  - current_amps
+  - power_factor
+  - kwh_today
+  - debug
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: watts
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: voltage
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: current_amps
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: power_factor
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: kwh_today
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+  - path: debug.rssi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.uptime_s
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.free_heap
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:82f03776
+  detection_method: structural_fingerprint
+  event_count: 1
+  sample_rate: 0.0067
+  inference_confidence: 0.18
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - pressure_hpa
+  - altitude_m
+  - debug
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: pressure_hpa
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: altitude_m
+    type: 'null'
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+  - path: debug.rssi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.uptime_s
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.free_heap
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:64a644b6
+  detection_method: structural_fingerprint
+  event_count: 1
+  sample_rate: 0.0067
+  inference_confidence: 0.18
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - motion_detected
+  - confidence
+  - zone
+  - debug
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: motion_detected
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: confidence
+    type: 'null'
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: zone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+  - path: debug.rssi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.uptime_s
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.free_heap
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:efdcacb9
+  detection_method: structural_fingerprint
+  event_count: 1
+  sample_rate: 0.0067
+  inference_confidence: 0.18
+  top_keys:
+  - device_id
+  - sensor_type
+  - location
+  - firmware
+  - timestamp
+  - humidity_pct
+  - dew_point_c
+  - battery_pct
+  - debug
+  fields:
+  - path: device_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: firmware
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: humidity_pct
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: dew_point_c
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: battery_pct
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+  - path: debug.rssi
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.uptime_s
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: debug.free_heap
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)

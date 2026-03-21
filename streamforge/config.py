@@ -20,7 +20,6 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -64,17 +63,17 @@ class InferenceConfig:
 class KafkaConfig:
     bootstrap_servers: list[str] = field(default_factory=list)
     security_protocol: str = "PLAINTEXT"
-    sasl_mechanism: Optional[str] = None
-    sasl_username: Optional[str] = None
-    sasl_password: Optional[str] = None
-    ssl_ca_location: Optional[str] = None
-    ssl_cert_location: Optional[str] = None
-    ssl_key_location: Optional[str] = None
+    sasl_mechanism: str | None = None
+    sasl_username: str | None = None
+    sasl_password: str | None = None
+    ssl_ca_location: str | None = None
+    ssl_cert_location: str | None = None
+    ssl_key_location: str | None = None
     consumer_group: str = "streamforge-profiler"
     auto_offset_reset: str = "earliest"
     max_poll_records: int = 500
     session_timeout_ms: int = 30_000
-    request_timeout_ms: int = 30_000
+    request_timeout_ms: int = 40_000  # must be > session_timeout_ms (kafka-python requirement)
     sample_target: int = 1_000
 
 
@@ -108,8 +107,8 @@ class PIIConfig:
 @dataclass
 class SlackConfig:
     enabled: bool = False
-    webhook_url: Optional[str] = None
-    channel: Optional[str] = None
+    webhook_url: str | None = None
+    channel: str | None = None
     mention_on_tier3: str = "<!here>"
     min_tier: int = 2
 
@@ -117,7 +116,7 @@ class SlackConfig:
 @dataclass
 class PagerDutyConfig:
     enabled: bool = False
-    routing_key: Optional[str] = None
+    routing_key: str | None = None
     escalate_on_tier: int = 3
     severity_map: dict[str, str] = field(
         default_factory=lambda: {
@@ -145,7 +144,7 @@ class OutputConfig:
 class LoggingConfig:
     level: str = "INFO"
     format: str = "human"      # "human" | "structured"
-    log_file: Optional[str] = None
+    log_file: str | None = None
 
 
 @dataclass
@@ -176,15 +175,15 @@ class Config:
 
     # ── Secret resolution ────────────────────────────────────────────────────
     # Resolved at load-time from env vars. Not in config.yaml.
-    _api_key: Optional[str] = field(default=None, repr=False)
+    _api_key: str | None = field(default=None, repr=False)
 
     @property
-    def api_key(self) -> Optional[str]:
+    def api_key(self) -> str | None:
         """LLM API key. Resolved from GROQ_API_KEY, OPENAI_API_KEY, or LLM_API_KEY."""
         return self._api_key
 
 
-def load(config_path: Optional[str | Path] = None) -> Config:
+def load(config_path: str | Path | None = None) -> Config:
     """
     Build a Config by merging (lowest → highest priority):
       defaults → config.yaml → environment variables.
@@ -327,7 +326,7 @@ def _merge_yaml(cfg: Config, raw: dict) -> Config:
 def _apply_env(cfg: Config) -> Config:
     """Apply environment variable overrides onto an already-loaded Config."""
 
-    def _env(key: str) -> Optional[str]:
+    def _env(key: str) -> str | None:
         return os.environ.get(_ENV.get(key, ""), "").strip() or None
 
     # Logging — checked early so subsequent log calls use the right level
@@ -385,7 +384,7 @@ def _apply_env(cfg: Config) -> Config:
 # Lazy-loaded default config for use by submodules that don't receive a
 # Config via dependency injection (e.g., the dashboard which is a Streamlit
 # script, not a CLI entrypoint). Call load() explicitly in __main__.py.
-_default: Optional[Config] = None
+_default: Config | None = None
 
 
 def get() -> Config:

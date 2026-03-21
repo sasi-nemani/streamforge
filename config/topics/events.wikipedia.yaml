@@ -1,0 +1,18 @@
+# StreamForge — Topic Config: events.wikipedia
+# ===============================================
+# Wikipedia edit stream — high volume, many optional fields, very stable core schema.
+
+watch:
+  interval_seconds: 45
+  sample_size: 200
+  alert_tier: 2
+  actions:
+    tier_1: log
+    tier_2: alert
+    tier_3: block
+
+drift:
+  type_change_threshold: 0.05
+  # Many Wikipedia fields are optional by design
+  presence_drop_threshold: 0.30
+  enum_new_value_threshold: 0.08

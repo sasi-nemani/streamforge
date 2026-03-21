@@ -71,7 +71,7 @@ def load_events_resilient(folder_path: str) -> tuple[list[dict], dict]:
 
     for file_path in files:
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 for line in f:
                     stripped = line.strip()
                     if not stripped:
@@ -99,6 +99,20 @@ def load_events_resilient(folder_path: str) -> tuple[list[dict], dict]:
     return events, stats
 
 
+def split_by_quality(events: list[dict]) -> tuple[list[dict], list[dict]]:
+    """
+    Split events by parse quality.
+    Returns (clean_events, partial_events).
+    Clean events have no _partial_extract flag (confidence 1.0 parse).
+    Partial events carry _partial_extract=True (regex key:value fallback, confidence ~0.5).
+    Partial events are excluded from schema inference by default because their field
+    structure is reconstructed rather than authoritative.
+    """
+    clean = [e for e in events if not e.get("_partial_extract")]
+    partial = [e for e in events if e.get("_partial_extract")]
+    return clean, partial
+
+
 def load_events_from_folder(folder_path: str) -> list[dict]:
     """Load all .ndjson and .json files from folder (recursive), sorted by filename."""
     folder = Path(folder_path)
@@ -112,7 +126,7 @@ def load_events_from_folder(folder_path: str) -> list[dict]:
     for file_path in files:
         file_events = 0
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
                     if not line:

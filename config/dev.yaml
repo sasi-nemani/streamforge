@@ -1,0 +1,19 @@
+# StreamForge — Dev Environment Overrides
+# =========================================
+# Applied on top of default.yaml when STREAMFORGE_ENV=dev (the default).
+# Optimised for fast iteration: shorter intervals, lower thresholds.
+
+watch:
+  interval_seconds: 15      # poll more frequently in dev
+  sample_size: 100          # smaller samples = faster cycles
+  window_capacity: 500
+  alert_tier: 1             # surface all drift, even trivial
+
+init:
+  sample_size: 200          # faster init in dev
+
+drift:
+  min_sample_for_stats: 10  # lower floor so dev data triggers statistical checks
+
+kafka:
+  brokers: "localhost:9092"

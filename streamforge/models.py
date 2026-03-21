@@ -221,3 +221,35 @@ class ProposalReport(BaseModel):
     auto_appliable: list[BaselineProposal] = []   # confidence >= threshold, non-breaking
     requires_review: list[BaselineProposal] = []
     summary: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Drift incident lifecycle
+# ---------------------------------------------------------------------------
+
+class DriftIncidentStatus(StrEnum):
+    OPEN       = "open"       # detected, not yet acted on
+    ACCEPTED   = "accepted"   # schema updated to reflect new state
+    SUPPRESSED = "suppressed" # muted until suppressed_until date
+    RESOLVED   = "resolved"   # drift cleared on its own (no action taken)
+
+
+class DriftIncident(BaseModel):
+    id: str                              # "drift-YYYY-MM-DD-HHMM-<field>"
+    field_path: str
+    cluster_id: str | None = None
+    drift_type: str
+    tier: int                            # 1 | 2 | 3
+    first_detected: str                  # ISO8601
+    last_seen: str                       # ISO8601
+    occurrences: int = 1
+    status: DriftIncidentStatus = DriftIncidentStatus.OPEN
+    resolved_at: str | None = None
+    resolution_note: str | None = None
+    suppressed_until: str | None = None  # ISO8601 — only set when status=suppressed
+
+
+class DriftState(BaseModel):
+    stream_name: str
+    updated_at: str
+    incidents: list[DriftIncident] = []

@@ -1,0 +1,300 @@
+# StreamForge Stream Profile — events.payments
+# Profiled: 2026-03-19T16:04:45.710762+00:00
+# Events sampled: 150
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 4
+# Discovery method: event_type_field
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: events.payments
+profiled_at: '2026-03-19T16:04:45.710762+00:00'
+total_events_sampled: 150
+parse_success_rate: 1.0
+discovery_method: event_type_field
+routing_field: event_type
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: payment.failed
+  detection_method: event_type_field
+  event_count: 52
+  sample_rate: 0.3467
+  inference_confidence: 0.6
+  top_keys:
+  - event_id
+  - event_type
+  - user_id
+  - merchant
+  - currency
+  - status
+  - amount
+  - timestamp
+  - user_email
+  fields:
+  - path: event_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: merchant
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: amount
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user_email
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.7308
+    confidence: 0.6462
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: payment.created
+  detection_method: event_type_field
+  event_count: 49
+  sample_rate: 0.3267
+  inference_confidence: 0.6
+  top_keys:
+  - event_id
+  - event_type
+  - user_id
+  - merchant
+  - currency
+  - status
+  - amount
+  - timestamp
+  - user_email
+  fields:
+  - path: event_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: merchant
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: amount
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user_email
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.5918
+    confidence: 0.6184
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: payment.updated
+  detection_method: event_type_field
+  event_count: 48
+  sample_rate: 0.32
+  inference_confidence: 0.6
+  top_keys:
+  - event_id
+  - event_type
+  - user_id
+  - merchant
+  - currency
+  - status
+  - amount
+  - timestamp
+  - user_email
+  fields:
+  - path: event_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: merchant
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: amount
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user_email
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.6458
+    confidence: 0.6292
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: payment
+  detection_method: event_type_field
+  event_count: 1
+  sample_rate: 0.0067
+  inference_confidence: 0.18
+  top_keys:
+  - event_type
+  - amount
+  - currency
+  - user_id
+  fields:
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: amount
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)

@@ -1,0 +1,18 @@
+# StreamForge — Topic Config: events.github
+# ============================================
+# GitHub public events — heterogeneous schema by event_type. Tier 1 drift is normal.
+
+watch:
+  interval_seconds: 60
+  sample_size: 200
+  alert_tier: 2             # GitHub schema evolves; only alert on breaking changes
+  actions:
+    tier_1: log             # new optional fields are common — just log
+    tier_2: alert
+    tier_3: block
+
+drift:
+  # GitHub adds fields frequently — don't flag small additions
+  type_change_threshold: 0.08
+  enum_new_value_threshold: 0.10
+  presence_drop_threshold: 0.20  # event types come and go

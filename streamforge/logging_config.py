@@ -34,9 +34,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from datetime import datetime, timezone
-from typing import Optional
-
+from datetime import UTC, datetime
 
 # ── ANSI colour codes for human mode ──────────────────────────────────────────
 _RESET  = "\033[0m"
@@ -121,7 +119,7 @@ class StructuredFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         # ISO 8601 UTC timestamp with millisecond precision
-        ts = datetime.fromtimestamp(record.created, tz=timezone.utc).strftime(
+        ts = datetime.fromtimestamp(record.created, tz=UTC).strftime(
             "%Y-%m-%dT%H:%M:%S.") + f"{record.msecs:03.0f}Z"
 
         obj: dict = {
@@ -147,7 +145,7 @@ class StructuredFormatter(logging.Formatter):
 def configure(
     level: str = "INFO",
     fmt: str = "human",
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
 ) -> None:
     """
     Configure the root logger for StreamForge.

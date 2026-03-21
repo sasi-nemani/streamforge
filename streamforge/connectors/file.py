@@ -113,7 +113,7 @@ class FileConnector(StreamConnector):
                 continue  # nothing new
 
             try:
-                with open(file_path, "r", encoding="utf-8") as fh:
+                with open(file_path, encoding="utf-8") as fh:
                     fh.seek(cursor)
                     for line in fh:
                         stripped = line.strip()

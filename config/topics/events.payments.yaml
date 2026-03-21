@@ -1,0 +1,23 @@
+# StreamForge — Topic Config: events.payments
+# =============================================
+# Payments are high-value — tightest thresholds and loudest alerts.
+
+watch:
+  interval_seconds: 60
+  sample_size: 300
+  alert_tier: 2
+  actions:
+    tier_1: log
+    tier_2: alert
+    tier_3: block
+
+drift:
+  # Payments cannot tolerate type drift — flag at 2% not 5%
+  type_change_threshold: 0.02
+  presence_drop_threshold: 0.10   # any drop >10pp on required fields is suspicious
+
+notifications:
+  slack:
+    min_tier: 2
+  pagerduty:
+    escalate_on_tier: 2           # page on tier 2+ for payments

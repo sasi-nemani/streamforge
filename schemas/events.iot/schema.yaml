@@ -1,0 +1,100 @@
+# StreamForge Schema — events.iot
+# Version: 1.0.0
+# Inferred: 2026-03-19T16:04:55.567580+00:00
+# Events sampled: 150
+# Overall confidence: 60%
+#
+# This file is the source of truth for stream: events.iot
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: events.iot
+version: 1.0.0
+inferred_at: '2026-03-19T16:04:55.567580+00:00'
+inference_confidence: 0.6
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 150
+event_types:
+- struct:92ee5a55
+- struct:533cf3de
+- struct:086e34d2
+- struct:80db632c
+- struct:5f5c1e05
+- struct:8115fb4c
+- struct:e07a853b
+- struct:550925de
+- struct:e24e8c70
+- struct:616dc770
+- struct:82f03776
+- struct:64a644b6
+- struct:efdcacb9
+fields:
+- path: device_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: sensor_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: location
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: firmware
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: timestamp
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: co2_ppm
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: pm25
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: pm10
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: tvoc_ppb
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: aqi
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)

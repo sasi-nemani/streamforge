@@ -32,7 +32,7 @@ def _cluster_key(event: dict) -> str:
         if isinstance(val, str) and val.strip():
             return val.strip()
     # Structural fingerprint: hash sorted top-level key names
-    key_sig = "|".join(sorted(str(k) for k in visible.keys()))
+    key_sig = "|".join(sorted(str(k) for k in visible))
     h = hashlib.md5(key_sig.encode()).hexdigest()[:8]
     return f"struct:{h}"
 
@@ -87,3 +87,29 @@ def discover_clusters(events: list[dict], min_fraction: float = 0.01) -> dict[st
 def get_detection_method(clusters: dict) -> str:
     """Public accessor so callers don't need to re-import the private helper."""
     return _detection_method(clusters)
+
+
+def get_routing_field(clusters: dict, sample_events: list[dict]) -> "str | None":
+    """
+    Return the specific event field name used as the routing key for this stream's
+    sub-schema clusters.  Stored in profile.yaml so watch/plan can route without
+    re-deriving or re-hashing at runtime.
+
+    For event_type_field discovery: scans up to 200 sample events to confirm
+    which field (e.g. "event_type", "type") produced the cluster IDs.
+    For structural_fingerprint or single-schema streams: returns None.
+    """
+    meaningful_ids = {k for k in clusters if k not in ("_other", "_sparse")}
+    if not meaningful_ids or all(k.startswith("struct:") for k in meaningful_ids):
+        return None  # structural fingerprint or single-schema: no single routing field
+
+    for field in _TYPE_FIELDS:
+        matches = sum(
+            1 for e in sample_events[:200]
+            if isinstance(e.get(field), str)
+            and e[field].strip() in meaningful_ids
+        )
+        if matches > 0:
+            return field
+
+    return None  # couldn't confirm — caller should treat as structural

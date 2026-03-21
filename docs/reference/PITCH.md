@@ -124,9 +124,9 @@ There are two strong demo paths in the repo:
 - Synthetic control-path demo:
   `streamforge demo`
 - Live public stream demo:
-  - `python3 taps/wikipedia.py --max 200`
-  - `python3 taps/coinbase.py --max 200`
-  - `python3 taps/opensky.py --max 300`
+  - `python3 scripts/taps/wikipedia.py --max 200`
+  - `python3 scripts/taps/coinbase.py --max 200`
+  - `python3 scripts/taps/opensky.py --max 300`
   - `streamforge init events/<source>/live`
   - `streamforge ui`
 

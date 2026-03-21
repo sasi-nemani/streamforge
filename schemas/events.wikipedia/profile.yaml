@@ -1,0 +1,1013 @@
+# StreamForge Stream Profile — events.wikipedia
+# Profiled: 2026-03-19T16:05:09.595843+00:00
+# Events sampled: 150
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 4
+# Discovery method: event_type_field
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: events.wikipedia
+profiled_at: '2026-03-19T16:05:09.595843+00:00'
+total_events_sampled: 150
+parse_success_rate: 1.0
+discovery_method: event_type_field
+routing_field: type
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: edit
+  detection_method: event_type_field
+  event_count: 73
+  sample_rate: 0.4867
+  inference_confidence: 0.6
+  top_keys:
+  - meta
+  - id
+  - type
+  - namespace
+  - title
+  - title_url
+  - comment
+  - timestamp
+  - user
+  - bot
+  - notify_url
+  - minor
+  - length
+  - revision
+  - server_url
+  fields:
+  - path: meta
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: domain, dt, id, offset, partition, request_id'
+  - path: meta.uri
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.request_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.domain
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.stream
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.dt
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.topic
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.partition
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.offset
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: namespace
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: title_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: comment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: bot
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: notify_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: minor
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: patrolled
+    type: boolean
+    required: false
+    nullable: false
+    presence_rate: 0.7671
+    confidence: 0.6534
+    notes: Statistically inferred (LLM fallback)
+  - path: length
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: new, old'
+  - path: length.old
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: length.new
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: revision
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: new, old'
+  - path: revision.old
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: revision.new
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_script_path
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: wiki
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: parsedcomment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: categorize
+  detection_method: event_type_field
+  event_count: 57
+  sample_rate: 0.38
+  inference_confidence: 0.6
+  top_keys:
+  - meta
+  - id
+  - type
+  - namespace
+  - title
+  - title_url
+  - comment
+  - timestamp
+  - user
+  - bot
+  - notify_url
+  - server_url
+  - server_name
+  - server_script_path
+  - wiki
+  fields:
+  - path: meta
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: domain, dt, id, offset, partition, request_id'
+  - path: meta.uri
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.request_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.domain
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.stream
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.dt
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.topic
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.partition
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.offset
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: namespace
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: title_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: comment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: bot
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: notify_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_script_path
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: wiki
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: parsedcomment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: log
+  detection_method: event_type_field
+  event_count: 11
+  sample_rate: 0.0733
+  inference_confidence: 0.6
+  top_keys:
+  - meta
+  - id
+  - type
+  - namespace
+  - title
+  - title_url
+  - comment
+  - timestamp
+  - user
+  - bot
+  - log_id
+  - log_type
+  - log_action
+  - log_params
+  - log_action_comment
+  fields:
+  - path: meta
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: domain, dt, id, offset, partition, request_id'
+  - path: meta.uri
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - ip_address
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.request_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.domain
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.stream
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.dt
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.topic
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.partition
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.offset
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: namespace
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - ip_address
+    notes: Statistically inferred (LLM fallback)
+  - path: title_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - ip_address
+    notes: Statistically inferred (LLM fallback)
+  - path: comment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: bot
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: log_id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: log_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: log_action
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params
+    type: object
+    required: false
+    nullable: false
+    presence_rate: 0.1818
+    confidence: 0.5364
+    notes: 'Nested object — contains: blockId, duration, flags, img_sha1, img_timestamp,
+      noredir'
+  - path: log_params.img_sha1
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.2727
+    confidence: 0.5545
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params.img_timestamp
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.2727
+    confidence: 0.5545
+    notes: Statistically inferred (LLM fallback)
+  - path: log_action_comment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - ip_address
+    notes: Statistically inferred (LLM fallback)
+  - path: server_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_script_path
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: wiki
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: parsedcomment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params.duration
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.5455
+    confidence: 0.6091
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params.flags
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.5455
+    confidence: 0.6091
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params.sitewide
+    type: boolean
+    required: false
+    nullable: false
+    presence_rate: 0.5455
+    confidence: 0.6091
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params.blockId
+    type: integer
+    required: false
+    nullable: false
+    presence_rate: 0.5455
+    confidence: 0.6091
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params.target
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.1818
+    confidence: 0.5364
+    notes: Statistically inferred (LLM fallback)
+  - path: log_params.noredir
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.1818
+    confidence: 0.5364
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: new
+  detection_method: event_type_field
+  event_count: 9
+  sample_rate: 0.06
+  inference_confidence: 0.6
+  top_keys:
+  - meta
+  - id
+  - type
+  - namespace
+  - title
+  - title_url
+  - comment
+  - timestamp
+  - user
+  - bot
+  - notify_url
+  - minor
+  - patrolled
+  - length
+  - revision
+  fields:
+  - path: meta
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: domain, dt, id, offset, partition, request_id'
+  - path: meta.uri
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.request_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.domain
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.stream
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.dt
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.topic
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.partition
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: meta.offset
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: namespace
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: title_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: comment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: user
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: bot
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: notify_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: minor
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: patrolled
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: length
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: new'
+  - path: length.new
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: revision
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: new'
+  - path: revision.new
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: server_script_path
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: wiki
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: parsedcomment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)

@@ -1,0 +1,17 @@
+# StreamForge — Topic Config: events.flights
+# =============================================
+# Flight ADS-B feed — schema is stable but may have gaps when aircraft are out of range.
+
+watch:
+  interval_seconds: 90
+  sample_size: 300
+  alert_tier: 2
+  actions:
+    tier_1: log
+    tier_2: alert
+    tier_3: block
+
+drift:
+  type_change_threshold: 0.05
+  # Aircraft positional fields frequently go null when out of range — tolerate it
+  presence_drop_threshold: 0.30

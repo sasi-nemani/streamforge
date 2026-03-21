@@ -1,0 +1,168 @@
+# StreamForge — Default Configuration
+# =====================================
+# This is the project baseline. Override in:
+#   config/<env>.yaml           (e.g. dev.yaml, staging.yaml, prod.yaml)
+#   config/topics/<topic>.yaml  (per-topic, highest priority)
+#
+# Resolution order (highest → lowest priority):
+#   topic config → env config → this file → hardcoded defaults
+#
+# Select env via STREAMFORGE_ENV env var or --env CLI flag.
+
+# ── Watch settings ─────────────────────────────────────────────────────────────
+watch:
+  # How often to poll for new events (seconds)
+  interval_seconds: 30
+
+  # Events sampled per poll cycle for drift comparison
+  sample_size: 200
+
+  # Rolling event window size (max events kept in memory across cycles)
+  window_capacity: 2000
+
+  # Minimum drift tier that triggers a visible alert (1=all, 2=breaking+, 3=critical)
+  alert_tier: 2
+
+  # Action per drift tier:
+  #   log   — write drift_report to disk, dim console line
+  #   alert — write drift_report, highlighted console (yellow/red)
+  #   block — write drift_report, highlighted console, exit 1 (CI gate)
+  actions:
+    tier_1: log
+    tier_2: alert
+    tier_3: block
+
+  # Optional webhook URL for drift event POSTs (null to disable)
+  webhook_url: null
+
+# ── Init settings ──────────────────────────────────────────────────────────────
+init:
+  # How many events to sample when building the initial schema
+  sample_size: 500
+
+# ── Drift detection thresholds ─────────────────────────────────────────────────
+drift:
+  # Fraction of events with a type change before it's flagged (0.05 = 5%)
+  type_change_threshold: 0.05
+
+  # Presence rate drop in percentage points before flagging field removal
+  presence_drop_threshold: 0.15
+
+  # New enum values in this fraction of events triggers enum drift
+  enum_new_value_threshold: 0.05
+
+  # Minimum events needed for statistical significance checks
+  min_sample_for_stats: 30
+
+  # PSI thresholds for distribution shift detection
+  psi_threshold_low: 0.10
+  psi_threshold_high: 0.20
+
+# ── Kafka connection ────────────────────────────────────────────────────────────
+kafka:
+  # Comma-separated broker list
+  brokers: "localhost:9092"
+
+  # PLAINTEXT | SSL | SASL_SSL | SASL_PLAINTEXT
+  security_protocol: PLAINTEXT
+
+  # Consumer group — unique so StreamForge doesn't interfere with production groups
+  consumer_group: "streamforge-profiler"
+
+  # earliest | latest
+  auto_offset_reset: earliest
+
+  # Kafka timeouts (ms)
+  session_timeout_ms: 30000
+  request_timeout_ms: 40000
+
+# ── Notifications ───────────────────────────────────────────────────────────────
+notifications:
+  slack:
+    enabled: false
+    webhook_url: null        # override via SLACK_WEBHOOK_URL env var
+    channel: null
+    min_tier: 2              # only notify for tier 2+ by default
+
+  pagerduty:
+    enabled: false
+    routing_key: null        # override via PAGERDUTY_ROUTING_KEY env var
+    escalate_on_tier: 3      # only page for tier 3
+
+# ── Inference (LLM) ────────────────────────────────────────────────────────────
+inference:
+  model: "llama-3.3-70b-versatile"
+  base_url: "https://api.groq.com/openai/v1"
+  max_retries: 3
+
+# ── VCS / Git integration ───────────────────────────────────────────────────────
+# When enabled, StreamForge automatically commits schema changes and can open
+# PRs/MRs on drift acceptance — "schema changes as code review".
+#
+# Backends:
+#   git    — local git only (commit + push, no PR)
+#   github — git + GitHub Pulls API  (set GITHUB_TOKEN + GITHUB_REPO)
+#   gitlab — git + GitLab MR API     (set GITLAB_TOKEN + GITLAB_REPO)
+#
+# Env vars take precedence over values here:
+#   GITHUB_TOKEN, GITHUB_REPO, GITLAB_TOKEN, GITLAB_REPO, GITLAB_URL
+vcs:
+  enabled: false
+
+  # "git" | "github" | "gitlab"
+  backend: git
+
+  # Git remote and branch settings
+  remote: origin
+  default_branch: main
+
+  # What to do automatically:
+  auto_commit: true     # commit schema files after init / scan
+  auto_push: true       # push to remote after commit
+  auto_pr: true         # open PR/MR on 'streamforge accept' (github/gitlab only)
+
+  # PR/MR settings
+  pr_base_branch: main
+  pr_reviewers: []      # GitHub usernames / GitLab usernames to request review
+  pr_labels:
+    - schema-change
+
+  # Identity used for commits (not your personal git config)
+  commit_author_name: "StreamForge Bot"
+  commit_author_email: "streamforge-bot@noreply.local"
+
+  # GitHub-specific (or set env vars)
+  github_repo: ""       # "owner/repo"  — set via GITHUB_REPO
+
+  # GitLab-specific (or set env vars)
+  gitlab_url: "https://gitlab.com"
+  gitlab_repo: ""       # "group/project" — set via GITLAB_REPO
+
+# ── Schema Registry integration ────────────────────────────────────────────────
+# Push inferred schemas to a centralised schema registry on 'init' and 'accept'.
+# This makes StreamForge the bridge between event systems and downstream tools
+# (Flink, Kafka Streams, Spark) that rely on a schema registry.
+#
+# Backends:
+#   confluent — Confluent Schema Registry REST API (set SCHEMA_REGISTRY_URL)
+#   glue      — AWS Glue Schema Registry         (set GLUE_REGISTRY_NAME + AWS creds)
+#   apicurio  — Apicurio Registry v2              (set APICURIO_URL)
+#
+# Enable via CLI: streamforge init kafka://events.payments --push-to http://localhost:8081
+registry:
+  enabled: false
+
+  # "confluent" | "glue" | "apicurio"
+  backend: confluent
+
+  # Registry base URL (Confluent SR or Apicurio; ignored for Glue)
+  url: "http://localhost:8081"
+
+  # "avro" | "json-schema"
+  format: avro
+
+  # Subject name suffix — Confluent convention: "<topic>-value"
+  subject_suffix: "-value"
+
+  # AWS Glue registry name (only used when backend = glue)
+  glue_registry_name: "StreamForge"

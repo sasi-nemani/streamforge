@@ -92,26 +92,48 @@ html, body, .stApp, [data-testid="stAppViewContainer"],
     -webkit-font-smoothing: antialiased !important;
 }
 
-/* ── Hide Streamlit chrome ── */
-#MainMenu, footer, header,
+/* ── Hide Streamlit chrome — keep header shell for sidebar toggle ── */
+#MainMenu, footer,
 [data-testid="stDeployButton"],
 [data-testid="stToolbar"],
 [data-testid="stDecoration"],
 [data-testid="stStatusWidget"] {
     display: none !important;
 }
+/* Hide header background/padding but leave the collapse button intact */
+[data-testid="stHeader"] {
+    background: transparent !important;
+    border-bottom: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+}
 
-/* ── Sidebar ── */
+/* ── Sidebar — prevent collapse (override styled-components minWidth/maxWidth/transform) ── */
 [data-testid="stSidebar"] {
     background: var(--surface) !important;
     border-right: 1px solid var(--border) !important;
+    transform: translateX(0px) !important;
+    min-width: 244px !important;
+    max-width: 244px !important;
+    overflow-y: auto !important;
 }
 [data-testid="stSidebar"] .block-container { padding: 0 !important; }
+[data-testid="stSidebarContent"]           { width: 100% !important; }
+
+/* Collapse/expand buttons — keep functional */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stExpandSidebarButton"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
 
 /* ── Main container ── */
 .main .block-container {
     padding: 0 1.5rem 2rem 1.5rem !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 /* ── Typography ── */
@@ -341,10 +363,60 @@ def load_drift_reports(stream_name: str) -> list[tuple[str, str]]:
     return [(f.name, f.read_text()) for f in sorted(d.glob("*.md"), reverse=True)]
 
 
+@st.cache_data(ttl=15)
+def load_open_incidents(stream_name: str) -> list[dict]:
+    """Return open drift incidents from drift_state.yaml (cached 15 s)."""
+    import yaml as _yaml
+    p = SCHEMAS_DIR / stream_name / "drift_state.yaml"
+    if not p.exists():
+        return []
+    try:
+        doc = _yaml.safe_load(p.read_text())
+        return [
+            inc for inc in (doc.get("incidents") or [])
+            if inc.get("status") == "open"
+        ]
+    except Exception:
+        return []
+
+
 @st.cache_data(ttl=30)
 def load_policy(stream_name: str) -> dict | None:
     p = SCHEMAS_DIR / stream_name / "stream_policy.yaml"
     return yaml.safe_load(p.read_text()) if p.exists() else None
+
+
+@st.cache_data(ttl=15)
+def load_poll_state(stream_name: str) -> dict | None:
+    """
+    Load the last-polled state written by watch_stream after every poll cycle.
+    Returns dict with keys: ts, sampled, window_size, new_events — or None if
+    watch has never run for this stream.
+    """
+    import json as _json
+    p = SCHEMAS_DIR / stream_name / ".watch_state" / "last_polled.json"
+    if not p.exists():
+        return None
+    try:
+        return _json.loads(p.read_text())
+    except Exception:
+        return None
+
+
+def _is_live(stream_name: str, stale_minutes: int = 15) -> bool:
+    """
+    Return True if watch_stream polled this stream within the last stale_minutes.
+    Uses last_polled.json written after every watch cycle.
+    """
+    ps = load_poll_state(stream_name)
+    if not ps or not ps.get("ts"):
+        return False
+    try:
+        polled_at = _dt.fromisoformat(ps["ts"]).replace(tzinfo=None)
+        age = (_dt.utcnow() - polled_at).total_seconds()
+        return age < stale_minutes * 60
+    except Exception:
+        return False
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -414,6 +486,7 @@ def render_field_table(fields: list[dict]) -> str:
         path       = f.get("path", "—")
         ftype      = f.get("type", "string")
         required   = f.get("required", False)
+        nullable   = f.get("nullable", False)
         presence   = f.get("presence_rate", 0)
         confidence = f.get("confidence", 0)
         pii        = f.get("pii", [])
@@ -423,6 +496,11 @@ def render_field_table(fields: list[dict]) -> str:
             f'<span style="color:{_GREEN};font-weight:700;font-size:13px">●</span>'
             if required else
             f'<span style="color:{_TEXT3};font-size:13px">○</span>'
+        )
+        null_html = (
+            f'<span style="color:{_ORANGE};font-size:11px;font-weight:600">null ok</span>'
+            if nullable else
+            f'<span style="color:{_TEXT3};font-size:11px">—</span>'
         )
 
         pct   = int(presence * 100)
@@ -450,6 +528,7 @@ def render_field_table(fields: list[dict]) -> str:
             f'font-size:12px;white-space:nowrap;color:{_TEXT}">{path}</td>'
             f'<td style="padding:9px 12px">{_type_badge(ftype)}</td>'
             f'<td style="padding:9px 12px;text-align:center">{req_html}</td>'
+            f'<td style="padding:9px 12px;text-align:center">{null_html}</td>'
             f'<td style="padding:9px 12px">{pres_html}</td>'
             f'<td style="padding:9px 12px;text-align:center">{conf_html}</td>'
             f'<td style="padding:9px 12px">{_pii_badge(pii)}</td>'
@@ -464,6 +543,7 @@ def render_field_table(fields: list[dict]) -> str:
         f'<th style="{th}">Field Path</th>'
         f'<th style="{th}">Type</th>'
         f'<th style="{th};text-align:center">Req</th>'
+        f'<th style="{th};text-align:center">Nullable</th>'
         f'<th style="{th}">Presence</th>'
         f'<th style="{th};text-align:center">Conf.</th>'
         f'<th style="{th}">PII</th>'
@@ -810,10 +890,10 @@ with st.sidebar:
         )
     else:
         for _sn in stream_names:
-            _active  = st.session_state.selected_stream == _sn and st.session_state.view == "stream"
-            _dot_col = _RED if _sn in _drift_streams else _ORANGE if _sn in _pii_streams else _GREEN
-            # Custom dot label via HTML isn't possible in st.button, so use a unicode dot
-            _label   = f"{_sn}"
+            _active   = st.session_state.selected_stream == _sn and st.session_state.view == "stream"
+            _dot_emoji = "🔴" if _sn in _drift_streams else "🟡" if _sn in _pii_streams else "🟢"
+            _live_tag  = " ⚡" if _is_live(_sn) else ""
+            _label     = f"{_dot_emoji} {_sn}{_live_tag}"
             if st.button(_label, key=f"sb_{_sn}", use_container_width=True,
                          type="primary" if _active else "secondary"):
                 st.session_state.selected_stream = _sn
@@ -850,6 +930,38 @@ with st.sidebar:
             f'<div style="display:flex;align-items:center;justify-content:space-between">'
             f'{cells}'
             f'</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    # Watch status section
+    _live_streams = [sn for sn in stream_names if _is_live(sn)]
+    st.markdown(
+        f'<div style="padding:14px 16px 5px 16px;border-top:1px solid {_BORDER};">'
+        f'<div style="font-size:10px;font-weight:600;text-transform:uppercase;'
+        f'letter-spacing:0.08em;color:{_TEXT3}">Watch Status</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    if _live_streams:
+        for _sn in _live_streams:
+            _ps = load_poll_state(_sn)
+            _w  = _ps.get("window_size", 0) if _ps else 0
+            _s  = _ps.get("sampled", 0) if _ps else 0
+            st.markdown(
+                f'<div style="padding:4px 16px 4px 16px">'
+                f'<div style="display:flex;align-items:center;gap:6px">'
+                f'<span class="sf-dot-live" style="color:{_GREEN};font-size:9px">●</span>'
+                f'<span style="font-size:12px;font-weight:600;color:{_TEXT}">{_sn}</span>'
+                f'</div>'
+                f'<div style="font-size:10.5px;color:{_TEXT3};padding-left:15px;margin-top:1px">'
+                f'{_s} sampled · {_w} in window</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.markdown(
+            f'<div style="padding:4px 16px 10px 16px;font-size:11.5px;color:{_TEXT3}">'
+            f'No active watchers — run <code>watch_all.sh</code></div>',
             unsafe_allow_html=True,
         )
 
@@ -1205,20 +1317,55 @@ def render_fleet_overview():
                 f'box-shadow:0 0 0 2px {dot_color}33"></span>'
             )
 
-            # Last event timestamp
-            if dr:
+            # Watch live/idle badge
+            if _is_live(sn):
+                watch_badge = (
+                    f'<span style="background:rgba(74,222,128,0.1);color:{_GREEN};'
+                    f'border:1px solid rgba(74,222,128,0.3);font-size:9.5px;font-weight:700;'
+                    f'letter-spacing:0.07em;padding:3px 8px;border-radius:4px;'
+                    f'display:inline-flex;align-items:center;gap:4px">'
+                    f'<span class="sf-dot-live" style="font-size:7px">●</span>LIVE</span>'
+                )
+            else:
+                watch_badge = (
+                    f'<span style="color:{_TEXT3};font-size:11px">IDLE</span>'
+                )
+
+            # Last event timestamp — prefer live watch poll state, then schema mtime
+            poll_state = load_poll_state(sn)
+            if poll_state and poll_state.get("ts"):
                 try:
-                    _ts = _dt.strptime(dr[0][0].replace(".md", ""), "%Y-%m-%d-%H%M")
+                    _ts = _dt.fromisoformat(poll_state["ts"]).replace(tzinfo=None)
                     last_event = _time_ago(_ts)
                 except Exception:
                     last_event = "recently"
             else:
-                _inf = sd.get("inferred_at", "")
+                # Fall back to schema.yaml file mtime (reflects last init run)
+                _schema_file = SCHEMAS_DIR / sn / "schema.yaml"
                 try:
-                    _ts = _dt.fromisoformat(_inf.replace("Z", "+00:00")).replace(tzinfo=None)
+                    _ts = _dt.fromtimestamp(_schema_file.stat().st_mtime)
                     last_event = _time_ago(_ts)
                 except Exception:
                     last_event = "—"
+
+            # Sampled column — show live watch stats if available, else init count
+            if poll_state:
+                _sampled    = poll_state.get("sampled", 0)
+                _window     = poll_state.get("window_size", 0)
+                _new        = poll_state.get("new_events", 0)
+                sampled_cell = (
+                    f'<span style="font-size:12px;color:{_TEXT2}">{_sampled} sampled</span>'
+                    f'<br><span style="font-size:11px;color:{_TEXT3}">'
+                    f'{_window} in window'
+                    f'{f" · +{_new} new" if _new else ""}'
+                    f'</span>'
+                )
+            else:
+                _n = sd.get("event_count_sampled", 0)
+                sampled_cell = (
+                    f'<span style="font-size:12px;color:{_TEXT2}">{_n} at init</span>'
+                    f'<br><span style="font-size:11px;color:{_TEXT3}">watch not started</span>'
+                )
 
             # Health badge
             if has_drift:
@@ -1275,6 +1422,8 @@ def render_fleet_overview():
                 f'white-space:nowrap">{last_event}</td>'
                 f'<td style="padding:14px 16px">{health_badge}</td>'
                 f'<td style="padding:14px 16px">{fields_cell}</td>'
+                f'<td style="padding:14px 16px;line-height:1.6">{sampled_cell}</td>'
+                f'<td style="padding:14px 16px;text-align:center">{watch_badge}</td>'
                 f'<td style="padding:14px 16px">{spark}</td>'
                 f'</tr>'
             )
@@ -1285,9 +1434,11 @@ def render_fleet_overview():
             f'<thead><tr>'
             f'<th style="{th};width:36px"></th>'
             f'<th style="{th}">Stream Identifier</th>'
-            f'<th style="{th}">Last Event</th>'
+            f'<th style="{th}">Last Polled</th>'
             f'<th style="{th}">Schema Health</th>'
             f'<th style="{th}">Fields</th>'
+            f'<th style="{th}">Sampled</th>'
+            f'<th style="{th};text-align:center">Watch</th>'
             f'<th style="{th}">Trend</th>'
             f'</tr></thead>'
             f'<tbody>{rows_html}</tbody>'
@@ -1417,10 +1568,103 @@ def render_stream_detail(stream_name: str):
     mc1.metric("Fields",        len(all_fields))
     mc2.metric("Confidence",    f'{sd.get("inference_confidence",0):.0%}')
     mc3.metric("PII Fields",    len(pii_fields))
-    mc4.metric("Drift Reports", len(drift_reports))
+    _open_inc_count = len(load_open_incidents(stream_name))
+    mc4.metric("Open Incidents", _open_inc_count, delta=None if _open_inc_count == 0 else f"{len(drift_reports)} reports")
     mc5.metric("Sub-schemas",   len(profile_data.get("sub_schemas", [])) if profile_data else "—")
     mc6.metric("Consumers",     consumer_count)
     st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Active profiling status banner ────────────────────────────────────────
+    _stream_ps = load_poll_state(stream_name)
+    if _is_live(stream_name) and _stream_ps:
+        _w  = _stream_ps.get("window_size", 0)
+        _s  = _stream_ps.get("sampled", 0)
+        _n  = _stream_ps.get("new_events", 0)
+        _ts_str = _stream_ps.get("ts", "")[:19].replace("T", " ")
+        # Show per-field profiling status (which fields are being tracked)
+        _tracked = [f.get("path", "") for f in all_fields if f.get("presence_rate") is not None]
+        _pii_tracked = [f.get("path", "") for f in all_fields if f.get("pii")]
+        st.markdown(
+            f'<div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.22);'
+            f'border-radius:10px;padding:14px 18px;margin-bottom:16px">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+            f'<span class="sf-dot-live" style="color:{_GREEN};font-size:11px">●</span>'
+            f'<span style="font-size:13px;font-weight:700;color:{_GREEN}">Actively Profiling</span>'
+            f'<span style="font-size:11px;color:{_TEXT3}">last polled {_ts_str} UTC</span>'
+            f'</div>'
+            f'<div style="display:flex;gap:32px;flex-wrap:wrap">'
+            f'<div><div style="font-size:18px;font-weight:700;color:{_TEXT}">{_s}</div>'
+            f'<div style="font-size:10px;color:{_TEXT3};text-transform:uppercase;letter-spacing:0.07em">Sampled this cycle</div></div>'
+            f'<div><div style="font-size:18px;font-weight:700;color:{_TEXT}">{_w}</div>'
+            f'<div style="font-size:10px;color:{_TEXT3};text-transform:uppercase;letter-spacing:0.07em">Events in window</div></div>'
+            f'<div><div style="font-size:18px;font-weight:700;color:{_TEXT}">{_n}</div>'
+            f'<div style="font-size:10px;color:{_TEXT3};text-transform:uppercase;letter-spacing:0.07em">New this poll</div></div>'
+            f'<div><div style="font-size:18px;font-weight:700;color:{_TEXT}">{len(_tracked)}</div>'
+            f'<div style="font-size:10px;color:{_TEXT3};text-transform:uppercase;letter-spacing:0.07em">Fields being inferred</div></div>'
+            f'<div><div style="font-size:18px;font-weight:700;color:{_ORANGE}">{len(_pii_tracked)}</div>'
+            f'<div style="font-size:10px;color:{_TEXT3};text-transform:uppercase;letter-spacing:0.07em">PII fields tracked</div></div>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    elif _stream_ps:
+        _ts_str = _stream_ps.get("ts", "")[:19].replace("T", " ")
+        st.markdown(
+            f'<div style="background:{_SURF2};border:1px solid {_BORDER};'
+            f'border-radius:10px;padding:12px 18px;margin-bottom:16px;'
+            f'display:flex;align-items:center;gap:10px">'
+            f'<span style="color:{_TEXT3};font-size:11px">●</span>'
+            f'<span style="font-size:12px;color:{_TEXT3}">Watch idle — last run {_ts_str} UTC · '
+            f'run <code>./scripts/watch_all.sh</code> to resume</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f'<div style="background:{_SURF2};border:1px solid {_BORDER};'
+            f'border-radius:10px;padding:12px 18px;margin-bottom:16px;'
+            f'display:flex;align-items:center;gap:10px">'
+            f'<span style="color:{_TEXT3};font-size:11px">○</span>'
+            f'<span style="font-size:12px;color:{_TEXT3}">Watch never started for this stream — '
+            f'run <code>streamforge watch {stream_name}</code></span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Open incidents panel ───────────────────────────────────────────────────
+    open_incidents = load_open_incidents(stream_name)
+    if open_incidents:
+        highest_tier = max(inc.get("tier", 1) for inc in open_incidents)
+        banner_color = _RED if highest_tier >= 3 else _ORANGE
+        rows_html = ""
+        for inc in open_incidents:
+            tc = _RED if inc.get("tier", 1) >= 3 else _ORANGE if inc.get("tier", 1) == 2 else _GREEN
+            rows_html += (
+                f'<div style="display:flex;align-items:center;gap:10px;padding:6px 0;'
+                f'border-bottom:1px solid {_BORDER}">'
+                f'<span style="font-size:10px;font-weight:700;color:{tc};background:{tc}22;'
+                f'padding:1px 7px;border-radius:980px;white-space:nowrap">T{inc.get("tier",1)}</span>'
+                f'<code style="font-size:12px;color:{_TEXT};flex:1">{inc.get("field_path","")}</code>'
+                f'<span style="font-size:11px;color:{_TEXT2}">{inc.get("drift_type","").replace("_"," ")}</span>'
+                f'<span style="font-size:11px;color:{_TEXT3};white-space:nowrap">'
+                f'{inc.get("occurrences",1)}× since {inc.get("first_detected","")[:10]}</span>'
+                f'</div>'
+            )
+        st.markdown(
+            f'<div style="background:{banner_color}11;border:1px solid {banner_color}44;'
+            f'border-radius:10px;padding:14px 18px;margin-bottom:16px">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+            f'<span style="color:{banner_color};font-size:13px">⚠</span>'
+            f'<span style="font-size:13px;font-weight:700;color:{banner_color}">'
+            f'{len(open_incidents)} Open Incident(s)</span>'
+            f'<span style="font-size:11px;color:{_TEXT3}">'
+            f'Run <code>streamforge accept {stream_name}</code> to update schema.yaml '
+            f'and stop re-detection · or <code>streamforge suppress … --days 7</code></span>'
+            f'</div>'
+            f'{rows_html}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
     tab_schema, tab_sub, tab_pii, tab_drift, tab_policy = st.tabs([
@@ -1595,8 +1839,10 @@ def render_stream_detail(stream_name: str):
                 )
 
             # ── Unified drift timeline table ───────────────────────────────────
-            tbody_html = ""
-            for i, (fname, content) in enumerate(drift_reports):
+            # Collapse consecutive reports that have the same drift fingerprint
+            # (same set of field_path + drift_type) into a single row group.
+            parsed_reports: list[tuple[str, str, list[dict]]] = []  # (fname, date_str, rows)
+            for fname, content in drift_reports:
                 rows = _parse_drift_report_rows(content)
                 if not rows:
                     continue
@@ -1605,12 +1851,33 @@ def render_stream_detail(stream_name: str):
                     date_str = ts.strftime("%b %d, %Y  %H:%M")
                 except Exception:
                     date_str = fname.replace(".md", "")
+                parsed_reports.append((fname, date_str, rows))
+
+            # Group consecutive entries with identical fingerprints
+            grouped: list[tuple[str, list[dict], int]] = []  # (date_str, rows, count)
+            for _fname, date_str, rows in parsed_reports:
+                sig = frozenset((r.get("path", ""), r.get("drift_type", "")) for r in rows)
+                if grouped and frozenset(
+                    (r.get("path", ""), r.get("drift_type", "")) for r in grouped[-1][1]
+                ) == sig:
+                    grouped[-1] = (grouped[-1][0], grouped[-1][1], grouped[-1][2] + 1)
+                else:
+                    grouped.append((date_str, rows, 1))
+
+            tbody_html = ""
+            for i, (date_str, rows, count) in enumerate(grouped):
                 highest = max((r["tier"] or 0 for r in rows), default=0)
                 hc = _RED if highest == 3 else _ORANGE if highest == 2 else _GREEN
                 badge = "CRITICAL" if highest == 3 else "BREAKING" if highest == 2 else "INFO"
                 latest_tag = (
                     f'<span style="margin-left:8px;font-size:10px;color:{_TEXT3}">latest</span>'
                     if i == 0 else ""
+                )
+                persist_tag = (
+                    f'<span style="margin-left:8px;font-size:10px;color:{_TEXT3};'
+                    f'background:#ffffff10;padding:1px 6px;border-radius:6px">'
+                    f'persisted {count} cycles</span>'
+                    if count > 1 else ""
                 )
                 tbody_html += (
                     f'<tr><td colspan="6" style="padding:10px 14px 6px;background:{_SURF3};'
@@ -1619,7 +1886,7 @@ def render_stream_detail(stream_name: str):
                     f'<span style="margin-left:10px;background:{hc}22;color:{hc};'
                     f'border:1px solid {hc}44;padding:1px 8px;border-radius:980px;'
                     f'font-size:10px;font-weight:700;letter-spacing:0.05em">{badge}</span>'
-                    f'{latest_tag}</td></tr>'
+                    f'{latest_tag}{persist_tag}</td></tr>'
                 )
                 for row in rows:
                     tier = row.get("tier") or 0

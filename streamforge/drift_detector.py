@@ -526,6 +526,28 @@ def _load_new_events(
 # P1-B — Window checkpoint (restart / failover recovery)
 # ---------------------------------------------------------------------------
 
+def _write_poll_state(schema_dir: Path, sampled: int, window_size: int, new_events: int) -> None:
+    """
+    Write a small JSON file after every watch poll so the UI can show
+    accurate last-polled time and sample counts.
+
+    File: <schema_dir>/.watch_state/last_polled.json
+    Contents: {ts, sampled, window_size, new_events}
+    """
+    try:
+        state_dir = schema_dir / ".watch_state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        state = {
+            "ts": datetime.now(UTC).isoformat(),
+            "sampled": sampled,
+            "window_size": window_size,
+            "new_events": new_events,
+        }
+        (state_dir / "last_polled.json").write_text(_json.dumps(state))
+    except OSError as e:
+        logger.warning("Could not write poll state: %s", e)
+
+
 def _save_checkpoint(window: EventWindow, checkpoint_path: Path) -> None:
     """
     Persist the rolling window contents to disk as NDJSON.
@@ -913,8 +935,24 @@ def watch_stream(
         f"window={window_capacity} events"
     )
 
+    from .models import DriftIncident, DriftIncidentStatus
+    from .schema_writer import load_drift_state, save_drift_state
+
     window = EventWindow(capacity=window_capacity)
     file_line_counts: dict[str, int] = {}
+    # Tracks drift fingerprints already reported this session.
+    # A fingerprint is (cluster_id_or_none, field_path, drift_type).
+    # We only write a new report when a fingerprint is *newly* detected;
+    # re-detecting the same drift in the next poll is silently suppressed.
+    # Fingerprints are cleared when the drift stops being detected.
+    # On startup we seed from any open incidents in drift_state.yaml so
+    # restarting watch doesn't re-fire incidents that were already reported.
+    state = load_drift_state(schema_dir)
+    active_drift_sigs: set[tuple[str | None, str, str]] = {
+        (inc.cluster_id, inc.field_path, inc.drift_type)
+        for inc in state.incidents
+        if inc.status == DriftIncidentStatus.OPEN
+    }
 
     # Fix 2 — restore window from checkpoint if available (restart recovery)
     checkpoint_events = _load_checkpoint(checkpoint_path)
@@ -957,30 +995,118 @@ def watch_stream(
 
             sample = window.sample(sample_size)
 
+            all_detected: list[FieldDrift] = []
             if multi_schema:
-                # P1-A: run per-cluster drift detection
                 reports = detect_drift_multi_schema(profile, sample, stream_name)
-                if not reports:
-                    print(
-                        f"[{now_str}] ✓ {stream_name} — "
-                        f"{len(sample)} sampled / {len(window)} in window — all clusters clean"
-                    )
-                else:
-                    for report in reports:
-                        _print_drift_report(report, drift_output_dir, webhook_url)
+                for report in reports:
+                    all_detected.extend(report.drifts)
             else:
-                # Single-schema path — unchanged behaviour
-                report = detect_drift(baseline, sample, stream_name)
-                if report is None:
-                    print(
-                        f"[{now_str}] ✓ {stream_name} — "
-                        f"{len(sample)} sampled / {len(window)} in window — schema clean"
-                    )
+                single_report = detect_drift(baseline, sample, stream_name)
+                if single_report:
+                    all_detected = single_report.drifts
+
+            current_sigs: set[tuple[str | None, str, str]] = {
+                (d.cluster_id, d.field_path, d.drift_type) for d in all_detected
+            }
+
+            # Reload drift state — may have been updated by 'streamforge accept' externally
+            state = load_drift_state(schema_dir)
+            now_iso = datetime.now(UTC).isoformat()
+
+            # Determine which signatures are actively suppressed or already accepted
+            non_actionable: set[tuple[str | None, str, str]] = {
+                (inc.cluster_id, inc.field_path, inc.drift_type)
+                for inc in state.incidents
+                if inc.status in (DriftIncidentStatus.ACCEPTED, DriftIncidentStatus.SUPPRESSED)
+            }
+
+            new_sigs = current_sigs - active_drift_sigs - non_actionable
+            cleared_sigs = active_drift_sigs - current_sigs
+
+            # Create incidents for newly detected drifts
+            new_incidents: list[DriftIncident] = []
+            new_drifts_to_report: list[FieldDrift] = []
+            for d in all_detected:
+                sig = (d.cluster_id, d.field_path, d.drift_type)
+                if sig not in new_sigs:
+                    continue
+                inc_id = (
+                    f"drift-{datetime.now().strftime('%Y-%m-%d-%H%M')}"
+                    f"-{d.field_path.replace('.', '_')}"
+                    f"{('-' + d.cluster_id) if d.cluster_id else ''}"
+                )
+                new_incidents.append(DriftIncident(
+                    id=inc_id,
+                    field_path=d.field_path,
+                    cluster_id=d.cluster_id,
+                    drift_type=d.drift_type,
+                    tier=d.tier.value,
+                    first_detected=now_iso,
+                    last_seen=now_iso,
+                    occurrences=1,
+                    status=DriftIncidentStatus.OPEN,
+                ))
+                new_drifts_to_report.append(d)
+
+            # Update occurrences + last_seen for ongoing open incidents
+            updated_incidents = []
+            for inc in state.incidents:
+                sig = (inc.cluster_id, inc.field_path, inc.drift_type)
+                if inc.status == DriftIncidentStatus.OPEN and sig in current_sigs:
+                    inc = inc.model_copy(update={"last_seen": now_iso, "occurrences": inc.occurrences + 1})
+                elif inc.status == DriftIncidentStatus.OPEN and sig in cleared_sigs:
+                    inc = inc.model_copy(update={
+                        "status": DriftIncidentStatus.RESOLVED,
+                        "resolved_at": now_iso,
+                        "resolution_note": "Drift cleared — no longer detected in sample",
+                    })
+                updated_incidents.append(inc)
+            updated_incidents.extend(new_incidents)
+            save_drift_state(schema_dir, state.model_copy(update={"incidents": updated_incidents}))
+
+            # Print to console and write report file for new drifts only
+            if new_drifts_to_report:
+                if multi_schema:
+                    # Re-group new drifts by their original report
+                    for report in reports:  # type: ignore[possibly-undefined]
+                        relevant = [d for d in new_drifts_to_report if d in report.drifts]
+                        if relevant:
+                            filtered = report.model_copy(update={
+                                "drifts": relevant,
+                                "highest_tier": max(d.tier for d in relevant),
+                            })
+                            _print_drift_report(filtered, drift_output_dir, webhook_url)
                 else:
-                    _print_drift_report(report, drift_output_dir, webhook_url)
+                    assert single_report is not None  # type: ignore[possibly-undefined]
+                    filtered = single_report.model_copy(update={
+                        "drifts": new_drifts_to_report,
+                        "highest_tier": max(d.tier for d in new_drifts_to_report),
+                    })
+                    _print_drift_report(filtered, drift_output_dir, webhook_url)
+            elif current_sigs and not new_sigs:
+                ongoing_count = len([
+                    inc for inc in updated_incidents
+                    if inc.status == DriftIncidentStatus.OPEN
+                ])
+                print(
+                    f"[{now_str}] ~ {stream_name} — "
+                    f"{len(sample)} sampled / {len(window)} in window — "
+                    f"{ongoing_count} open incident(s) — run `streamforge status` or `streamforge accept`"
+                )
+            else:
+                label = "all clusters clean" if multi_schema else "schema clean"
+                print(
+                    f"[{now_str}] ✓ {stream_name} — "
+                    f"{len(sample)} sampled / {len(window)} in window — {label}"
+                )
+
+            active_drift_sigs = current_sigs - non_actionable
 
             # Fix 2 — save window checkpoint after each successful poll
             _save_checkpoint(window, checkpoint_path)
+
+            # Write last-polled state for the UI (last event timestamp + sample counts)
+            _write_poll_state(schema_dir, len(sample), len(window), len(new_events))
 
             time.sleep(poll_interval_seconds)
 

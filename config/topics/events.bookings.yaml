@@ -1,0 +1,20 @@
+# StreamForge — Topic Config: events.bookings
+# =============================================
+# Booking events contain PII — flag any new PII fields immediately.
+
+watch:
+  interval_seconds: 60
+  sample_size: 250
+  alert_tier: 2
+  actions:
+    tier_1: log
+    tier_2: alert
+    tier_3: block
+
+drift:
+  type_change_threshold: 0.03
+  presence_drop_threshold: 0.12
+
+notifications:
+  pagerduty:
+    escalate_on_tier: 3

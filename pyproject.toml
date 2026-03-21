@@ -85,6 +85,7 @@ select = [
 ignore = [
     "E501",  # line-length — handled by formatter
     "B008",  # do not perform function calls in default arguments (Typer pattern)
+    "B904",  # raise-without-from-inside-except — CLI error paths intentionally don't chain
     "SIM108", # ternary operator — sometimes less readable
 ]
 

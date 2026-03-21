@@ -1,0 +1,159 @@
+# StreamForge Stream Profile — events.flights
+# Profiled: 2026-03-19T16:04:59.671314+00:00
+# Events sampled: 150
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 1
+# Discovery method: single
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: events.flights
+profiled_at: '2026-03-19T16:04:59.671314+00:00'
+total_events_sampled: 150
+parse_success_rate: 1.0
+discovery_method: single
+routing_field: null
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: struct:ce4f0e0f
+  detection_method: single
+  event_count: 150
+  sample_rate: 1.0
+  inference_confidence: 0.6
+  top_keys:
+  - icao24
+  - callsign
+  - origin_country
+  - time_position
+  - last_contact
+  - longitude
+  - latitude
+  - baro_altitude
+  - on_ground
+  - velocity
+  - true_track
+  - vertical_rate
+  - sensors
+  - geo_altitude
+  - squawk
+  fields:
+  - path: icao24
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: callsign
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: origin_country
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: time_position
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: last_contact
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: longitude
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: latitude
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: baro_altitude
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: on_ground
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: velocity
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: true_track
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: vertical_rate
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensors
+    type: 'null'
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: geo_altitude
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: squawk
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: spi
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: position_source
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)

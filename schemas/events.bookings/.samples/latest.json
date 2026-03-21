@@ -1,0 +1,4639 @@
+[
+  {
+    "booking_ref": "BK114817",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "SYD",
+    "destination": "NRT",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 4324.29,
+    "currency": "EUR",
+    "created_at": "2026-03-19T14:57:17.623374+00:00",
+    "_ingested_at": "2026-03-19T14:57:17.623403+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1305001",
+        "passport_number": "D7148056",
+        "frequent_flyer_number": "FF214426"
+      }
+    ],
+    "contact_email": "traveller556@example.com",
+    "seat_preference": "middle",
+    "special_meal": "VGML"
+  },
+  {
+    "booking_ref": "BK906498",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "CDG",
+    "destination": "SIN",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 1345.51,
+    "currency": "SGD",
+    "created_at": "2026-03-19T14:57:19.743105+00:00",
+    "_ingested_at": "2026-03-19T14:57:19.743129+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK3455706",
+        "passport_number": "I7539370"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK9472806",
+        "date_of_birth": "1995-01-20"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK124216",
+    "event_type": "booking.updated",
+    "airline": "UA",
+    "origin": "JFK",
+    "destination": "ORD",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 1498.55,
+    "currency": "AUD",
+    "created_at": "2026-03-19T14:57:20.668597+00:00",
+    "_ingested_at": "2026-03-19T14:57:20.668631+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK2612011",
+        "passport_number": "H2509023",
+        "date_of_birth": "1985-05-23"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK1068203",
+        "passport_number": "O9085494"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK8679050",
+        "passport_number": "M2031119",
+        "frequent_flyer_number": "FF730875"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK991639",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "LAX",
+    "destination": "LHR",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 1178.83,
+    "currency": "AUD",
+    "created_at": "2026-03-19T14:57:21.860922+00:00",
+    "_ingested_at": "2026-03-19T14:57:21.860948+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK2197935",
+        "passport_number": "S4303012",
+        "date_of_birth": "1986-02-08",
+        "frequent_flyer_number": "FF797438"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK9182173",
+        "passport_number": "P3246429",
+        "frequent_flyer_number": "FF780447"
+      }
+    ],
+    "contact_email": "traveller825@example.com",
+    "baggage_allowance_kg": 32,
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK326266",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "SYD",
+    "destination": "CDG",
+    "cabin": "first",
+    "status": "pending",
+    "total_price": 1325.35,
+    "currency": "JPY",
+    "created_at": "2026-03-19T14:57:23.158845+00:00",
+    "_ingested_at": "2026-03-19T14:57:23.158859+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK1955852",
+        "passport_number": "N6767822"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK7111515",
+        "passport_number": "O8075331"
+      }
+    ],
+    "contact_email": "traveller475@example.com",
+    "contact_phone": "+19388488446",
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK693592",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "DXB",
+    "destination": "LHR",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 4137.23,
+    "currency": "SGD",
+    "created_at": "2026-03-19T14:58:34.335344+00:00",
+    "_ingested_at": "2026-03-19T14:58:34.335350+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK5788868",
+        "frequent_flyer_number": "FF373793"
+      }
+    ],
+    "contact_email": "traveller303@example.com",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK352215",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "FRA",
+    "destination": "NRT",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 3611.46,
+    "currency": "GBP",
+    "created_at": "2026-03-19T14:58:45.483969+00:00",
+    "_ingested_at": "2026-03-19T14:58:45.483974+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8405476",
+        "passport_number": "O9726432",
+        "frequent_flyer_number": "FF111240"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK3300262",
+        "passport_number": "C9554405",
+        "frequent_flyer_number": "FF294367"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK5135633",
+        "passport_number": "U4624088",
+        "date_of_birth": "1968-09-01",
+        "frequent_flyer_number": "FF659097"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK9950533",
+        "date_of_birth": "1961-05-17",
+        "frequent_flyer_number": "FF555089"
+      }
+    ],
+    "contact_phone": "+13911120522",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK892496",
+    "event_type": "booking.updated",
+    "airline": "EK",
+    "origin": "LAX",
+    "destination": "CDG",
+    "cabin": "economy",
+    "status": "pending",
+    "total_price": 661.67,
+    "currency": "AUD",
+    "created_at": "2026-03-19T14:58:46.394518+00:00",
+    "_ingested_at": "2026-03-19T14:58:46.394540+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK5899056",
+        "passport_number": "I9508242",
+        "date_of_birth": "1976-08-23",
+        "frequent_flyer_number": "FF369250"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK3004294",
+        "passport_number": "A1694754"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK4792182",
+        "date_of_birth": "1997-09-12",
+        "frequent_flyer_number": "FF837871"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8770751",
+        "passport_number": "Q1202147",
+        "frequent_flyer_number": "FF159412"
+      }
+    ],
+    "contact_email": "traveller262@example.com",
+    "contact_phone": "+14466876522"
+  },
+  {
+    "booking_ref": "BK663390",
+    "event_type": "booking.updated",
+    "airline": "DL",
+    "origin": "SYD",
+    "destination": "LAX",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 763.84,
+    "currency": "GBP",
+    "created_at": "2026-03-19T14:58:48.681391+00:00",
+    "_ingested_at": "2026-03-19T14:58:48.681397+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK9796732",
+        "passport_number": "Q5031925"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK2050908",
+        "passport_number": "L1754088"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK2594147",
+        "passport_number": "L3261147",
+        "date_of_birth": "1977-02-04",
+        "frequent_flyer_number": "FF492160"
+      }
+    ],
+    "contact_email": "traveller521@example.com"
+  },
+  {
+    "booking_ref": "BK532188",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "DXB",
+    "destination": "NRT",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 1041.01,
+    "currency": "USD",
+    "created_at": "2026-03-19T14:58:52.686407+00:00",
+    "_ingested_at": "2026-03-19T14:58:52.686432+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK2133309",
+        "passport_number": "X1635339",
+        "frequent_flyer_number": "FF347528"
+      }
+    ],
+    "contact_phone": "+13338101469",
+    "seat_preference": "middle",
+    "special_meal": "KSML"
+  },
+  {
+    "booking_ref": "BK859448",
+    "event_type": "booking.cancelled",
+    "airline": "BA",
+    "origin": "SIN",
+    "destination": "ORD",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 2147.32,
+    "currency": "USD",
+    "created_at": "2026-03-19T14:58:53.592897+00:00",
+    "_ingested_at": "2026-03-19T14:58:53.592922+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK9151947",
+        "passport_number": "P3175237"
+      }
+    ],
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK397771",
+    "event_type": "booking.cancelled",
+    "airline": "AF",
+    "origin": "SYD",
+    "destination": "ORD",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 505.42,
+    "currency": "EUR",
+    "created_at": "2026-03-19T14:58:59.343434+00:00",
+    "_ingested_at": "2026-03-19T14:58:59.343466+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK6655164",
+        "passport_number": "V7307175"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK5294390",
+        "passport_number": "N6724384",
+        "frequent_flyer_number": "FF114885"
+      }
+    ],
+    "contact_email": "traveller340@example.com",
+    "contact_phone": "+14458861315",
+    "seat_preference": "window"
+  },
+  {
+    "booking_ref": "BK617983",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "SYD",
+    "destination": "LHR",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 2686.83,
+    "currency": "GBP",
+    "created_at": "2026-03-19T14:59:00.370310+00:00",
+    "_ingested_at": "2026-03-19T14:59:00.370315+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK3299373",
+        "passport_number": "L6833161",
+        "frequent_flyer_number": "FF601856"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK9707951",
+        "frequent_flyer_number": "FF510454"
+      }
+    ],
+    "contact_phone": "+18380683076",
+    "baggage_allowance_kg": 25
+  },
+  {
+    "booking_ref": "BK260015",
+    "event_type": "booking.cancelled",
+    "airline": "DL",
+    "origin": "LHR",
+    "destination": "ORD",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 631.34,
+    "currency": "USD",
+    "created_at": "2026-03-19T14:59:06.612659+00:00",
+    "_ingested_at": "2026-03-19T14:59:06.612673+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK7452270",
+        "frequent_flyer_number": "FF138892"
+      }
+    ],
+    "contact_email": "traveller807@example.com",
+    "contact_phone": "+14579361102"
+  },
+  {
+    "booking_ref": "BK673317",
+    "event_type": "booking.updated",
+    "airline": "QF",
+    "origin": "CDG",
+    "destination": "LAX",
+    "cabin": "economy",
+    "status": "pending",
+    "total_price": 3948.12,
+    "currency": "JPY",
+    "created_at": "2026-03-19T14:59:07.632174+00:00",
+    "_ingested_at": "2026-03-19T14:59:07.632189+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK3212062",
+        "passport_number": "O4057815",
+        "date_of_birth": "1972-01-24"
+      }
+    ],
+    "baggage_allowance_kg": 23,
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK736480",
+    "event_type": "booking.created",
+    "airline": "DL",
+    "origin": "SYD",
+    "destination": "SIN",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 1751.98,
+    "currency": "EUR",
+    "created_at": "2026-03-19T14:59:08.740380+00:00",
+    "_ingested_at": "2026-03-19T14:59:08.740392+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8342927",
+        "passport_number": "A7031911",
+        "frequent_flyer_number": "FF104202"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK6609649",
+        "passport_number": "H5983398",
+        "frequent_flyer_number": "FF438590"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8039758",
+        "date_of_birth": "1977-04-04"
+      }
+    ],
+    "contact_email": "traveller538@example.com",
+    "contact_phone": "+17499708714"
+  },
+  {
+    "booking_ref": "BK144205",
+    "event_type": "booking.created",
+    "airline": "DL",
+    "origin": "NRT",
+    "destination": "CDG",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 2191.08,
+    "currency": "EUR",
+    "created_at": "2026-03-19T14:59:10.929545+00:00",
+    "_ingested_at": "2026-03-19T14:59:10.929551+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK2625655",
+        "passport_number": "S9838855",
+        "frequent_flyer_number": "FF886002"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK9859049",
+        "passport_number": "V8590737",
+        "frequent_flyer_number": "FF604219"
+      }
+    ],
+    "contact_email": "traveller680@example.com",
+    "contact_phone": "+19515403691"
+  },
+  {
+    "booking_ref": "BK262635",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "ORD",
+    "destination": "DXB",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 4166.53,
+    "currency": "AUD",
+    "created_at": "2026-03-19T14:59:11.968128+00:00",
+    "_ingested_at": "2026-03-19T14:59:11.968137+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK3468047",
+        "passport_number": "K4483751",
+        "date_of_birth": "1985-08-07",
+        "frequent_flyer_number": "FF722980"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK2019181",
+        "date_of_birth": "1971-11-26",
+        "frequent_flyer_number": "FF270037"
+      }
+    ],
+    "contact_email": "traveller812@example.com"
+  },
+  {
+    "booking_ref": "BK919885",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "LAX",
+    "destination": "DXB",
+    "cabin": "first",
+    "status": "checked_in",
+    "total_price": 3478.32,
+    "currency": "USD",
+    "created_at": "2026-03-19T14:59:15.232985+00:00",
+    "_ingested_at": "2026-03-19T14:59:15.232995+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK6042259",
+        "passport_number": "O9187830",
+        "date_of_birth": "1971-03-08",
+        "frequent_flyer_number": "FF613001"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK5026318"
+      }
+    ],
+    "contact_phone": "+17206133104",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK873968",
+    "event_type": "booking.updated",
+    "airline": "DL",
+    "origin": "LAX",
+    "destination": "SIN",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 1198.67,
+    "currency": "AUD",
+    "created_at": "2026-03-19T14:59:18.827567+00:00",
+    "_ingested_at": "2026-03-19T14:59:18.827573+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4373353",
+        "frequent_flyer_number": "FF103920"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1233438",
+        "passport_number": "P8982201",
+        "date_of_birth": "1978-04-07"
+      }
+    ],
+    "baggage_allowance_kg": 25,
+    "seat_preference": "window"
+  },
+  {
+    "booking_ref": "BK920715",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "CDG",
+    "destination": "LHR",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 1118.35,
+    "currency": "USD",
+    "created_at": "2026-03-19T14:59:19.887163+00:00",
+    "_ingested_at": "2026-03-19T14:59:19.887177+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK2307499",
+        "passport_number": "H1304670",
+        "frequent_flyer_number": "FF508234"
+      }
+    ],
+    "contact_phone": "+13645575258",
+    "baggage_allowance_kg": 20
+  },
+  {
+    "booking_ref": "BK282178",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "FRA",
+    "destination": "SIN",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 345.6,
+    "currency": "GBP",
+    "created_at": "2026-03-19T14:59:22.008155+00:00",
+    "_ingested_at": "2026-03-19T14:59:22.008164+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK6762277",
+        "frequent_flyer_number": "FF340764"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8156976",
+        "passport_number": "G6285826",
+        "date_of_birth": "1996-09-15"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK9233634",
+        "date_of_birth": "1974-11-10",
+        "frequent_flyer_number": "FF239365"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK7063514",
+        "date_of_birth": "1993-01-04",
+        "frequent_flyer_number": "FF532338"
+      }
+    ],
+    "contact_email": "traveller941@example.com",
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK417948",
+    "event_type": "booking.updated",
+    "airline": "BA",
+    "origin": "JFK",
+    "destination": "SIN",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 2401.9,
+    "currency": "JPY",
+    "created_at": "2026-03-19T14:59:27.823745+00:00",
+    "_ingested_at": "2026-03-19T14:59:27.823752+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5654065",
+        "passport_number": "A5168091",
+        "date_of_birth": "1971-02-06",
+        "frequent_flyer_number": "FF824711"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4449765",
+        "passport_number": "B7394902",
+        "frequent_flyer_number": "FF299130"
+      }
+    ],
+    "contact_phone": "+19441596581",
+    "baggage_allowance_kg": 23,
+    "special_meal": null
+  },
+  {
+    "booking_ref": "BK865269",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "DXB",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "pending",
+    "total_price": 2488.81,
+    "currency": "AUD",
+    "created_at": "2026-03-19T14:59:29.954485+00:00",
+    "_ingested_at": "2026-03-19T14:59:29.954491+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK3144441",
+        "frequent_flyer_number": "FF114403"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8395571",
+        "passport_number": "J3146995",
+        "date_of_birth": "1982-06-07",
+        "frequent_flyer_number": "FF310942"
+      }
+    ],
+    "contact_phone": "+15081140668",
+    "baggage_allowance_kg": 32,
+    "special_meal": "VGML"
+  },
+  {
+    "booking_ref": "BK554956",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "SYD",
+    "destination": "LAX",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 737.05,
+    "currency": "JPY",
+    "created_at": "2026-03-19T14:59:31.135140+00:00",
+    "_ingested_at": "2026-03-19T14:59:31.135152+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK5596193",
+        "passport_number": "D6725704",
+        "date_of_birth": "1964-10-21"
+      }
+    ],
+    "contact_email": "traveller891@example.com",
+    "seat_preference": "middle",
+    "special_meal": null
+  },
+  {
+    "booking_ref": "BK882821",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "LAX",
+    "destination": "SIN",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 1342.83,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:01:32.497109+00:00",
+    "_ingested_at": "2026-03-19T15:01:32.497121+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK7220380",
+        "passport_number": "R6446945"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK3641439",
+        "passport_number": "C3023509"
+      }
+    ],
+    "contact_email": "traveller389@example.com",
+    "contact_phone": "+15444189727"
+  },
+  {
+    "booking_ref": "BK519346",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "ORD",
+    "destination": "JFK",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 2650.62,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:01:38.982388+00:00",
+    "_ingested_at": "2026-03-19T15:01:38.982405+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK3598177",
+        "passport_number": "M7522144",
+        "date_of_birth": "2000-02-05",
+        "frequent_flyer_number": "FF851789"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4642663",
+        "passport_number": "O9095649",
+        "date_of_birth": "1987-07-02",
+        "frequent_flyer_number": "FF936328"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK4393643",
+        "frequent_flyer_number": "FF666545"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK9711866",
+        "date_of_birth": "1963-08-22"
+      }
+    ],
+    "baggage_allowance_kg": 23
+  },
+  {
+    "booking_ref": "BK989026",
+    "event_type": "booking.created",
+    "airline": "DL",
+    "origin": "CDG",
+    "destination": "DXB",
+    "cabin": "business",
+    "status": "cancelled",
+    "total_price": 1379.15,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:01:44.759784+00:00",
+    "_ingested_at": "2026-03-19T15:01:44.759814+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8458824",
+        "passport_number": "M3731223",
+        "date_of_birth": "1965-01-08",
+        "frequent_flyer_number": "FF301577"
+      }
+    ],
+    "contact_email": "traveller121@example.com",
+    "baggage_allowance_kg": 20,
+    "special_meal": null
+  },
+  {
+    "booking_ref": "BK256099",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "FRA",
+    "destination": "CDG",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 3299.14,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:01:47.002667+00:00",
+    "_ingested_at": "2026-03-19T15:01:47.002674+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK7548658"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8047732",
+        "date_of_birth": "1963-08-02",
+        "frequent_flyer_number": "FF792070"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK437551",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "LHR",
+    "destination": "LAX",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 819.62,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:01:49.529377+00:00",
+    "_ingested_at": "2026-03-19T15:01:49.529404+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK9933494"
+      }
+    ],
+    "contact_email": "traveller777@example.com"
+  },
+  {
+    "booking_ref": "BK429362",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "JFK",
+    "destination": "CDG",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 187.61,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:01:50.489156+00:00",
+    "_ingested_at": "2026-03-19T15:01:50.489183+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8419072",
+        "passport_number": "M7290252",
+        "date_of_birth": "1972-07-24",
+        "frequent_flyer_number": "FF346848"
+      }
+    ],
+    "contact_phone": "+15461734166"
+  },
+  {
+    "booking_ref": "BK714856",
+    "event_type": "booking.updated",
+    "airline": "QF",
+    "origin": "SIN",
+    "destination": "NRT",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 3346.5,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:01:53.980073+00:00",
+    "_ingested_at": "2026-03-19T15:01:53.980115+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4099176",
+        "passport_number": "Y7504849",
+        "date_of_birth": "1992-09-06",
+        "frequent_flyer_number": "FF466495"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK4023787",
+        "date_of_birth": "1978-09-06",
+        "frequent_flyer_number": "FF453596"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK3282324",
+        "passport_number": "B9637259"
+      }
+    ],
+    "contact_email": "traveller821@example.com",
+    "contact_phone": "+13565483144",
+    "baggage_allowance_kg": 25,
+    "seat_preference": "middle"
+  },
+  {
+    "booking_ref": "BK890007",
+    "event_type": "booking.cancelled",
+    "airline": "SQ",
+    "origin": "LAX",
+    "destination": "NRT",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 1329.37,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:01:57.579150+00:00",
+    "_ingested_at": "2026-03-19T15:01:57.579168+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK4674763",
+        "passport_number": "K2409169",
+        "date_of_birth": "1963-08-02",
+        "frequent_flyer_number": "FF813944"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK9851873",
+        "passport_number": "V3434680",
+        "date_of_birth": "1963-02-07",
+        "frequent_flyer_number": "FF447878"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8614330",
+        "passport_number": "O1828692",
+        "date_of_birth": "2000-02-20",
+        "frequent_flyer_number": "FF349500"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK2572157",
+        "passport_number": "S1044844"
+      }
+    ],
+    "contact_phone": "+18900680137"
+  },
+  {
+    "booking_ref": "BK950223",
+    "event_type": "booking.updated",
+    "airline": "DL",
+    "origin": "LAX",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "pending",
+    "total_price": 3904.33,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:02:05.569882+00:00",
+    "_ingested_at": "2026-03-19T15:02:05.569915+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK4511640",
+        "passport_number": "L6264640"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK9616394"
+      }
+    ],
+    "contact_email": "traveller592@example.com",
+    "seat_preference": "middle"
+  },
+  {
+    "booking_ref": "BK168385",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "LAX",
+    "destination": "LHR",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 3260.13,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:02:12.256380+00:00",
+    "_ingested_at": "2026-03-19T15:02:12.256414+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8577823",
+        "passport_number": "G7457337",
+        "date_of_birth": "1985-12-12",
+        "frequent_flyer_number": "FF276344"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK2473383",
+        "passport_number": "F9098901",
+        "frequent_flyer_number": "FF364942"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK9119569",
+        "passport_number": "Q8904821",
+        "date_of_birth": "1982-07-02"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK2104083",
+        "passport_number": "I2812244"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK485489",
+    "event_type": "booking.created",
+    "airline": "QF",
+    "origin": "ORD",
+    "destination": "JFK",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 3035.97,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:02:13.463149+00:00",
+    "_ingested_at": "2026-03-19T15:02:13.463177+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK8299435",
+        "frequent_flyer_number": "FF267996"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK8210197",
+        "passport_number": "Q8768000",
+        "date_of_birth": "1988-05-18",
+        "frequent_flyer_number": "FF833594"
+      }
+    ],
+    "special_meal": null
+  },
+  {
+    "booking_ref": "BK239421",
+    "event_type": "booking.created",
+    "airline": "LH",
+    "origin": "LHR",
+    "destination": "FRA",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 4100.57,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:02:14.671447+00:00",
+    "_ingested_at": "2026-03-19T15:02:14.671481+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK8136314",
+        "passport_number": "A9719706",
+        "date_of_birth": "1968-09-25",
+        "frequent_flyer_number": "FF285260"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK4640899",
+        "passport_number": "W4776634",
+        "frequent_flyer_number": "FF899798"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK811296",
+    "event_type": "booking.updated",
+    "airline": "DL",
+    "origin": "SIN",
+    "destination": "CDG",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 2602.53,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:02:17.149807+00:00",
+    "_ingested_at": "2026-03-19T15:02:17.149834+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK9359106",
+        "passport_number": "C1226086",
+        "frequent_flyer_number": "FF895508"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK5701350",
+        "passport_number": "O9623404",
+        "date_of_birth": "1991-08-20",
+        "frequent_flyer_number": "FF987266"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK6637428",
+        "passport_number": "L7597146"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK4333333",
+        "date_of_birth": "1997-04-04",
+        "frequent_flyer_number": "FF643137"
+      }
+    ],
+    "special_meal": "DBML"
+  },
+  {
+    "booking_ref": "BK832548",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "ORD",
+    "destination": "SYD",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 4254.89,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:02:22.603911+00:00",
+    "_ingested_at": "2026-03-19T15:02:22.603948+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK5635935",
+        "passport_number": "P9498033",
+        "date_of_birth": "1983-05-09",
+        "frequent_flyer_number": "FF973246"
+      }
+    ],
+    "contact_email": "traveller372@example.com",
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK318047",
+    "event_type": "booking.updated",
+    "airline": "AF",
+    "origin": "LAX",
+    "destination": "ORD",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 666.27,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:02:24.518295+00:00",
+    "_ingested_at": "2026-03-19T15:02:24.518322+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3398204",
+        "passport_number": "X8401190",
+        "date_of_birth": "1980-01-06",
+        "frequent_flyer_number": "FF333718"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK5829800",
+        "passport_number": "C6470341",
+        "date_of_birth": "1983-12-07",
+        "frequent_flyer_number": "FF910718"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK9352869"
+      }
+    ],
+    "contact_phone": "+17977890155"
+  },
+  {
+    "booking_ref": "BK138016",
+    "event_type": "booking.cancelled",
+    "airline": "AF",
+    "origin": "LAX",
+    "destination": "LHR",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 4401.08,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:02:26.782498+00:00",
+    "_ingested_at": "2026-03-19T15:02:26.782527+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK4642109",
+        "frequent_flyer_number": "FF523448"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK3620427",
+        "passport_number": "Q1099592"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK3251131",
+        "passport_number": "G3439983"
+      }
+    ],
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK145736",
+    "event_type": "booking.updated",
+    "airline": "QF",
+    "origin": "SYD",
+    "destination": "JFK",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 1870.11,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:02:33.705444+00:00",
+    "_ingested_at": "2026-03-19T15:02:33.705476+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK1671403",
+        "date_of_birth": "1965-04-07"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK2566874",
+        "frequent_flyer_number": "FF615976"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK9690656",
+        "passport_number": "A2856939",
+        "date_of_birth": "1995-08-12"
+      }
+    ],
+    "contact_phone": "+13780538857"
+  },
+  {
+    "booking_ref": "BK980935",
+    "event_type": "booking.updated",
+    "airline": "DL",
+    "origin": "CDG",
+    "destination": "JFK",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 2182.37,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:02:34.899968+00:00",
+    "_ingested_at": "2026-03-19T15:02:34.899983+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK6279987",
+        "date_of_birth": "1987-10-22"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK5417029",
+        "passport_number": "D7434566",
+        "date_of_birth": "1999-01-25"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK8241275",
+        "passport_number": "L8284330",
+        "date_of_birth": "1975-10-19",
+        "frequent_flyer_number": "FF445697"
+      }
+    ],
+    "contact_email": "traveller489@example.com",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK200793",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "LAX",
+    "destination": "NRT",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 3748.22,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:02:35.953374+00:00",
+    "_ingested_at": "2026-03-19T15:02:35.953402+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8193084",
+        "passport_number": "J1127597"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK6875381",
+        "passport_number": "A8916319"
+      }
+    ],
+    "contact_email": "traveller899@example.com",
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK238975",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "DXB",
+    "destination": "JFK",
+    "cabin": "first",
+    "status": "pending",
+    "total_price": 443.91,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:02:36.890714+00:00",
+    "_ingested_at": "2026-03-19T15:02:36.890743+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK8905631",
+        "passport_number": "T6158276"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5840830",
+        "date_of_birth": "1964-10-08",
+        "frequent_flyer_number": "FF920379"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK7157655",
+        "passport_number": "N9880106",
+        "frequent_flyer_number": "FF578040"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3180172",
+        "passport_number": "X5713712",
+        "date_of_birth": "1997-03-05",
+        "frequent_flyer_number": "FF155845"
+      }
+    ],
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK691708",
+    "event_type": "booking.created",
+    "airline": "SQ",
+    "origin": "LAX",
+    "destination": "FRA",
+    "cabin": "first",
+    "status": "checked_in",
+    "total_price": 1721.81,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:02:39.154801+00:00",
+    "_ingested_at": "2026-03-19T15:02:39.154828+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1414771",
+        "passport_number": "H2193270",
+        "frequent_flyer_number": "FF915910"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK2650823",
+        "passport_number": "Y5978889",
+        "date_of_birth": "1980-05-09",
+        "frequent_flyer_number": "FF426483"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK3824100",
+        "frequent_flyer_number": "FF166041"
+      }
+    ],
+    "baggage_allowance_kg": 30
+  },
+  {
+    "booking_ref": "BK486606",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "FRA",
+    "destination": "JFK",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 593.39,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:02:40.388961+00:00",
+    "_ingested_at": "2026-03-19T15:02:40.388975+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8188639",
+        "passport_number": "X1912497"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK1543857",
+        "frequent_flyer_number": "FF897929"
+      }
+    ],
+    "baggage_allowance_kg": 30
+  },
+  {
+    "booking_ref": "BK271957",
+    "event_type": "booking.cancelled",
+    "airline": "BA",
+    "origin": "FRA",
+    "destination": "LHR",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 2020.4,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:02:47.041582+00:00",
+    "_ingested_at": "2026-03-19T15:02:47.041607+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK7879132",
+        "passport_number": "G3646102",
+        "date_of_birth": "1989-11-04"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK1643943",
+        "passport_number": "C6416543",
+        "date_of_birth": "1996-06-09"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3058962",
+        "passport_number": "G2203443",
+        "date_of_birth": "1996-12-07",
+        "frequent_flyer_number": "FF203184"
+      }
+    ],
+    "contact_email": "traveller530@example.com",
+    "baggage_allowance_kg": 20
+  },
+  {
+    "booking_ref": "BK345750",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "CDG",
+    "destination": "JFK",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 682.21,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:02:50.275482+00:00",
+    "_ingested_at": "2026-03-19T15:02:50.275504+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK9473780",
+        "passport_number": "J6830889",
+        "frequent_flyer_number": "FF840633"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK3820736",
+        "passport_number": "N6458782"
+      }
+    ],
+    "contact_email": "traveller824@example.com"
+  },
+  {
+    "booking_ref": "BK926601",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "SYD",
+    "destination": "LHR",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 835.18,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:02:51.371334+00:00",
+    "_ingested_at": "2026-03-19T15:02:51.371343+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK4352030",
+        "passport_number": "T7680058",
+        "frequent_flyer_number": "FF585752"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK3297581",
+        "frequent_flyer_number": "FF250154"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK9763776",
+        "date_of_birth": "1984-07-19",
+        "frequent_flyer_number": "FF216403"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK3835285",
+        "passport_number": "X9906465",
+        "frequent_flyer_number": "FF182336"
+      }
+    ],
+    "baggage_allowance_kg": 23
+  },
+  {
+    "booking_ref": "BK717857",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "FRA",
+    "destination": "LAX",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 492.51,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:02:53.351206+00:00",
+    "_ingested_at": "2026-03-19T15:02:53.351232+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5122285",
+        "passport_number": "Q6010555",
+        "date_of_birth": "2000-03-01",
+        "frequent_flyer_number": "FF555666"
+      }
+    ],
+    "contact_email": "traveller388@example.com",
+    "baggage_allowance_kg": 32,
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK575502",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "SYD",
+    "destination": "SIN",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 1608.62,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:02:57.684972+00:00",
+    "_ingested_at": "2026-03-19T15:02:57.684988+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK7108493",
+        "passport_number": "S9469067",
+        "frequent_flyer_number": "FF571231"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK1826793",
+        "frequent_flyer_number": "FF731948"
+      }
+    ],
+    "contact_email": "traveller810@example.com"
+  },
+  {
+    "booking_ref": "BK351629",
+    "event_type": "booking.cancelled",
+    "airline": "SQ",
+    "origin": "ORD",
+    "destination": "NRT",
+    "cabin": "first",
+    "status": "pending",
+    "total_price": 3812.61,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:03:00.198443+00:00",
+    "_ingested_at": "2026-03-19T15:03:00.198474+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK5891718",
+        "passport_number": "E3742709"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8656745"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK693226",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "LHR",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 801.94,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:03:04.670133+00:00",
+    "_ingested_at": "2026-03-19T15:03:04.670164+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK5246257",
+        "passport_number": "L4973628",
+        "date_of_birth": "1972-10-14",
+        "frequent_flyer_number": "FF821317"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK5635014",
+        "passport_number": "S9470220",
+        "date_of_birth": "1995-11-10",
+        "frequent_flyer_number": "FF615410"
+      }
+    ],
+    "baggage_allowance_kg": 25,
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK246761",
+    "event_type": "booking.created",
+    "airline": "BA",
+    "origin": "CDG",
+    "destination": "SIN",
+    "cabin": "premium_economy",
+    "status": "pending",
+    "total_price": 4185.19,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:03:09.958013+00:00",
+    "_ingested_at": "2026-03-19T15:03:09.958094+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK2010598",
+        "passport_number": "I3514146",
+        "date_of_birth": "1995-01-12"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK2210794",
+        "passport_number": "C8297521",
+        "date_of_birth": "1980-07-11"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK8077064"
+      }
+    ],
+    "contact_email": "traveller608@example.com",
+    "contact_phone": "+15286122811",
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK545697",
+    "event_type": "booking.created",
+    "airline": "DL",
+    "origin": "CDG",
+    "destination": "LHR",
+    "cabin": "economy",
+    "status": "pending",
+    "total_price": 1217.78,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:03:12.944926+00:00",
+    "_ingested_at": "2026-03-19T15:03:12.944958+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK6564224"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8326418",
+        "passport_number": "B7300794",
+        "frequent_flyer_number": "FF628517"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK6349621",
+        "passport_number": "S5108327",
+        "date_of_birth": "1999-09-06",
+        "frequent_flyer_number": "FF931807"
+      }
+    ],
+    "contact_email": "traveller694@example.com",
+    "contact_phone": "+12055675082",
+    "baggage_allowance_kg": 23
+  },
+  {
+    "booking_ref": "BK209574",
+    "event_type": "booking.created",
+    "airline": "AF",
+    "origin": "ORD",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 199.27,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:03:17.668582+00:00",
+    "_ingested_at": "2026-03-19T15:03:17.668632+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK7903836",
+        "passport_number": "G9190201",
+        "date_of_birth": "1974-06-15",
+        "frequent_flyer_number": "FF122488"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK7254658",
+        "passport_number": "R6105687"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK151751",
+    "event_type": "booking.updated",
+    "airline": "BA",
+    "origin": "LAX",
+    "destination": "SYD",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 2618.38,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:03:26.632760+00:00",
+    "_ingested_at": "2026-03-19T15:03:26.632790+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK8629702",
+        "passport_number": "J4074893"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4794648",
+        "date_of_birth": "1961-04-03",
+        "frequent_flyer_number": "FF964165"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK101219",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "FRA",
+    "destination": "ORD",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 1795.95,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:03:29.864522+00:00",
+    "_ingested_at": "2026-03-19T15:03:29.864536+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK7882103",
+        "date_of_birth": "1991-12-12"
+      }
+    ],
+    "contact_email": "traveller674@example.com",
+    "contact_phone": "+18860793060"
+  },
+  {
+    "booking_ref": "BK394200",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "LAX",
+    "destination": "ORD",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 2779.0,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:03:31.138245+00:00",
+    "_ingested_at": "2026-03-19T15:03:31.138279+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3247211",
+        "date_of_birth": "1966-02-25"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK5502018",
+        "passport_number": "D3366308",
+        "date_of_birth": "1991-01-05"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK1877040",
+        "passport_number": "B8182512",
+        "date_of_birth": "1963-12-11"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1561651"
+      }
+    ],
+    "contact_email": "traveller631@example.com",
+    "contact_phone": "+13250244005"
+  },
+  {
+    "booking_ref": "BK450709",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "CDG",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "checked_in",
+    "total_price": 611.14,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:03:33.447943+00:00",
+    "_ingested_at": "2026-03-19T15:03:33.447970+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK4848351",
+        "passport_number": "V8515708",
+        "date_of_birth": "1974-05-18",
+        "frequent_flyer_number": "FF299552"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK1980625",
+        "passport_number": "O2879499"
+      }
+    ],
+    "contact_email": "traveller229@example.com"
+  },
+  {
+    "booking_ref": "BK241171",
+    "event_type": "booking.created",
+    "airline": "BA",
+    "origin": "SYD",
+    "destination": "NRT",
+    "cabin": "economy",
+    "status": "pending",
+    "total_price": 2817.8,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:03:38.643511+00:00",
+    "_ingested_at": "2026-03-19T15:03:38.643546+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK3198225",
+        "passport_number": "J3870280",
+        "frequent_flyer_number": "FF858133"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK3638984",
+        "passport_number": "S4272829",
+        "frequent_flyer_number": "FF759508"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK386784",
+    "event_type": "booking.cancelled",
+    "airline": "AF",
+    "origin": "SIN",
+    "destination": "LAX",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 1514.18,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:03:39.817699+00:00",
+    "_ingested_at": "2026-03-19T15:03:39.817730+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK4659230",
+        "passport_number": "T9908418"
+      }
+    ],
+    "baggage_allowance_kg": 20,
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK226014",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "NRT",
+    "destination": "LAX",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 266.87,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:03:42.067121+00:00",
+    "_ingested_at": "2026-03-19T15:03:42.067136+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK7161029"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK6796800",
+        "passport_number": "H9611995",
+        "date_of_birth": "1986-01-10"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK6244700",
+        "passport_number": "P9334034",
+        "date_of_birth": "1963-12-03",
+        "frequent_flyer_number": "FF812528"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1798532",
+        "passport_number": "X5641932",
+        "frequent_flyer_number": "FF514679"
+      }
+    ],
+    "contact_email": "traveller672@example.com"
+  },
+  {
+    "booking_ref": "BK718500",
+    "event_type": "booking.created",
+    "airline": "QF",
+    "origin": "LAX",
+    "destination": "JFK",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 1159.68,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:03:49.479405+00:00",
+    "_ingested_at": "2026-03-19T15:03:49.479455+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK7326380",
+        "passport_number": "E6022736",
+        "frequent_flyer_number": "FF276008"
+      }
+    ],
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK357545",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "SIN",
+    "destination": "SYD",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 3612.05,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:03:50.649795+00:00",
+    "_ingested_at": "2026-03-19T15:03:50.649802+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK2771532",
+        "frequent_flyer_number": "FF601892"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK5034185",
+        "passport_number": "J2270902",
+        "frequent_flyer_number": "FF887137"
+      }
+    ],
+    "contact_email": "traveller903@example.com"
+  },
+  {
+    "booking_ref": "BK183057",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "ORD",
+    "destination": "LAX",
+    "cabin": "economy",
+    "status": "pending",
+    "total_price": 1856.72,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:03:52.919569+00:00",
+    "_ingested_at": "2026-03-19T15:03:52.919585+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK9071116",
+        "passport_number": "P9314688",
+        "date_of_birth": "1996-05-18"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8433284"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK9799331",
+        "passport_number": "A3263598",
+        "frequent_flyer_number": "FF558543"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK4774420",
+        "passport_number": "M5017287",
+        "date_of_birth": "1970-02-08",
+        "frequent_flyer_number": "FF853737"
+      }
+    ],
+    "contact_phone": "+16651494297",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK830762",
+    "event_type": "booking.created",
+    "airline": "SQ",
+    "origin": "JFK",
+    "destination": "ORD",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 4174.31,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:04:04.668945+00:00",
+    "_ingested_at": "2026-03-19T15:04:04.668976+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK7299490",
+        "passport_number": "A8598457",
+        "date_of_birth": "1979-11-04"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8447594",
+        "date_of_birth": "1971-02-04",
+        "frequent_flyer_number": "FF256498"
+      }
+    ],
+    "contact_email": "traveller923@example.com",
+    "contact_phone": "+13590853953",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK269764",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "JFK",
+    "destination": "NRT",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 3877.62,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:04:06.661488+00:00",
+    "_ingested_at": "2026-03-19T15:04:06.661519+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK8192607",
+        "passport_number": "Z1297610",
+        "date_of_birth": "1987-02-20"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1455973",
+        "passport_number": "I1991816"
+      }
+    ],
+    "contact_email": "traveller382@example.com",
+    "baggage_allowance_kg": 20
+  },
+  {
+    "booking_ref": "BK553036",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "SYD",
+    "destination": "LAX",
+    "cabin": "business",
+    "status": "cancelled",
+    "total_price": 498.49,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:04:07.775219+00:00",
+    "_ingested_at": "2026-03-19T15:04:07.775250+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8864802",
+        "passport_number": "Y9191152",
+        "date_of_birth": "1982-07-08"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5848497",
+        "date_of_birth": "1963-08-08"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4527734",
+        "passport_number": "D3984700",
+        "date_of_birth": "1999-02-16"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK6851110",
+        "frequent_flyer_number": "FF228003"
+      }
+    ],
+    "contact_email": "traveller775@example.com",
+    "contact_phone": "+12449956726",
+    "baggage_allowance_kg": 25
+  },
+  {
+    "booking_ref": "BK336838",
+    "event_type": "booking.created",
+    "airline": "LH",
+    "origin": "SIN",
+    "destination": "JFK",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 2443.43,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:04:13.480302+00:00",
+    "_ingested_at": "2026-03-19T15:04:13.480311+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK5444997",
+        "passport_number": "O9157320",
+        "frequent_flyer_number": "FF175838"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK6413160",
+        "passport_number": "P1399437",
+        "date_of_birth": "1988-01-20",
+        "frequent_flyer_number": "FF583544"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1830781",
+        "passport_number": "U9589367",
+        "frequent_flyer_number": "FF313926"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK225446",
+    "event_type": "booking.created",
+    "airline": "AF",
+    "origin": "LHR",
+    "destination": "SIN",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 348.19,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:04:16.606087+00:00",
+    "_ingested_at": "2026-03-19T15:04:16.606118+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK2381991",
+        "frequent_flyer_number": "FF569742"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK2564817",
+        "frequent_flyer_number": "FF723119"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK5966084",
+        "passport_number": "V4861571",
+        "date_of_birth": "1994-04-01"
+      }
+    ],
+    "contact_email": "traveller511@example.com",
+    "contact_phone": "+19973086818"
+  },
+  {
+    "booking_ref": "BK487395",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "FRA",
+    "destination": "LAX",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 183.5,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:04:24.800436+00:00",
+    "_ingested_at": "2026-03-19T15:04:24.800462+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK2272771",
+        "passport_number": "O7103512",
+        "date_of_birth": "1986-04-21"
+      }
+    ],
+    "contact_email": "traveller284@example.com",
+    "contact_phone": "+13686729048"
+  },
+  {
+    "booking_ref": "BK204858",
+    "event_type": "booking.created",
+    "airline": "BA",
+    "origin": "SYD",
+    "destination": "LHR",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 802.03,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:04:25.816311+00:00",
+    "_ingested_at": "2026-03-19T15:04:25.816332+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK2712799",
+        "passport_number": "G4490147",
+        "date_of_birth": "1969-11-03"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK3831682",
+        "passport_number": "Z3484242",
+        "frequent_flyer_number": "FF861534"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK1804609",
+        "passport_number": "E2634743",
+        "date_of_birth": "1971-10-20",
+        "frequent_flyer_number": "FF393275"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK9544572"
+      }
+    ],
+    "contact_phone": "+18028468215"
+  },
+  {
+    "booking_ref": "BK735814",
+    "event_type": "booking.created",
+    "airline": "AF",
+    "origin": "NRT",
+    "destination": "SYD",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 1137.35,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:04:30.125949+00:00",
+    "_ingested_at": "2026-03-19T15:04:30.125968+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK1492716",
+        "passport_number": "R8272666",
+        "date_of_birth": "1976-12-28"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK1782610",
+        "passport_number": "U7552390"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK8465898",
+        "passport_number": "O3301418",
+        "date_of_birth": "1972-06-24",
+        "frequent_flyer_number": "FF433482"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK4758457",
+        "date_of_birth": "1987-02-13"
+      }
+    ],
+    "seat_preference": "middle"
+  },
+  {
+    "booking_ref": "BK420213",
+    "event_type": "booking.updated",
+    "airline": "BA",
+    "origin": "JFK",
+    "destination": "CDG",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 1970.83,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:04:33.411103+00:00",
+    "_ingested_at": "2026-03-19T15:04:33.411135+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK6098910",
+        "passport_number": "T6329459",
+        "date_of_birth": "1987-11-15",
+        "frequent_flyer_number": "FF925951"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK9303820",
+        "date_of_birth": "1987-11-12",
+        "frequent_flyer_number": "FF505781"
+      }
+    ],
+    "baggage_allowance_kg": 25
+  },
+  {
+    "booking_ref": "BK576194",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "LAX",
+    "destination": "ORD",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 1239.06,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:04:34.510109+00:00",
+    "_ingested_at": "2026-03-19T15:04:34.510119+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK9631316",
+        "passport_number": "B8560042",
+        "date_of_birth": "1999-06-27",
+        "frequent_flyer_number": "FF613595"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK8628631",
+        "passport_number": "B8887566",
+        "frequent_flyer_number": "FF958040"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK1826859",
+        "passport_number": "B2515217"
+      }
+    ],
+    "contact_email": "traveller859@example.com",
+    "contact_phone": "+12993982361"
+  },
+  {
+    "booking_ref": "BK707097",
+    "event_type": "booking.created",
+    "airline": "BA",
+    "origin": "NRT",
+    "destination": "JFK",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 3213.15,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:04:36.843898+00:00",
+    "_ingested_at": "2026-03-19T15:04:36.843908+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK5384080",
+        "passport_number": "E6795693"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK2072899",
+        "passport_number": "M3116194"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK1378475",
+        "passport_number": "I3815510"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4660265",
+        "frequent_flyer_number": "FF589292"
+      }
+    ],
+    "contact_email": "traveller977@example.com",
+    "contact_phone": "+15478599677",
+    "baggage_allowance_kg": 23,
+    "special_meal": "DBML"
+  },
+  {
+    "booking_ref": "BK766088",
+    "event_type": "booking.cancelled",
+    "airline": "AF",
+    "origin": "LAX",
+    "destination": "SYD",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 4435.53,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:04:40.388394+00:00",
+    "_ingested_at": "2026-03-19T15:04:40.388405+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK7355534",
+        "passport_number": "S9830157",
+        "frequent_flyer_number": "FF125360"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK9586348",
+        "passport_number": "B2540651",
+        "date_of_birth": "1997-05-17",
+        "frequent_flyer_number": "FF286108"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK3748474",
+        "frequent_flyer_number": "FF476219"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1779538",
+        "passport_number": "Y8035599",
+        "frequent_flyer_number": "FF202997"
+      }
+    ],
+    "contact_email": "traveller861@example.com",
+    "contact_phone": "+17050941255"
+  },
+  {
+    "booking_ref": "BK783299",
+    "event_type": "booking.created",
+    "airline": "SQ",
+    "origin": "SIN",
+    "destination": "NRT",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 1331.67,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:04:42.773600+00:00",
+    "_ingested_at": "2026-03-19T15:04:42.773638+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK7808637",
+        "passport_number": "S2542475"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK9079179",
+        "date_of_birth": "1997-01-02",
+        "frequent_flyer_number": "FF333022"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK1996159",
+        "passport_number": "F8864524",
+        "date_of_birth": "1999-04-09",
+        "frequent_flyer_number": "FF592179"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK7826331",
+        "passport_number": "M4543975",
+        "frequent_flyer_number": "FF540130"
+      }
+    ],
+    "contact_email": "traveller886@example.com",
+    "baggage_allowance_kg": 20
+  },
+  {
+    "booking_ref": "BK320645",
+    "event_type": "booking.cancelled",
+    "airline": "SQ",
+    "origin": "NRT",
+    "destination": "SYD",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 4282.74,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:04:45.869278+00:00",
+    "_ingested_at": "2026-03-19T15:04:45.869293+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK4880843",
+        "passport_number": "Q8509977",
+        "frequent_flyer_number": "FF113504"
+      }
+    ],
+    "special_meal": "VGML"
+  },
+  {
+    "booking_ref": "BK771556",
+    "event_type": "booking.updated",
+    "airline": "EK",
+    "origin": "LHR",
+    "destination": "CDG",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 2452.61,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:04:47.018191+00:00",
+    "_ingested_at": "2026-03-19T15:04:47.018217+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK6362516",
+        "passport_number": "Z8813325"
+      }
+    ],
+    "contact_email": "traveller326@example.com"
+  },
+  {
+    "booking_ref": "BK353207",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "DXB",
+    "destination": "LAX",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 4288.58,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:04:48.223066+00:00",
+    "_ingested_at": "2026-03-19T15:04:48.223090+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK3042265",
+        "passport_number": "V3361471",
+        "date_of_birth": "1971-03-20"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK6348008",
+        "passport_number": "V2587151",
+        "frequent_flyer_number": "FF210844"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK6826244",
+        "passport_number": "N4029104",
+        "date_of_birth": "1970-05-08",
+        "frequent_flyer_number": "FF524998"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK6491699",
+        "passport_number": "N9689031",
+        "frequent_flyer_number": "FF328783"
+      }
+    ],
+    "contact_phone": "+13343330664"
+  },
+  {
+    "booking_ref": "BK204829",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "LAX",
+    "destination": "FRA",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 3871.93,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:04:50.156868+00:00",
+    "_ingested_at": "2026-03-19T15:04:50.156897+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK5420839",
+        "passport_number": "P4743680",
+        "frequent_flyer_number": "FF726841"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK8060150",
+        "passport_number": "T5419548",
+        "date_of_birth": "1987-02-06"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK4292287",
+        "passport_number": "S3759888",
+        "date_of_birth": "1994-09-28",
+        "frequent_flyer_number": "FF421355"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK1751520",
+        "passport_number": "G7681323",
+        "date_of_birth": "1989-04-24",
+        "frequent_flyer_number": "FF565596"
+      }
+    ],
+    "contact_phone": "+16464651067",
+    "baggage_allowance_kg": 20,
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK121399",
+    "event_type": "booking.updated",
+    "airline": "UA",
+    "origin": "CDG",
+    "destination": "FRA",
+    "cabin": "economy",
+    "status": "pending",
+    "total_price": 2022.72,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:04:53.416653+00:00",
+    "_ingested_at": "2026-03-19T15:04:53.416696+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8273866",
+        "passport_number": "O5363192"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK8298147",
+        "passport_number": "M9951850"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8484684",
+        "passport_number": "A7730645",
+        "date_of_birth": "1978-05-01",
+        "frequent_flyer_number": "FF679653"
+      }
+    ],
+    "contact_phone": "+13682619151",
+    "seat_preference": "aisle",
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK704234",
+    "event_type": "booking.created",
+    "airline": "BA",
+    "origin": "NRT",
+    "destination": "JFK",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 3956.53,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:04:57.712095+00:00",
+    "_ingested_at": "2026-03-19T15:04:57.712100+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK4538826",
+        "passport_number": "M2553634",
+        "date_of_birth": "1986-05-04"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK5681723",
+        "date_of_birth": "1991-12-12",
+        "frequent_flyer_number": "FF699073"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK9349966",
+        "frequent_flyer_number": "FF545246"
+      }
+    ],
+    "contact_email": "traveller975@example.com",
+    "special_meal": null
+  },
+  {
+    "booking_ref": "BK838667",
+    "event_type": "booking.updated",
+    "airline": "BA",
+    "origin": "JFK",
+    "destination": "CDG",
+    "cabin": "business",
+    "status": "cancelled",
+    "total_price": 1159.22,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:04:58.934339+00:00",
+    "_ingested_at": "2026-03-19T15:04:58.934344+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK4183413",
+        "passport_number": "W7075636",
+        "frequent_flyer_number": "FF392699"
+      }
+    ],
+    "baggage_allowance_kg": 23,
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK157465",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "SIN",
+    "destination": "DXB",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 3649.71,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:05:05.888045+00:00",
+    "_ingested_at": "2026-03-19T15:05:05.888070+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK4570588",
+        "passport_number": "Z9343225",
+        "frequent_flyer_number": "FF493414"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK6678912",
+        "passport_number": "I9837911"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK4065628",
+        "date_of_birth": "1984-12-22",
+        "frequent_flyer_number": "FF114881"
+      }
+    ],
+    "contact_email": "traveller225@example.com"
+  },
+  {
+    "booking_ref": "BK930728",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "ORD",
+    "destination": "NRT",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 256.46,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:05:08.026239+00:00",
+    "_ingested_at": "2026-03-19T15:05:08.026264+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK5395424",
+        "passport_number": "U8084423",
+        "date_of_birth": "1982-12-20"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8858445",
+        "date_of_birth": "1976-08-06",
+        "frequent_flyer_number": "FF686186"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK3901294"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK9810699"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK222378",
+    "event_type": "booking.cancelled",
+    "airline": "SQ",
+    "origin": "DXB",
+    "destination": "JFK",
+    "cabin": "premium_economy",
+    "status": "pending",
+    "total_price": 1509.29,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:05:13.020354+00:00",
+    "_ingested_at": "2026-03-19T15:05:13.020368+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK2766551",
+        "date_of_birth": "1972-09-27"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK976837",
+    "event_type": "booking.updated",
+    "airline": "LH",
+    "origin": "CDG",
+    "destination": "SIN",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 653.16,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:05:13.664215+00:00",
+    "_ingested_at": "2026-03-19T15:05:13.664244+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4116111",
+        "passport_number": "O2802366",
+        "date_of_birth": "1983-04-04",
+        "frequent_flyer_number": "FF856221"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK2760217",
+        "passport_number": "Y6613929",
+        "date_of_birth": "2000-09-25"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK9380224",
+        "date_of_birth": "1977-08-22",
+        "frequent_flyer_number": "FF401919"
+      }
+    ],
+    "special_meal": "KSML"
+  },
+  {
+    "booking_ref": "BK695544",
+    "event_type": "booking.updated",
+    "airline": "QF",
+    "origin": "ORD",
+    "destination": "JFK",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 2494.29,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:05:15.391382+00:00",
+    "_ingested_at": "2026-03-19T15:05:15.391394+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4380165",
+        "passport_number": "U3983805",
+        "date_of_birth": "1974-10-15",
+        "frequent_flyer_number": "FF245717"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK8761590",
+        "passport_number": "G1915724",
+        "date_of_birth": "1998-02-07",
+        "frequent_flyer_number": "FF834881"
+      }
+    ],
+    "contact_email": "traveller311@example.com",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK547840",
+    "event_type": "booking.created",
+    "airline": "QF",
+    "origin": "FRA",
+    "destination": "JFK",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 2483.18,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:05:17.425110+00:00",
+    "_ingested_at": "2026-03-19T15:05:17.425120+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3202603",
+        "passport_number": "Q6816195",
+        "frequent_flyer_number": "FF384292"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK2252179",
+        "passport_number": "H5552451"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8786863",
+        "passport_number": "A1283136"
+      }
+    ],
+    "contact_email": "traveller907@example.com"
+  },
+  {
+    "booking_ref": "BK921211",
+    "event_type": "booking.created",
+    "airline": "BA",
+    "origin": "SYD",
+    "destination": "ORD",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 631.45,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:05:17.732379+00:00",
+    "_ingested_at": "2026-03-19T15:05:17.732386+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK3108984",
+        "passport_number": "G1661938"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK5302046",
+        "passport_number": "A3434782"
+      }
+    ],
+    "seat_preference": null,
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK622150",
+    "event_type": "booking.updated",
+    "airline": "AF",
+    "origin": "JFK",
+    "destination": "NRT",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 142.74,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:05:18.926203+00:00",
+    "_ingested_at": "2026-03-19T15:05:18.926221+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK6405956"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK7020818",
+        "date_of_birth": "1960-11-10"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK5354381",
+        "passport_number": "O8724882"
+      }
+    ],
+    "contact_email": "traveller699@example.com",
+    "baggage_allowance_kg": 23
+  },
+  {
+    "booking_ref": "BK605421",
+    "event_type": "booking.created",
+    "airline": "DL",
+    "origin": "FRA",
+    "destination": "SIN",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 623.95,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:05:20.134856+00:00",
+    "_ingested_at": "2026-03-19T15:05:20.134862+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK4900366",
+        "passport_number": "T4415232",
+        "frequent_flyer_number": "FF914447"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK1930657",
+        "passport_number": "W1972435",
+        "frequent_flyer_number": "FF165543"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK7047695",
+        "frequent_flyer_number": "FF836002"
+      }
+    ],
+    "baggage_allowance_kg": 23,
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK427653",
+    "event_type": "booking.created",
+    "airline": "QF",
+    "origin": "LHR",
+    "destination": "SYD",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 3221.55,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:05:27.662497+00:00",
+    "_ingested_at": "2026-03-19T15:05:27.662514+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK3823681",
+        "passport_number": "F9405511",
+        "date_of_birth": "1973-06-13",
+        "frequent_flyer_number": "FF890131"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8603814"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8302483",
+        "passport_number": "W2744865"
+      }
+    ],
+    "baggage_allowance_kg": 25
+  },
+  {
+    "booking_ref": "BK336627",
+    "event_type": "booking.cancelled",
+    "airline": "BA",
+    "origin": "ORD",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 1796.11,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:05:30.172264+00:00",
+    "_ingested_at": "2026-03-19T15:05:30.172279+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK2782295",
+        "frequent_flyer_number": "FF890407"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1690366",
+        "passport_number": "N5799079",
+        "date_of_birth": "1961-01-08",
+        "frequent_flyer_number": "FF931591"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK6036199",
+        "passport_number": "N7260582"
+      }
+    ],
+    "contact_phone": "+12452458492",
+    "baggage_allowance_kg": 25,
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK301814",
+    "event_type": "booking.cancelled",
+    "airline": "EK",
+    "origin": "NRT",
+    "destination": "DXB",
+    "cabin": "premium_economy",
+    "status": "pending",
+    "total_price": 1268.52,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:05:34.414247+00:00",
+    "_ingested_at": "2026-03-19T15:05:34.414258+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK5193770",
+        "passport_number": "U2693417",
+        "date_of_birth": "1987-03-24",
+        "frequent_flyer_number": "FF192582"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK1646681",
+        "passport_number": "R6402068",
+        "date_of_birth": "1988-05-22"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK6473601",
+        "date_of_birth": "1968-11-10",
+        "frequent_flyer_number": "FF880210"
+      }
+    ],
+    "baggage_allowance_kg": 23
+  },
+  {
+    "booking_ref": "BK353176",
+    "event_type": "booking.created",
+    "airline": "SQ",
+    "origin": "JFK",
+    "destination": "SYD",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 2986.51,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:05:35.453293+00:00",
+    "_ingested_at": "2026-03-19T15:05:35.453315+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK6510444",
+        "passport_number": "P6336656"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK5934826",
+        "passport_number": "W1661840",
+        "date_of_birth": "1999-02-07",
+        "frequent_flyer_number": "FF800619"
+      }
+    ],
+    "contact_email": "traveller921@example.com"
+  },
+  {
+    "booking_ref": "BK138504",
+    "event_type": "booking.cancelled",
+    "airline": "SQ",
+    "origin": "NRT",
+    "destination": "JFK",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 4445.12,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:05:37.556783+00:00",
+    "_ingested_at": "2026-03-19T15:05:37.556809+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK1757109",
+        "passport_number": "H5591749",
+        "date_of_birth": "1975-09-11",
+        "frequent_flyer_number": "FF379755"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8848667",
+        "passport_number": "K9924539"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK7436762",
+        "frequent_flyer_number": "FF242784"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK870252",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "JFK",
+    "destination": "SYD",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 3857.94,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:05:39.432457+00:00",
+    "_ingested_at": "2026-03-19T15:05:39.432484+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK8180682",
+        "passport_number": "I7456606",
+        "date_of_birth": "1999-01-04",
+        "frequent_flyer_number": "FF215284"
+      }
+    ],
+    "contact_email": "traveller120@example.com",
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK308133",
+    "event_type": "booking.cancelled",
+    "airline": "SQ",
+    "origin": "ORD",
+    "destination": "LHR",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 477.73,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:05:40.400052+00:00",
+    "_ingested_at": "2026-03-19T15:05:40.400063+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK6428810",
+        "passport_number": "R4494786",
+        "date_of_birth": "1960-02-04"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK9230596",
+        "passport_number": "X9943787",
+        "frequent_flyer_number": "FF772724"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK2445646"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK2590585",
+        "passport_number": "J1596591",
+        "frequent_flyer_number": "FF145070"
+      }
+    ],
+    "contact_email": "traveller903@example.com",
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK790867",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "SIN",
+    "destination": "FRA",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 4462.93,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:05:52.515278+00:00",
+    "_ingested_at": "2026-03-19T15:05:52.515313+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3998447",
+        "date_of_birth": "1960-09-09",
+        "frequent_flyer_number": "FF307372"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8655122",
+        "passport_number": "T3105476",
+        "frequent_flyer_number": "FF898343"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4228298",
+        "passport_number": "I6580724",
+        "frequent_flyer_number": "FF110716"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8192739",
+        "passport_number": "Y9333006",
+        "date_of_birth": "1969-07-16",
+        "frequent_flyer_number": "FF487607"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK278664",
+    "event_type": "booking.updated",
+    "airline": "EK",
+    "origin": "SIN",
+    "destination": "CDG",
+    "cabin": "premium_economy",
+    "status": "pending",
+    "total_price": 1189.43,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:05:56.159402+00:00",
+    "_ingested_at": "2026-03-19T15:05:56.159427+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK5844200",
+        "date_of_birth": "1989-09-28"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK7879132",
+        "passport_number": "G7636382",
+        "date_of_birth": "1986-07-09"
+      }
+    ],
+    "contact_email": "traveller240@example.com"
+  },
+  {
+    "booking_ref": "BK491582",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "NRT",
+    "destination": "SYD",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 589.26,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:05:59.581259+00:00",
+    "_ingested_at": "2026-03-19T15:05:59.581284+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK9047991",
+        "passport_number": "K6726128",
+        "date_of_birth": "1977-02-06",
+        "frequent_flyer_number": "FF242250"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK5663537",
+        "frequent_flyer_number": "FF179015"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK299780",
+    "event_type": "booking.updated",
+    "airline": "QF",
+    "origin": "DXB",
+    "destination": "JFK",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 1435.76,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:06:01.805250+00:00",
+    "_ingested_at": "2026-03-19T15:06:01.805262+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1529432",
+        "date_of_birth": "1994-11-28",
+        "frequent_flyer_number": "FF683285"
+      }
+    ],
+    "contact_phone": "+19007553740"
+  },
+  {
+    "booking_ref": "BK183855",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "JFK",
+    "destination": "CDG",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 375.26,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:06:07.517465+00:00",
+    "_ingested_at": "2026-03-19T15:06:07.517490+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1260542",
+        "date_of_birth": "1997-09-23",
+        "frequent_flyer_number": "FF680318"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK9882125",
+        "passport_number": "Z8004687",
+        "date_of_birth": "1998-01-26"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8855853",
+        "passport_number": "S9330001",
+        "date_of_birth": "1977-10-13"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK5707791",
+        "passport_number": "K1380872",
+        "date_of_birth": "1973-02-28",
+        "frequent_flyer_number": "FF529564"
+      }
+    ],
+    "contact_email": "traveller133@example.com",
+    "contact_phone": "+14203845330"
+  },
+  {
+    "booking_ref": "BK496098",
+    "event_type": "booking.updated",
+    "airline": "EK",
+    "origin": "SYD",
+    "destination": "CDG",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 412.78,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:06:12.027573+00:00",
+    "_ingested_at": "2026-03-19T15:06:12.027578+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK1010532",
+        "passport_number": "D3245084",
+        "date_of_birth": "1997-08-18",
+        "frequent_flyer_number": "FF602877"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5169397",
+        "passport_number": "H5951499",
+        "date_of_birth": "1987-07-01",
+        "frequent_flyer_number": "FF283937"
+      }
+    ],
+    "contact_email": "traveller823@example.com"
+  },
+  {
+    "booking_ref": "BK743528",
+    "event_type": "booking.updated",
+    "airline": "QF",
+    "origin": "CDG",
+    "destination": "NRT",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 3139.19,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:06:15.818459+00:00",
+    "_ingested_at": "2026-03-19T15:06:15.818474+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK9556268",
+        "date_of_birth": "1966-09-08",
+        "frequent_flyer_number": "FF502736"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK3982838"
+      }
+    ],
+    "contact_email": "traveller236@example.com"
+  },
+  {
+    "booking_ref": "BK519074",
+    "event_type": "booking.cancelled",
+    "airline": "BA",
+    "origin": "FRA",
+    "destination": "SYD",
+    "cabin": "premium_economy",
+    "status": "pending",
+    "total_price": 4068.75,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:06:16.868783+00:00",
+    "_ingested_at": "2026-03-19T15:06:16.868811+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK1201479",
+        "passport_number": "Z2916189"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4586850",
+        "passport_number": "Z1953066",
+        "date_of_birth": "1990-08-24",
+        "frequent_flyer_number": "FF435021"
+      }
+    ],
+    "contact_email": "traveller638@example.com",
+    "seat_preference": null
+  },
+  {
+    "booking_ref": "BK375986",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "LAX",
+    "destination": "LHR",
+    "cabin": "premium_economy",
+    "status": "pending",
+    "total_price": 2076.56,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:06:20.282811+00:00",
+    "_ingested_at": "2026-03-19T15:06:20.282847+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK2232644",
+        "passport_number": "L4775703",
+        "date_of_birth": "1980-08-20"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK8816686",
+        "passport_number": "J1588727",
+        "frequent_flyer_number": "FF537692"
+      }
+    ],
+    "contact_email": "traveller608@example.com",
+    "baggage_allowance_kg": 23,
+    "special_meal": "KSML"
+  },
+  {
+    "booking_ref": "BK720276",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "CDG",
+    "destination": "LAX",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 2141.54,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:06:23.790540+00:00",
+    "_ingested_at": "2026-03-19T15:06:23.790565+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK4444282"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4682652",
+        "passport_number": "N7864624",
+        "date_of_birth": "1974-09-11"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1000592",
+        "passport_number": "P8780278",
+        "frequent_flyer_number": "FF799894"
+      }
+    ],
+    "contact_phone": "+17246448133",
+    "seat_preference": "window"
+  },
+  {
+    "booking_ref": "BK260385",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "FRA",
+    "destination": "LHR",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 1968.82,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:06:24.754722+00:00",
+    "_ingested_at": "2026-03-19T15:06:24.754746+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1858516",
+        "date_of_birth": "1963-04-26"
+      }
+    ],
+    "contact_email": "traveller536@example.com",
+    "contact_phone": "+16990131349"
+  },
+  {
+    "booking_ref": "BK146401",
+    "event_type": "booking.created",
+    "airline": "EK",
+    "origin": "NRT",
+    "destination": "DXB",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 1950.37,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:06:25.990507+00:00",
+    "_ingested_at": "2026-03-19T15:06:25.990533+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK6063978",
+        "date_of_birth": "1971-10-12",
+        "frequent_flyer_number": "FF295279"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4025262",
+        "passport_number": "S8528105",
+        "date_of_birth": "1969-06-06",
+        "frequent_flyer_number": "FF922410"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1432166",
+        "passport_number": "O7991337",
+        "date_of_birth": "1990-06-25",
+        "frequent_flyer_number": "FF275831"
+      }
+    ],
+    "contact_phone": "+16021659419"
+  },
+  {
+    "booking_ref": "BK278281",
+    "event_type": "booking.created",
+    "airline": "DL",
+    "origin": "LHR",
+    "destination": "CDG",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 2046.06,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:06:31.425920+00:00",
+    "_ingested_at": "2026-03-19T15:06:31.425949+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK6979019",
+        "frequent_flyer_number": "FF354352"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1853468",
+        "passport_number": "U1315113"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK1799461",
+        "passport_number": "T5222994",
+        "date_of_birth": "1989-10-10",
+        "frequent_flyer_number": "FF641497"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK7935998",
+        "passport_number": "M8482537",
+        "frequent_flyer_number": "FF991547"
+      }
+    ],
+    "special_meal": null
+  },
+  {
+    "booking_ref": "BK942293",
+    "event_type": "booking.created",
+    "airline": "SQ",
+    "origin": "CDG",
+    "destination": "ORD",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 2038.89,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:06:32.407050+00:00",
+    "_ingested_at": "2026-03-19T15:06:32.407083+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK6213448",
+        "passport_number": "M9274305"
+      }
+    ],
+    "baggage_allowance_kg": 25,
+    "seat_preference": "aisle",
+    "special_meal": "KSML"
+  },
+  {
+    "booking_ref": "BK280130",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "NRT",
+    "destination": "LAX",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 1931.03,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:06:37.079126+00:00",
+    "_ingested_at": "2026-03-19T15:06:37.079160+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK7899434",
+        "passport_number": "P9286316",
+        "frequent_flyer_number": "FF359609"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK6774772",
+        "frequent_flyer_number": "FF750824"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK9229273",
+        "passport_number": "H7339651",
+        "date_of_birth": "1960-05-04",
+        "frequent_flyer_number": "FF375996"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK5058333",
+        "passport_number": "B3386036",
+        "frequent_flyer_number": "FF285719"
+      }
+    ],
+    "contact_email": "traveller426@example.com",
+    "baggage_allowance_kg": 32,
+    "special_meal": "VGML"
+  },
+  {
+    "booking_ref": "BK471621",
+    "event_type": "booking.updated",
+    "airline": "LH",
+    "origin": "CDG",
+    "destination": "JFK",
+    "cabin": "business",
+    "status": "cancelled",
+    "total_price": 1592.48,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:06:45.908532+00:00",
+    "_ingested_at": "2026-03-19T15:06:45.908551+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK6762731",
+        "passport_number": "V7688749",
+        "date_of_birth": "1995-05-06",
+        "frequent_flyer_number": "FF747976"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK1871975",
+        "passport_number": "A5810681",
+        "date_of_birth": "1991-12-21",
+        "frequent_flyer_number": "FF504964"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK2150833",
+        "passport_number": "Y7671027"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4180877",
+        "frequent_flyer_number": "FF201264"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK268660",
+    "event_type": "booking.updated",
+    "airline": "BA",
+    "origin": "LAX",
+    "destination": "NRT",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 2731.24,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:06:49.344743+00:00",
+    "_ingested_at": "2026-03-19T15:06:49.344771+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4790877",
+        "frequent_flyer_number": "FF118550"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5541078",
+        "date_of_birth": "1961-06-02",
+        "frequent_flyer_number": "FF996355"
+      }
+    ],
+    "contact_email": "traveller361@example.com",
+    "baggage_allowance_kg": 23
+  },
+  {
+    "booking_ref": "BK363922",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "LAX",
+    "destination": "SIN",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 674.09,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:06:50.631634+00:00",
+    "_ingested_at": "2026-03-19T15:06:50.631673+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK5470289",
+        "passport_number": "W4012808"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK5113040",
+        "date_of_birth": "1992-09-28",
+        "frequent_flyer_number": "FF888168"
+      }
+    ],
+    "contact_phone": "+13362217578"
+  },
+  {
+    "booking_ref": "BK224422",
+    "event_type": "booking.cancelled",
+    "airline": "LH",
+    "origin": "LAX",
+    "destination": "DXB",
+    "cabin": "business",
+    "status": "confirmed",
+    "total_price": 2419.24,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:06:51.844880+00:00",
+    "_ingested_at": "2026-03-19T15:06:51.844908+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK9539697"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK5876242",
+        "passport_number": "N3964528",
+        "date_of_birth": "1998-02-20",
+        "frequent_flyer_number": "FF284519"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK9968678"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK9345547",
+        "date_of_birth": "1960-06-28",
+        "frequent_flyer_number": "FF141704"
+      }
+    ],
+    "contact_email": "traveller656@example.com",
+    "contact_phone": "+19996574893"
+  },
+  {
+    "booking_ref": "BK559320",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "SIN",
+    "destination": "CDG",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 2508.98,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:06:53.134229+00:00",
+    "_ingested_at": "2026-03-19T15:06:53.134243+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK8388248",
+        "passport_number": "D5527574",
+        "date_of_birth": "1982-09-04"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK9069392",
+        "passport_number": "L1316626",
+        "date_of_birth": "1973-12-15",
+        "frequent_flyer_number": "FF143095"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK4280214",
+        "frequent_flyer_number": "FF707370"
+      }
+    ],
+    "contact_email": "traveller405@example.com",
+    "contact_phone": "+13633147547",
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK196680",
+    "event_type": "booking.created",
+    "airline": "AF",
+    "origin": "DXB",
+    "destination": "CDG",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 1976.66,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:06:54.308589+00:00",
+    "_ingested_at": "2026-03-19T15:06:54.308599+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1655234",
+        "frequent_flyer_number": "FF365112"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8298017",
+        "date_of_birth": "1988-08-19",
+        "frequent_flyer_number": "FF942213"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK7129242",
+        "date_of_birth": "1987-02-16"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK4984237",
+        "frequent_flyer_number": "FF253994"
+      }
+    ],
+    "contact_email": "traveller471@example.com"
+  },
+  {
+    "booking_ref": "BK246516",
+    "event_type": "booking.updated",
+    "airline": "BA",
+    "origin": "DXB",
+    "destination": "JFK",
+    "cabin": "economy",
+    "status": "cancelled",
+    "total_price": 3886.74,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:06:58.776053+00:00",
+    "_ingested_at": "2026-03-19T15:06:58.776064+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK6405852",
+        "passport_number": "H1429744",
+        "date_of_birth": "1975-11-04",
+        "frequent_flyer_number": "FF110412"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK6720228",
+        "passport_number": "Y4312752",
+        "frequent_flyer_number": "FF652483"
+      }
+    ],
+    "baggage_allowance_kg": 30
+  },
+  {
+    "booking_ref": "BK610363",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "LAX",
+    "destination": "ORD",
+    "cabin": "premium_economy",
+    "status": "checked_in",
+    "total_price": 3062.65,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:07:01.995708+00:00",
+    "_ingested_at": "2026-03-19T15:07:01.995713+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8631935",
+        "date_of_birth": "1990-05-02",
+        "frequent_flyer_number": "FF780868"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8036767",
+        "passport_number": "I5840500",
+        "date_of_birth": "1980-03-20"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK8769269",
+        "passport_number": "S8557838",
+        "date_of_birth": "1987-10-09",
+        "frequent_flyer_number": "FF636909"
+      }
+    ],
+    "contact_email": "traveller507@example.com"
+  },
+  {
+    "booking_ref": "BK780299",
+    "event_type": "booking.updated",
+    "airline": "QF",
+    "origin": "LHR",
+    "destination": "LAX",
+    "cabin": "first",
+    "status": "checked_in",
+    "total_price": 4278.42,
+    "currency": "USD",
+    "created_at": "2026-03-19T15:07:06.834697+00:00",
+    "_ingested_at": "2026-03-19T15:07:06.834714+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK5452058",
+        "passport_number": "Q2196965",
+        "frequent_flyer_number": "FF890625"
+      }
+    ],
+    "contact_email": "traveller597@example.com",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK485267",
+    "event_type": "booking.created",
+    "airline": "AF",
+    "origin": "LHR",
+    "destination": "NRT",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 2325.17,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:07:10.296191+00:00",
+    "_ingested_at": "2026-03-19T15:07:10.296225+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK3265255",
+        "passport_number": "Z5660239",
+        "frequent_flyer_number": "FF764752"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK4850216",
+        "passport_number": "S1851273",
+        "date_of_birth": "1991-12-11",
+        "frequent_flyer_number": "FF445505"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK5174722",
+        "passport_number": "M9655785"
+      }
+    ],
+    "contact_email": "traveller980@example.com",
+    "contact_phone": "+14866120183"
+  },
+  {
+    "booking_ref": "BK931515",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "LHR",
+    "destination": "JFK",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 1502.51,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:07:11.527305+00:00",
+    "_ingested_at": "2026-03-19T15:07:11.527329+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK3570183",
+        "passport_number": "A6021566",
+        "date_of_birth": "1987-12-23",
+        "frequent_flyer_number": "FF164041"
+      }
+    ],
+    "contact_email": "traveller633@example.com",
+    "contact_phone": "+13918583074"
+  },
+  {
+    "booking_ref": "BK822547",
+    "event_type": "booking.updated",
+    "airline": "UA",
+    "origin": "LHR",
+    "destination": "CDG",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 2571.41,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:07:12.721887+00:00",
+    "_ingested_at": "2026-03-19T15:07:12.721909+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5154679",
+        "date_of_birth": "1991-07-18"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK9754278",
+        "passport_number": "F6787042"
+      },
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4239345",
+        "frequent_flyer_number": "FF289009"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8146644",
+        "passport_number": "U9379524",
+        "date_of_birth": "1991-06-11",
+        "frequent_flyer_number": "FF816634"
+      }
+    ],
+    "contact_email": "traveller180@example.com",
+    "baggage_allowance_kg": 32,
+    "special_meal": "DBML"
+  },
+  {
+    "booking_ref": "BK880089",
+    "event_type": "booking.updated",
+    "airline": "UA",
+    "origin": "SIN",
+    "destination": "SYD",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 266.46,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:07:15.166549+00:00",
+    "_ingested_at": "2026-03-19T15:07:15.166555+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK1945424",
+        "passport_number": "L1438785",
+        "frequent_flyer_number": "FF812147"
+      }
+    ],
+    "special_meal": "HNML"
+  },
+  {
+    "booking_ref": "BK154904",
+    "event_type": "booking.cancelled",
+    "airline": "DL",
+    "origin": "DXB",
+    "destination": "NRT",
+    "cabin": "first",
+    "status": "pending",
+    "total_price": 3970.59,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:07:17.726167+00:00",
+    "_ingested_at": "2026-03-19T15:07:17.726205+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK8151731",
+        "passport_number": "P3708914",
+        "date_of_birth": "1973-04-26"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK6103150",
+        "passport_number": "Q5543980"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8999996",
+        "passport_number": "K1286722",
+        "frequent_flyer_number": "FF409100"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK8205476",
+        "passport_number": "Q3297717",
+        "date_of_birth": "1992-11-26",
+        "frequent_flyer_number": "FF604196"
+      }
+    ],
+    "contact_phone": "+12393759406"
+  },
+  {
+    "booking_ref": "BK983363",
+    "event_type": "booking.created",
+    "airline": "DL",
+    "origin": "FRA",
+    "destination": "CDG",
+    "cabin": "first",
+    "status": "cancelled",
+    "total_price": 3998.48,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:07:18.842416+00:00",
+    "_ingested_at": "2026-03-19T15:07:18.842450+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK7476533",
+        "passport_number": "R9069412",
+        "frequent_flyer_number": "FF675787"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK5372768",
+        "passport_number": "T1629378",
+        "frequent_flyer_number": "FF102202"
+      }
+    ],
+    "contact_phone": "+12829300376"
+  },
+  {
+    "booking_ref": "BK694019",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "ORD",
+    "destination": "DXB",
+    "cabin": "business",
+    "status": "cancelled",
+    "total_price": 1748.29,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:07:24.364344+00:00",
+    "_ingested_at": "2026-03-19T15:07:24.364365+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK7131227",
+        "frequent_flyer_number": "FF986949"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK1085202",
+        "frequent_flyer_number": "FF351386"
+      }
+    ],
+    "contact_email": "traveller536@example.com"
+  },
+  {
+    "booking_ref": "BK457550",
+    "event_type": "booking.created",
+    "airline": "AF",
+    "origin": "JFK",
+    "destination": "NRT",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 1105.63,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:07:25.451312+00:00",
+    "_ingested_at": "2026-03-19T15:07:25.451326+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK6922260",
+        "passport_number": "Z3059389"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK2509277",
+        "passport_number": "F7156037",
+        "date_of_birth": "1978-03-17",
+        "frequent_flyer_number": "FF262200"
+      }
+    ],
+    "contact_email": "traveller323@example.com"
+  },
+  {
+    "booking_ref": "BK425986",
+    "event_type": "booking.created",
+    "airline": "LH",
+    "origin": "NRT",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "confirmed",
+    "total_price": 240.06,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:07:27.458630+00:00",
+    "_ingested_at": "2026-03-19T15:07:27.458668+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK4463160",
+        "passport_number": "K2454118",
+        "frequent_flyer_number": "FF654498"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK7319396",
+        "passport_number": "J1767865",
+        "frequent_flyer_number": "FF668571"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK3650835",
+        "passport_number": "I9851523",
+        "frequent_flyer_number": "FF983349"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK2408891",
+        "passport_number": "J2340906",
+        "frequent_flyer_number": "FF944373"
+      }
+    ],
+    "baggage_allowance_kg": 25,
+    "special_meal": "KSML"
+  },
+  {
+    "booking_ref": "BK818754",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "DXB",
+    "destination": "JFK",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 2855.06,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:07:34.225701+00:00",
+    "_ingested_at": "2026-03-19T15:07:34.225727+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK4786002",
+        "passport_number": "H9671015",
+        "date_of_birth": "2000-05-05",
+        "frequent_flyer_number": "FF215956"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK4223643",
+        "passport_number": "H6187374",
+        "frequent_flyer_number": "FF697557"
+      }
+    ],
+    "baggage_allowance_kg": 30,
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK493512",
+    "event_type": "booking.created",
+    "airline": "UA",
+    "origin": "LAX",
+    "destination": "CDG",
+    "cabin": "economy",
+    "status": "pending",
+    "total_price": 2120.26,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:07:38.420468+00:00",
+    "_ingested_at": "2026-03-19T15:07:38.420499+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK9494145",
+        "date_of_birth": "1961-05-14",
+        "frequent_flyer_number": "FF920558"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3068387"
+      }
+    ],
+    "seat_preference": "window"
+  },
+  {
+    "booking_ref": "BK379953",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "JFK",
+    "destination": "LAX",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 3062.53,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:07:42.126372+00:00",
+    "_ingested_at": "2026-03-19T15:07:42.126411+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK8872189",
+        "passport_number": "Z4746989",
+        "date_of_birth": "1968-05-28"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK2813511",
+        "passport_number": "G5360691",
+        "frequent_flyer_number": "FF235588"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK2728454",
+        "passport_number": "Z2311041",
+        "frequent_flyer_number": "FF940150"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3332048"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK178640",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "JFK",
+    "destination": "FRA",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 1037.18,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:07:46.509520+00:00",
+    "_ingested_at": "2026-03-19T15:07:46.509536+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK4225880",
+        "passport_number": "I7410482",
+        "frequent_flyer_number": "FF620755"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK5759645"
+      }
+    ],
+    "contact_email": "traveller244@example.com",
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK450939",
+    "event_type": "booking.updated",
+    "airline": "LH",
+    "origin": "LAX",
+    "destination": "CDG",
+    "cabin": "business",
+    "status": "pending",
+    "total_price": 1607.24,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:07:50.615971+00:00",
+    "_ingested_at": "2026-03-19T15:07:50.615999+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK7709531",
+        "frequent_flyer_number": "FF989724"
+      }
+    ],
+    "contact_email": "traveller547@example.com",
+    "baggage_allowance_kg": 32
+  },
+  {
+    "booking_ref": "BK593258",
+    "event_type": "booking.cancelled",
+    "airline": "UA",
+    "origin": "DXB",
+    "destination": "LHR",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 318.42,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:07:53.845398+00:00",
+    "_ingested_at": "2026-03-19T15:07:53.845413+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK9937221",
+        "passport_number": "R9211075",
+        "date_of_birth": "1981-07-02",
+        "frequent_flyer_number": "FF455347"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK5082015",
+        "passport_number": "I4170344",
+        "date_of_birth": "1987-09-11"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK2446240",
+        "passport_number": "X4138865",
+        "frequent_flyer_number": "FF107972"
+      }
+    ],
+    "baggage_allowance_kg": 20,
+    "seat_preference": null,
+    "special_meal": "DBML"
+  },
+  {
+    "booking_ref": "BK530472",
+    "event_type": "booking.created",
+    "airline": "QF",
+    "origin": "LHR",
+    "destination": "JFK",
+    "cabin": "economy",
+    "status": "checked_in",
+    "total_price": 3270.73,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:07:54.863255+00:00",
+    "_ingested_at": "2026-03-19T15:07:54.863292+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK3083700",
+        "frequent_flyer_number": "FF851556"
+      }
+    ],
+    "contact_email": "traveller999@example.com"
+  },
+  {
+    "booking_ref": "BK792809",
+    "event_type": "booking.updated",
+    "airline": "SQ",
+    "origin": "DXB",
+    "destination": "SIN",
+    "cabin": "business",
+    "status": "cancelled",
+    "total_price": 4140.09,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:08:03.839498+00:00",
+    "_ingested_at": "2026-03-19T15:08:03.839525+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK1349888",
+        "frequent_flyer_number": "FF734295"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK7912098",
+        "passport_number": "L6251863",
+        "date_of_birth": "1962-07-24",
+        "frequent_flyer_number": "FF584883"
+      }
+    ],
+    "contact_email": "traveller367@example.com",
+    "contact_phone": "+19387434779",
+    "seat_preference": "aisle"
+  },
+  {
+    "booking_ref": "BK498182",
+    "event_type": "booking.created",
+    "airline": "BA",
+    "origin": "SYD",
+    "destination": "LAX",
+    "cabin": "premium_economy",
+    "status": "confirmed",
+    "total_price": 1643.0,
+    "currency": "EUR",
+    "created_at": "2026-03-19T15:08:04.988569+00:00",
+    "_ingested_at": "2026-03-19T15:08:04.988611+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK9838942",
+        "passport_number": "X1483401"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK1417481",
+        "passport_number": "M9611465",
+        "frequent_flyer_number": "FF349076"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK267098",
+    "event_type": "booking.cancelled",
+    "airline": "QF",
+    "origin": "JFK",
+    "destination": "ORD",
+    "cabin": "economy",
+    "status": "confirmed",
+    "total_price": 2930.36,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:08:15.158834+00:00",
+    "_ingested_at": "2026-03-19T15:08:15.158867+00:00",
+    "passengers": [
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK8564028",
+        "passport_number": "Z1073316",
+        "date_of_birth": "1970-10-14"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK3533293",
+        "passport_number": "M7003637"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK8004199",
+        "date_of_birth": "1988-04-08"
+      },
+      {
+        "passenger_name": "Emma Davis",
+        "ticket_number": "TK1544408",
+        "date_of_birth": "1991-07-05",
+        "frequent_flyer_number": "FF259715"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK793876",
+    "event_type": "booking.updated",
+    "airline": "UA",
+    "origin": "SIN",
+    "destination": "NRT",
+    "cabin": "premium_economy",
+    "status": "cancelled",
+    "total_price": 1525.98,
+    "currency": "SGD",
+    "created_at": "2026-03-19T15:08:18.264513+00:00",
+    "_ingested_at": "2026-03-19T15:08:18.264535+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK2274989",
+        "passport_number": "N8906218",
+        "date_of_birth": "1974-10-27"
+      },
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK5144985",
+        "passport_number": "V4308212",
+        "date_of_birth": "1990-02-18"
+      },
+      {
+        "passenger_name": "Grace Wilson",
+        "ticket_number": "TK7963721",
+        "frequent_flyer_number": "FF700382"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK4091914",
+        "date_of_birth": "1960-04-14",
+        "frequent_flyer_number": "FF225467"
+      }
+    ]
+  },
+  {
+    "booking_ref": "BK517443",
+    "event_type": "booking.created",
+    "airline": "QF",
+    "origin": "ORD",
+    "destination": "DXB",
+    "cabin": "premium_economy",
+    "status": "pending",
+    "total_price": 3500.55,
+    "currency": "JPY",
+    "created_at": "2026-03-19T15:08:21.801959+00:00",
+    "_ingested_at": "2026-03-19T15:08:21.801981+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Henry Moore",
+        "ticket_number": "TK3917481",
+        "passport_number": "R1523514",
+        "date_of_birth": "1966-07-06"
+      },
+      {
+        "passenger_name": "Frank Miller",
+        "ticket_number": "TK9375591",
+        "passport_number": "D8347622",
+        "frequent_flyer_number": "FF782160"
+      },
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK3744693",
+        "passport_number": "M1368115",
+        "date_of_birth": "1971-03-09"
+      }
+    ],
+    "contact_email": "traveller452@example.com",
+    "contact_phone": "+15179057107"
+  },
+  {
+    "booking_ref": "BK175615",
+    "event_type": "booking.updated",
+    "airline": "EK",
+    "origin": "JFK",
+    "destination": "SIN",
+    "cabin": "first",
+    "status": "checked_in",
+    "total_price": 783.6,
+    "currency": "AUD",
+    "created_at": "2026-03-19T15:08:24.169986+00:00",
+    "_ingested_at": "2026-03-19T15:08:24.170021+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Bob Smith",
+        "ticket_number": "TK8422207"
+      },
+      {
+        "passenger_name": "David Brown",
+        "ticket_number": "TK2152516"
+      },
+      {
+        "passenger_name": "Alice Johnson",
+        "ticket_number": "TK7252182",
+        "passport_number": "V2018218",
+        "date_of_birth": "1967-11-20",
+        "frequent_flyer_number": "FF972839"
+      }
+    ],
+    "contact_email": "traveller484@example.com",
+    "baggage_allowance_kg": 23,
+    "seat_preference": "middle"
+  },
+  {
+    "booking_ref": "BK446139",
+    "event_type": "booking.created",
+    "airline": "SQ",
+    "origin": "DXB",
+    "destination": "ORD",
+    "cabin": "business",
+    "status": "checked_in",
+    "total_price": 1969.64,
+    "currency": "GBP",
+    "created_at": "2026-03-19T15:08:26.575383+00:00",
+    "_ingested_at": "2026-03-19T15:08:26.575389+00:00",
+    "passengers": [
+      {
+        "passenger_name": "Carol White",
+        "ticket_number": "TK4698271",
+        "date_of_birth": "1980-01-03"
+      }
+    ]
+  }
+]

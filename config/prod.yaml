@@ -1,0 +1,26 @@
+# StreamForge — Production Environment Overrides
+# ================================================
+# Conservative thresholds. Only act on confirmed breaking drift.
+
+watch:
+  interval_seconds: 300     # 5-minute polling in prod
+  sample_size: 500          # larger samples for statistical confidence
+  window_capacity: 5000
+  alert_tier: 2             # alert on tier 2+, block on tier 3
+
+drift:
+  type_change_threshold: 0.05
+  presence_drop_threshold: 0.20   # higher tolerance — prod traffic is noisy
+
+notifications:
+  slack:
+    enabled: true
+    min_tier: 2
+  pagerduty:
+    enabled: true
+    escalate_on_tier: 3
+
+kafka:
+  # Set KAFKA_BOOTSTRAP_SERVERS env var; avoid hardcoding prod brokers
+  brokers: null
+  consumer_group: "streamforge-profiler-prod"

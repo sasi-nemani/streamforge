@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -42,7 +41,7 @@ class StreamPolicy:
         "tier_2": "alert",
         "tier_3": "block",
     })
-    webhook_url: Optional[str] = None
+    webhook_url: str | None = None
 
     def action_for(self, tier: int) -> str:
         """Return the configured action for a drift tier."""

@@ -1,0 +1,90 @@
+# StreamForge Schema — events.github
+# Version: 1.0.0
+# Inferred: 2026-03-19T16:05:04.148393+00:00
+# Events sampled: 150
+# Overall confidence: 60%
+#
+# This file is the source of truth for stream: events.github
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: events.github
+version: 1.0.0
+inferred_at: '2026-03-19T16:05:04.148393+00:00'
+inference_confidence: 0.6
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 150
+event_types:
+- PushEvent
+- CreateEvent
+- DeleteEvent
+fields:
+- path: id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: actor_login
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: actor_id
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: repo_name
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: created_at
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: push_ref
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: push_size
+  type: 'null'
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: push_distinct_size
+  type: 'null'
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: commit_message
+  type: 'null'
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)

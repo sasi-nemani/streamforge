@@ -1,0 +1,466 @@
+"""
+Snapshot tests for streamforge/exporters/ksqldb.py — schema_to_ksqldb()
+
+Each snapshot test asserts the full deterministic output string. Structural
+property tests follow to document individual type-mapping and formatting rules.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from streamforge.exporters.ksqldb import schema_to_ksqldb
+from streamforge.models import FieldSchema, FieldType, InferredSchema, PIICategory
+
+# ── canonical test schemas ────────────────────────────────────────────────────
+
+def _minimal_schema() -> InferredSchema:
+    """Three fields: UUID (→ KEY), FLOAT, TIMESTAMP_EPOCH_MS."""
+    return InferredSchema(
+        stream_name="payments",
+        version="1.0.0",
+        inferred_at="2026-03-21T00:00:00Z",
+        event_count_sampled=100,
+        inference_model="claude-sonnet-4-6",
+        inference_confidence=0.95,
+        fields=[
+            FieldSchema(name="id", path="id", field_type=FieldType.UUID,
+                        required=True, nullable=False),
+            FieldSchema(name="amount", path="amount", field_type=FieldType.FLOAT,
+                        required=True, nullable=False),
+            FieldSchema(name="created_at", path="created_at",
+                        field_type=FieldType.TIMESTAMP_EPOCH_MS,
+                        required=True, nullable=False),
+        ],
+    )
+
+
+def _payments_schema() -> InferredSchema:
+    """Payments: epoch timestamp → TIMESTAMP WITH clause, id KEY detection."""
+    return InferredSchema(
+        stream_name="payments",
+        version="1.0.0",
+        inferred_at="2026-03-21T00:00:00Z",
+        event_count_sampled=300,
+        inference_model="claude-sonnet-4-6",
+        inference_confidence=0.93,
+        fields=[
+            FieldSchema(name="id", path="id", field_type=FieldType.UUID,
+                        required=True, nullable=False, notes="Payment UUID"),
+            FieldSchema(name="amount", path="amount", field_type=FieldType.FLOAT,
+                        required=True, nullable=False),
+            FieldSchema(name="currency", path="currency", field_type=FieldType.STRING,
+                        required=True, nullable=False, enum_values=["USD", "EUR", "GBP"]),
+            FieldSchema(name="created_at", path="created_at",
+                        field_type=FieldType.TIMESTAMP_EPOCH_MS,
+                        required=True, nullable=False),
+            FieldSchema(name="email", path="email", field_type=FieldType.EMAIL,
+                        required=False, nullable=True,
+                        pii_categories=[PIICategory.EMAIL], notes="Customer email"),
+        ],
+    )
+
+
+def _all_types_schema() -> InferredSchema:
+    """Exercises every ksqlDB type mapping; ISO8601 timestamp → TIMESTAMP_FORMAT."""
+    return InferredSchema(
+        stream_name="sensor_data",
+        version="2.0.0",
+        inferred_at="2026-03-21T12:00:00Z",
+        event_count_sampled=500,
+        inference_model="claude-sonnet-4-6",
+        inference_confidence=0.88,
+        fields=[
+            FieldSchema(name="sensor_id", path="sensor_id",
+                        field_type=FieldType.STRING, required=True),
+            FieldSchema(name="reading", path="reading",
+                        field_type=FieldType.FLOAT, required=True),
+            FieldSchema(name="count", path="count",
+                        field_type=FieldType.INTEGER, required=True),
+            FieldSchema(name="active", path="active",
+                        field_type=FieldType.BOOLEAN, required=True),
+            FieldSchema(name="recorded_at", path="recorded_at",
+                        field_type=FieldType.TIMESTAMP_ISO8601, required=True),
+            FieldSchema(name="tags", path="tags",
+                        field_type=FieldType.ARRAY, required=False, nullable=True),
+            FieldSchema(name="metadata", path="metadata",
+                        field_type=FieldType.OBJECT, required=False, nullable=True),
+            FieldSchema(name="value", path="value",
+                        field_type=FieldType.MIXED, required=False, nullable=True),
+            FieldSchema(name="raw", path="raw",
+                        field_type=FieldType.NULL, required=False, nullable=True),
+        ],
+    )
+
+
+def _no_timestamp_schema() -> InferredSchema:
+    """No timestamp field → no TIMESTAMP clause in WITH block."""
+    return InferredSchema(
+        stream_name="config-updates",
+        version="1.0.0",
+        inferred_at="2026-03-21T00:00:00Z",
+        event_count_sampled=10,
+        inference_model="claude-sonnet-4-6",
+        inference_confidence=0.99,
+        fields=[
+            FieldSchema(name="key", path="key",
+                        field_type=FieldType.STRING, required=True),
+            FieldSchema(name="value", path="value",
+                        field_type=FieldType.MIXED, required=True),
+        ],
+    )
+
+
+# ── snapshot strings ──────────────────────────────────────────────────────────
+
+SNAPSHOT_MINIMAL = (
+    "-- Generated by StreamForge\n"
+    "-- Source: kafka://payments  Schema: v1.0.0\n"
+    "-- Fields: 3  Confidence: 95%\n"
+    "\n"
+    "CREATE STREAM PAYMENTS (\n"
+    "    ID                              VARCHAR KEY,\n"
+    "    AMOUNT                          DOUBLE,\n"
+    "    CREATED_AT                      BIGINT\n"
+    ") WITH (\n"
+    "    KAFKA_TOPIC='payments',\n"
+    "    VALUE_FORMAT='JSON',\n"
+    "    TIMESTAMP='CREATED_AT',\n"
+    "    PARTITIONS=1\n"
+    ");\n"
+    "\n"
+    "-- Example: select all events\n"
+    "-- SELECT * FROM PAYMENTS EMIT CHANGES;\n"
+    "-- SELECT *, TIMESTAMPTOSTRING(CREATED_AT, 'yyyy-MM-dd HH:mm:ss') AS ts_str "
+    "FROM PAYMENTS EMIT CHANGES;"
+)
+
+SNAPSHOT_PAYMENTS = (
+    "-- Generated by StreamForge\n"
+    "-- Source: kafka://payments  Schema: v1.0.0\n"
+    "-- Fields: 5  Confidence: 93%\n"
+    "\n"
+    "CREATE STREAM PAYMENTS (\n"
+    "    ID                              VARCHAR KEY,\n"
+    "    AMOUNT                          DOUBLE,\n"
+    "    CURRENCY                        VARCHAR,\n"
+    "    CREATED_AT                      BIGINT,\n"
+    "    EMAIL                           VARCHAR\n"
+    ") WITH (\n"
+    "    KAFKA_TOPIC='payments',\n"
+    "    VALUE_FORMAT='JSON',\n"
+    "    TIMESTAMP='CREATED_AT',\n"
+    "    PARTITIONS=1\n"
+    ");\n"
+    "\n"
+    "-- Example: select all events\n"
+    "-- SELECT * FROM PAYMENTS EMIT CHANGES;\n"
+    "-- SELECT *, TIMESTAMPTOSTRING(CREATED_AT, 'yyyy-MM-dd HH:mm:ss') AS ts_str "
+    "FROM PAYMENTS EMIT CHANGES;"
+)
+
+SNAPSHOT_ALL_TYPES_AVRO = (
+    "-- Generated by StreamForge\n"
+    "-- Source: kafka://sensor_data  Schema: v2.0.0\n"
+    "-- Fields: 9  Confidence: 88%\n"
+    "\n"
+    "CREATE STREAM SENSOR_DATA (\n"
+    "    SENSOR_ID                       VARCHAR,\n"
+    "    READING                         DOUBLE,\n"
+    "    COUNT                           BIGINT,\n"
+    "    ACTIVE                          BOOLEAN,\n"
+    "    RECORDED_AT                     VARCHAR,\n"
+    "    TAGS                            ARRAY<VARCHAR>,\n"
+    "    METADATA                        STRUCT<>,\n"
+    "    VALUE                           VARCHAR,\n"
+    "    RAW                             VARCHAR\n"
+    ") WITH (\n"
+    "    KAFKA_TOPIC='sensor_data',\n"
+    "    VALUE_FORMAT='AVRO',\n"
+    "    TIMESTAMP='RECORDED_AT',\n"
+    "    TIMESTAMP_FORMAT='yyyy-MM-dd''T''HH:mm:ss.SSSZ',\n"
+    "    PARTITIONS=1\n"
+    ");\n"
+    "\n"
+    "-- Example: select all events\n"
+    "-- SELECT * FROM SENSOR_DATA EMIT CHANGES;"
+)
+
+SNAPSHOT_NO_TIMESTAMP = (
+    "-- Generated by StreamForge\n"
+    "-- Source: kafka://config-updates  Schema: v1.0.0\n"
+    "-- Fields: 2  Confidence: 99%\n"
+    "\n"
+    "CREATE STREAM CONFIG_UPDATES (\n"
+    "    KEY                             VARCHAR,\n"
+    "    VALUE                           VARCHAR\n"
+    ") WITH (\n"
+    "    KAFKA_TOPIC='config-updates',\n"
+    "    VALUE_FORMAT='JSON',\n"
+    "    PARTITIONS=1\n"
+    ");\n"
+    "\n"
+    "-- Example: select all events\n"
+    "-- SELECT * FROM CONFIG_UPDATES EMIT CHANGES;"
+)
+
+
+class TestKsqlDBSnapshots:
+    def test_minimal_schema(self):
+        assert schema_to_ksqldb(_minimal_schema()) == SNAPSHOT_MINIMAL
+
+    def test_payments_schema(self):
+        assert schema_to_ksqldb(_payments_schema()) == SNAPSHOT_PAYMENTS
+
+    def test_all_types_schema_with_avro_format(self):
+        assert schema_to_ksqldb(_all_types_schema(), value_format="AVRO") == SNAPSHOT_ALL_TYPES_AVRO
+
+    def test_no_timestamp_schema(self):
+        assert schema_to_ksqldb(_no_timestamp_schema()) == SNAPSHOT_NO_TIMESTAMP
+
+
+# ── structural property tests ─────────────────────────────────────────────────
+
+class TestKsqlDBHeader:
+    def test_starts_with_generated_by_comment(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert out.startswith("-- Generated by StreamForge")
+
+    def test_includes_kafka_source_url(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "-- Source: kafka://payments" in out
+
+    def test_includes_schema_version(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "Schema: v1.0.0" in out
+
+    def test_includes_field_count(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "Fields: 3" in out
+
+    def test_includes_confidence_percentage(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "Confidence: 95%" in out
+
+    def test_no_inferred_date_in_header(self):
+        """ksqlDB header does NOT include the Inferred: date (unlike Flink/Proto)."""
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "Inferred:" not in out
+
+
+class TestKsqlDBStreamName:
+    def test_stream_name_is_uppercased(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "CREATE STREAM PAYMENTS (" in out
+
+    def test_dots_in_stream_name_become_underscores_and_uppercase(self):
+        schema = InferredSchema(
+            stream_name="user.events",
+            version="1.0.0",
+            inferred_at="2026-03-21T00:00:00Z",
+            event_count_sampled=10,
+            inference_model="claude-sonnet-4-6",
+            inference_confidence=0.9,
+            fields=[
+                FieldSchema(name="id", path="id", field_type=FieldType.STRING, required=True)
+            ],
+        )
+        out = schema_to_ksqldb(schema)
+        assert "CREATE STREAM USER_EVENTS (" in out
+
+    def test_dashes_in_stream_name_become_underscores(self):
+        out = schema_to_ksqldb(_no_timestamp_schema())
+        assert "CREATE STREAM CONFIG_UPDATES (" in out
+
+
+class TestKsqlDBTypeMapping:
+    def test_uuid_maps_to_varchar(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "ID                              VARCHAR KEY" in out
+
+    def test_float_maps_to_double(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "AMOUNT                          DOUBLE" in out
+
+    def test_integer_maps_to_bigint(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "COUNT                           BIGINT" in out
+
+    def test_boolean_maps_to_boolean(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "ACTIVE                          BOOLEAN" in out
+
+    def test_string_maps_to_varchar(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "SENSOR_ID                       VARCHAR" in out
+
+    def test_email_maps_to_varchar(self):
+        out = schema_to_ksqldb(_payments_schema())
+        assert "EMAIL                           VARCHAR" in out
+
+    def test_timestamp_epoch_ms_maps_to_bigint(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "CREATED_AT                      BIGINT" in out
+
+    def test_timestamp_iso8601_maps_to_varchar(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "RECORDED_AT                     VARCHAR" in out
+
+    def test_array_maps_to_array_varchar(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "ARRAY<VARCHAR>" in out
+
+    def test_object_maps_to_struct(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "STRUCT<>" in out
+
+    def test_mixed_maps_to_varchar(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "VALUE                           VARCHAR" in out
+
+    def test_null_maps_to_varchar(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "RAW                             VARCHAR" in out
+
+
+class TestKsqlDBColumnNames:
+    def test_column_names_are_uppercased(self):
+        out = schema_to_ksqldb(_payments_schema())
+        assert "ID" in out
+        assert "AMOUNT" in out
+        assert "CURRENCY" in out
+
+    def test_dot_in_path_becomes_underscore(self):
+        schema = InferredSchema(
+            stream_name="events",
+            version="1.0.0",
+            inferred_at="2026-03-21T00:00:00Z",
+            event_count_sampled=10,
+            inference_model="claude-sonnet-4-6",
+            inference_confidence=0.9,
+            fields=[
+                FieldSchema(name="user_id", path="user.id",
+                            field_type=FieldType.UUID, required=True),
+            ],
+        )
+        out = schema_to_ksqldb(schema)
+        assert "USER_ID                         VARCHAR" in out
+
+
+class TestKsqlDBKeyDetection:
+    def test_field_named_id_gets_key_suffix(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "ID                              VARCHAR KEY" in out
+
+    def test_non_id_fields_do_not_get_key_suffix(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "AMOUNT                          DOUBLE KEY" not in out
+        assert "CREATED_AT                      BIGINT KEY" not in out
+
+    def test_schema_without_id_field_has_no_key_column(self):
+        out = schema_to_ksqldb(_no_timestamp_schema())
+        # " KEY" as a type suffix always appears as "<TYPE> KEY" (not as a column name)
+        assert "VARCHAR KEY" not in out
+
+    def test_event_id_also_detected_as_key(self):
+        schema = InferredSchema(
+            stream_name="events",
+            version="1.0.0",
+            inferred_at="2026-03-21T00:00:00Z",
+            event_count_sampled=10,
+            inference_model="claude-sonnet-4-6",
+            inference_confidence=0.9,
+            fields=[
+                FieldSchema(name="event_id", path="event_id",
+                            field_type=FieldType.UUID, required=True),
+                FieldSchema(name="payload", path="payload",
+                            field_type=FieldType.STRING, required=True),
+            ],
+        )
+        out = schema_to_ksqldb(schema)
+        assert "EVENT_ID                        VARCHAR KEY" in out
+
+
+class TestKsqlDBWithClause:
+    def test_kafka_topic_defaults_to_stream_name(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "KAFKA_TOPIC='payments'" in out
+
+    def test_custom_topic_overrides_stream_name(self):
+        out = schema_to_ksqldb(_minimal_schema(), topic="raw_payments")
+        assert "KAFKA_TOPIC='raw_payments'" in out
+
+    def test_default_value_format_is_json(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "VALUE_FORMAT='JSON'" in out
+
+    def test_custom_value_format_applied(self):
+        out = schema_to_ksqldb(_minimal_schema(), value_format="PROTOBUF")
+        assert "VALUE_FORMAT='PROTOBUF'" in out
+
+    def test_partitions_always_present(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "PARTITIONS=1" in out
+
+    def test_epoch_ts_adds_timestamp_clause(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "TIMESTAMP='CREATED_AT'" in out
+
+    def test_epoch_ts_does_not_add_timestamp_format_clause(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "TIMESTAMP_FORMAT" not in out
+
+    def test_iso8601_ts_adds_timestamp_and_format_clauses(self):
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "TIMESTAMP='RECORDED_AT'" in out
+        assert "TIMESTAMP_FORMAT='yyyy-MM-dd''T''HH:mm:ss.SSSZ'" in out
+
+    def test_no_timestamp_field_omits_timestamp_clause(self):
+        out = schema_to_ksqldb(_no_timestamp_schema())
+        assert "TIMESTAMP=" not in out
+        assert "TIMESTAMP_FORMAT=" not in out
+
+
+class TestKsqlDBExampleComments:
+    def test_always_includes_select_example(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "-- SELECT * FROM PAYMENTS EMIT CHANGES;" in out
+
+    def test_epoch_ts_includes_timestamptostring_example(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "TIMESTAMPTOSTRING(CREATED_AT," in out
+        assert "FROM PAYMENTS EMIT CHANGES;" in out
+
+    def test_no_epoch_ts_omits_timestamptostring_example(self):
+        out = schema_to_ksqldb(_no_timestamp_schema())
+        assert "TIMESTAMPTOSTRING" not in out
+
+    def test_iso8601_ts_omits_timestamptostring_example(self):
+        """ISO8601 is VARCHAR in ksqlDB — no TIMESTAMPTOSTRING needed."""
+        out = schema_to_ksqldb(_all_types_schema())
+        assert "TIMESTAMPTOSTRING" not in out
+
+    def test_example_comment_uses_stream_name(self):
+        out = schema_to_ksqldb(_no_timestamp_schema())
+        assert "FROM CONFIG_UPDATES EMIT CHANGES" in out
+
+
+class TestKsqlDBStatementStructure:
+    def test_output_starts_with_create_stream(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        lines = out.splitlines()
+        # First non-comment line should be blank, then CREATE STREAM
+        create_line = next(l for l in lines if l.startswith("CREATE"))
+        assert create_line.startswith("CREATE STREAM")
+
+    def test_column_list_inside_parentheses(self):
+        out = schema_to_ksqldb(_minimal_schema())
+        assert "CREATE STREAM PAYMENTS (\n" in out
+        assert "\n) WITH (" in out
+
+    def test_statement_ends_with_semicolon(self):
+        out = schema_to_ksqldb(_no_timestamp_schema())
+        # Last statement-level line is ");"
+        lines = [l for l in out.splitlines() if not l.startswith("--")]
+        non_empty = [l for l in lines if l.strip()]
+        assert non_empty[-1] == ");"

@@ -30,11 +30,12 @@ from .schema_writer import (
     write_samples,
     write_schema,
 )
+from .topic_config import load_topic_config
 
 app = typer.Typer(
     name="streamforge",
     help="StreamForge — AI-native schema inference and drift detection for event streams",
-    add_completion=False,
+    add_completion=True,
 )
 console = Console()
 logger = logging.getLogger(__name__)
@@ -82,12 +83,21 @@ def _auto_detect_schema(stream_path: str, output_dir: str) -> str | None:
 
 @app.command()
 def init(
-    stream_path: str = typer.Argument(..., help="Path to folder containing NDJSON event files"),
-    sample_size: int = typer.Option(500, "--sample-size", "-n", help="Number of events to sample"),
+    stream_path: str = typer.Argument(..., help="Folder path or kafka://topic URI"),
+    sample_size: int = typer.Option(0, "--sample-size", "-n", help="Number of events to sample (0 = use config)"),
     output_dir: str = typer.Option("schemas", "--output", "-o", help="Output directory for schema files"),
     api_key: str | None = typer.Option(None, "--api-key", help="LLM API key (or set GROQ_API_KEY / OPENAI_API_KEY)"),
-    model: str = typer.Option(DEFAULT_MODEL, "--model", "-m", help="Model name"),
-    base_url: str = typer.Option(DEFAULT_BASE_URL, "--base-url", help="OpenAI-compatible API base URL"),
+    model: str = typer.Option("", "--model", "-m", help="Model name (default from config)"),
+    base_url: str = typer.Option("", "--base-url", help="OpenAI-compatible API base URL (default from config)"),
+    brokers: str | None = typer.Option(
+        None, "--brokers",
+        help="Kafka broker list (e.g. localhost:9092). Only used for kafka:// URIs.",
+        envvar="KAFKA_BOOTSTRAP_SERVERS",
+    ),
+    env: str | None = typer.Option(
+        None, "--env",
+        help="Config environment to use (dev/staging/prod). Overrides STREAMFORGE_ENV env var.",
+    ),
     allow_partial_inference: bool = typer.Option(
         False,
         "--allow-partial-inference",
@@ -97,71 +107,157 @@ def init(
             "the canonical schema. Use only when clean events are insufficient."
         ),
     ),
+    push_to: str | None = typer.Option(
+        None, "--push-to",
+        help="Schema registry URL to push inferred schema (e.g. http://localhost:8081 for Confluent SR)",
+    ),
 ):
-    """Infer schema from event stream. Produces profile.yaml, profile_report.md, and schema.yaml."""
+    """Infer schema from event stream. Produces profile.yaml, profile_report.md, and schema.yaml.
+
+    \b
+    Supports two sources:
+      streamforge init events/payments/stream_v1                         # NDJSON folder
+      streamforge init kafka://events.payments --brokers localhost:9092  # Kafka topic
+      streamforge init kafka://events.payments --env staging             # with env config
+    """
+    import asyncio
     from datetime import datetime
 
     _MIN_CLEAN_EVENTS = 20  # floor below which inference quality is unreliable
 
+    is_kafka = stream_path.startswith("kafka://")
     key = _resolve_api_key(api_key)
-    stream_name = _stream_name(stream_path)
-    console.print(f"[bold]StreamForge[/bold] — profiling [cyan]{stream_name}[/cyan]")
 
-    # Load with resilient parser — handles broken JSON, log-prefixed lines, partial extracts
-    all_events, parse_stats = load_events_resilient(stream_path)
-    if not all_events:
-        console.print(f"[red]No events found in {stream_path}[/red]")
-        raise typer.Exit(1)
+    # Resolve topic name for config lookup
+    _topic_for_cfg = stream_path[len("kafka://"):] if is_kafka else _stream_name(stream_path)
+    tc = load_topic_config(_topic_for_cfg, env)
 
-    # P1-C: split clean vs partial — partial events are reconstructed via regex
-    # and their field structure is unreliable for canonical schema inference.
-    clean_events, partial_events = split_by_quality(all_events)
+    # Apply config defaults for flags that weren't explicitly set
+    effective_sample_size = sample_size if sample_size > 0 else tc.init_sample_size
+    effective_model    = model    if model    else tc.inference_model
+    effective_base_url = base_url if base_url else tc.inference_base_url
 
-    total_lines = parse_stats["total_lines"] or 1
-    parse_success_rate = (parse_stats["parsed_clean"] + parse_stats["parsed_partial"]) / total_lines
-    skipped = parse_stats["skipped"]
+    # Early registry connectivity check — fail before inference if registry is unreachable
+    _reg_backend_early = None
+    if push_to or tc.registry_enabled:
+        from .registries import get_registry_backend, subject_for_topic
+        from .registries.confluent import ConfluentRegistryBackend
+        if push_to:
+            _reg_backend_early = ConfluentRegistryBackend(url=push_to)
+        else:
+            _reg_backend_early = get_registry_backend(tc.registry_config)
+        if _reg_backend_early:
+            ping_result = _reg_backend_early.ping()
+            if not ping_result:
+                console.print(f"[red]Registry not reachable:[/red] {ping_result.error}")
+                console.print("[dim]Fix registry connectivity before running init.[/dim]")
+                raise typer.Exit(1)
+            console.print("[dim]Registry reachable — will push after inference[/dim]")
 
-    parse_color = "green" if parse_success_rate >= 0.95 else "yellow" if parse_success_rate >= 0.80 else "red"
-    console.print(
-        f"✓ Loaded [{parse_color}]{len(all_events)} events[/{parse_color}]"
-        f" from {parse_stats['total_lines']} lines"
-        f" — parse rate [{parse_color}]{parse_success_rate:.1%}[/{parse_color}]"
-        + (f"  ({len(partial_events)} partial, {skipped} skipped)" if (partial_events or skipped) else "")
-    )
+    if is_kafka:
+        topic = stream_path[len("kafka://"):]
+        stream_name = topic  # keep dots — matches what watch auto-detects
 
-    if len(clean_events) < _MIN_CLEAN_EVENTS:
-        if not allow_partial_inference:
-            console.print(
-                f"[red]Error:[/red] Only {len(clean_events)} clean (fully-parsed) events found — "
-                f"too few for reliable schema inference (minimum {_MIN_CLEAN_EVENTS}).\n"
-                f"  {len(partial_events)} partial events were excluded because they were reconstructed "
-                f"via regex fallback and may not reflect the true event schema.\n"
-                f"  To include them anyway, rerun with [bold]--allow-partial-inference[/bold]."
-            )
-            raise typer.Exit(1)
-        # Override: use all events but make the degradation visible
-        console.print(
-            f"[yellow]⚠ --allow-partial-inference set: using all {len(all_events)} events "
-            f"({len(partial_events)} partial) — schema quality may be degraded.[/yellow]"
+        from .config import KafkaConfig
+        from .connectors.kafka import KafkaConnector, KafkaConnectorError
+
+        # Brokers: CLI flag → config (which already checked KAFKA_BOOTSTRAP_SERVERS)
+        broker_list = (
+            [b.strip() for b in brokers.split(",") if b.strip()]
+            if brokers
+            else tc.kafka_broker_list
         )
-        inference_events = all_events
-    else:
-        if partial_events:
-            console.print(
-                f"✓ Using [green]{len(clean_events)}[/green] clean events for inference "
-                f"[dim]({len(partial_events)} partial excluded)[/dim]"
-            )
-        inference_events = clean_events
+        if not broker_list:
+            console.print("[red]--brokers required for kafka:// URIs (or set KAFKA_BOOTSTRAP_SERVERS)[/red]")
+            raise typer.Exit(1)
 
-    # Build ingest_stats to pass to the inference report for the Ingest Quality section
-    ingest_stats = {
-        "total": len(all_events),
-        "clean": len(clean_events),
-        "partial": len(partial_events),
-    }
+        kafka_cfg = KafkaConfig(
+            bootstrap_servers=broker_list,
+            security_protocol=tc.kafka_security_protocol,
+            auto_offset_reset="earliest",
+            consumer_group=f"streamforge-init-{topic}",
+        )
+
+        console.print(f"[bold]StreamForge[/bold] — profiling [cyan]{topic}[/cyan] (Kafka)")
+        console.print(f"Consuming up to {effective_sample_size} events from [cyan]{topic}[/cyan]...")
+
+        async def _consume() -> list[dict]:
+            async with KafkaConnector(topic, kafka_cfg) as conn:
+                return await conn.read_batch(max_messages=effective_sample_size, timeout_ms=15_000)
+
+        try:
+            all_events = asyncio.run(_consume())
+        except KafkaConnectorError as e:
+            console.print(f"[red]Kafka error:[/red] {e}")
+            raise typer.Exit(1)
+
+        if not all_events:
+            console.print(f"[red]No events received from topic '{topic}' within 15s.[/red]")
+            console.print("[dim]Make sure the feed is running: python3 kafka_docker_demo/feed_kafka.py[/dim]")
+            raise typer.Exit(1)
+
+        console.print(f"✓ Consumed [green]{len(all_events)}[/green] events from Kafka")
+        clean_events = all_events
+        inference_events = all_events
+        ingest_stats = {"total": len(all_events), "clean": len(all_events), "partial": 0}
+        parse_success_rate = 1.0
+
+    else:
+        stream_name = _stream_name(stream_path)
+        console.print(f"[bold]StreamForge[/bold] — profiling [cyan]{stream_name}[/cyan]")
+
+        # Load with resilient parser — handles broken JSON, log-prefixed lines, partial extracts
+        all_events, parse_stats = load_events_resilient(stream_path)
+        if not all_events:
+            console.print(f"[red]No events found in {stream_path}[/red]")
+            raise typer.Exit(1)
+
+        # P1-C: split clean vs partial
+        clean_events, partial_events = split_by_quality(all_events)
+
+        total_lines = parse_stats["total_lines"] or 1
+        parse_success_rate = (parse_stats["parsed_clean"] + parse_stats["parsed_partial"]) / total_lines
+        skipped = parse_stats["skipped"]
+
+        parse_color = "green" if parse_success_rate >= 0.95 else "yellow" if parse_success_rate >= 0.80 else "red"
+        console.print(
+            f"✓ Loaded [{parse_color}]{len(all_events)} events[/{parse_color}]"
+            f" from {parse_stats['total_lines']} lines"
+            f" — parse rate [{parse_color}]{parse_success_rate:.1%}[/{parse_color}]"
+            + (f"  ({len(partial_events)} partial, {skipped} skipped)" if (partial_events or skipped) else "")
+        )
+
+        if len(clean_events) < _MIN_CLEAN_EVENTS:
+            if not allow_partial_inference:
+                console.print(
+                    f"[red]Error:[/red] Only {len(clean_events)} clean (fully-parsed) events found — "
+                    f"too few for reliable schema inference (minimum {_MIN_CLEAN_EVENTS}).\n"
+                    f"  {len(partial_events)} partial events were excluded because they were reconstructed "
+                    f"via regex fallback and may not reflect the true event schema.\n"
+                    f"  To include them anyway, rerun with [bold]--allow-partial-inference[/bold]."
+                )
+                raise typer.Exit(1)
+            console.print(
+                f"[yellow]⚠ --allow-partial-inference set: using all {len(all_events)} events "
+                f"({len(partial_events)} partial) — schema quality may be degraded.[/yellow]"
+            )
+            inference_events = all_events
+        else:
+            if partial_events:
+                console.print(
+                    f"✓ Using [green]{len(clean_events)}[/green] clean events for inference "
+                    f"[dim]({len(partial_events)} partial excluded)[/dim]"
+                )
+            inference_events = clean_events
+
+        ingest_stats = {
+            "total": len(all_events),
+            "clean": len(clean_events),
+            "partial": len(partial_events),
+        }
 
     # Sample from clean (or allowed) events only
-    sample = reservoir_sample(inference_events, sample_size)
+    sample = reservoir_sample(inference_events, effective_sample_size)
     sampled_note = "(all)" if len(sample) == len(inference_events) else "reservoir sample"
     console.print(f"✓ Sampled [bold]{len(sample)}[/bold] events {sampled_note}")
 
@@ -179,7 +275,7 @@ def init(
         console.print(f"    [dim]_other / _sparse               {noise_count:>5} events  (noise bucket, not inferred)[/dim]")
 
     # Infer sub-schemas — one LLM call per significant cluster
-    console.print(f"\n🤖 Inferring sub-schemas with [bold]{model}[/bold]...")
+    console.print(f"\n🤖 Inferring sub-schemas with [bold]{effective_model}[/bold]...")
     sub_schemas = []
     all_pii = []
 
@@ -191,8 +287,8 @@ def init(
             detection_method=method,
             total_stream_events=len(sample),
             api_key=key,
-            model=model,
-            base_url=base_url,
+            model=effective_model,
+            base_url=effective_base_url,
         )
         sub_schemas.append(sub)
         pii = [(f.path, f.pii_categories) for f in sub.fields if f.pii_categories]
@@ -219,7 +315,7 @@ def init(
         discovery_method=method,
         routing_field=routing_field,
         sub_schemas=sub_schemas,
-        profile_model=model,
+        profile_model=effective_model,
     )
 
     # Write profile.yaml and profile_report.md
@@ -238,7 +334,7 @@ def init(
             event_count_sampled=len(sample),
             fields=primary.fields,
             top_level_event_types=[s.cluster_id for s in sub_schemas] if len(sub_schemas) > 1 else None,
-            inference_model=model,
+            inference_model=effective_model,
             inference_confidence=primary.inference_confidence,
         )
         schema_path = write_schema(compat_schema, output_dir)
@@ -248,18 +344,57 @@ def init(
         console.print(f"✓ Written: [green]{schema_path}[/green] [dim](primary cluster — for watch/plan)[/dim]")
 
     # Write default policy
-    policy = StreamPolicy(stream=stream_name, sample_size=sample_size)
+    policy = StreamPolicy(stream=stream_name, sample_size=effective_sample_size)
     policy_path = write_policy(policy, output_dir)
     console.print(f"✓ Written: [green]{policy_path}[/green]")
+
+    # VCS: commit new schema files if enabled
+    from .vcs import SchemaCommitContext, get_vcs_backend
+    vcs = get_vcs_backend(tc.vcs_config)
+    if vcs and vcs.is_available() and tc.vcs_auto_commit:
+        schema_dir = Path(output_dir) / stream_name
+        ctx = SchemaCommitContext(
+            stream_name=stream_name,
+            old_version=None,
+            new_version="1.0.0",
+            action="init",
+            files=[
+                schema_dir / "schema.yaml",
+                schema_dir / "profile.yaml",
+                schema_dir / "profile_report.md",
+                schema_dir / "stream_policy.yaml",
+            ],
+        )
+        result = vcs.commit_schema(ctx)
+        if result.success:
+            console.print(f"✓ VCS: [green]{result}[/green]")
+        else:
+            console.print(f"[yellow]⚠ VCS commit skipped:[/yellow] {result.error}")
+
+    # Registry: push schema if --push-to provided or registry enabled in config
+    if sub_schemas and (push_to or tc.registry_enabled):
+        from .registries import get_registry_backend, subject_for_topic
+        # Reuse the backend created during the early ping check
+        reg_backend = _reg_backend_early
+        if reg_backend:
+            subject = subject_for_topic(stream_name, tc.registry_subject_suffix)
+            reg_result = reg_backend.push_schema(subject, compat_schema, tc.registry_format)
+            if reg_result:
+                console.print(
+                    f"✓ Registry: [green]{subject}[/green] "
+                    f"id={reg_result.schema_id} v{reg_result.version}"
+                )
+            else:
+                console.print(f"[yellow]⚠ Registry push failed:[/yellow] {reg_result.error}")
 
 
 @app.command()
 def watch(
     stream_path: str = typer.Argument(..., help="Folder path or kafka://topic URI"),
     schema_path: str | None = typer.Option(None, "--schema", help="Path to schema.yaml (auto-detected if not set)"),
-    interval: int = typer.Option(30, "--interval", "-i", help="Poll interval in seconds"),
-    sample_size: int = typer.Option(200, "--sample-size", "-n"),
-    window_capacity: int = typer.Option(2000, "--window", help="Rolling event window size for drift comparison"),
+    interval: int = typer.Option(0, "--interval", "-i", help="Poll interval in seconds (0 = use config)"),
+    sample_size: int = typer.Option(0, "--sample-size", "-n", help="Events to sample per cycle (0 = use config)"),
+    window_capacity: int = typer.Option(0, "--window", help="Rolling event window size (0 = use config)"),
     webhook: str | None = typer.Option(None, "--webhook", "-w", help="Webhook URL for drift notifications"),
     brokers: str | None = typer.Option(
         None, "--brokers",
@@ -268,14 +403,23 @@ def watch(
              "Overrides KAFKA_BOOTSTRAP_SERVERS env var.",
         envvar="KAFKA_BOOTSTRAP_SERVERS",
     ),
+    env: str | None = typer.Option(
+        None, "--env",
+        help="Config environment to use (dev/staging/prod). "
+             "Overrides STREAMFORGE_ENV env var.",
+    ),
 ):
     """Watch stream for schema drift. Runs continuously until Ctrl+C.
 
     Supports two sources:
 
     \b
-      streamforge watch events/payments/stream_v1        # file-based (NDJSON folder)
-      streamforge watch kafka://payments --brokers b:9092 # Kafka topic
+      streamforge watch events/payments/stream_v1               # file-based
+      streamforge watch kafka://events.payments --brokers b:9092  # Kafka topic
+      streamforge watch kafka://events.payments --env prod        # with env config
+
+    Config is loaded from config/topics/<topic>.yaml → config/<env>.yaml → config/default.yaml.
+    CLI flags override config file values when explicitly provided.
     """
     is_kafka = stream_path.startswith("kafka://")
 
@@ -289,37 +433,50 @@ def watch(
         )
         raise typer.Exit(1)
 
+    # Load resolved config for this topic + env
     stream_name = schema_stream_path if is_kafka else Path(stream_path).name
-    policy = load_policy("schemas", stream_name)
+    tc = load_topic_config(stream_name, env)
 
-    # CLI flags override policy
-    effective_interval = interval if interval != 30 else policy.poll_interval_seconds
-    effective_sample = sample_size if sample_size != 200 else policy.sample_size
-    effective_webhook = webhook or policy.webhook_url
+    # CLI flags take priority over config; 0 means "use config"
+    effective_interval  = interval       if interval       > 0 else tc.poll_interval_seconds
+    effective_sample    = sample_size    if sample_size    > 0 else tc.sample_size
+    effective_window    = window_capacity if window_capacity > 0 else tc.window_capacity
+    effective_webhook   = webhook or tc.webhook_url
 
     if is_kafka:
         topic = stream_path[len("kafka://"):]
-        from .config import load as _load_config
+        from .config import KafkaConfig
         from .drift_detector import watch_stream_kafka
 
-        cfg = _load_config()
-        if brokers:
-            cfg.kafka.bootstrap_servers = [b.strip() for b in brokers.split(",") if b.strip()]
-
-        if not cfg.kafka.bootstrap_servers:
+        # Brokers: CLI flag → env var (inside tc via KAFKA_BOOTSTRAP_SERVERS) → topic config
+        effective_brokers = (
+            [b.strip() for b in brokers.split(",") if b.strip()]
+            if brokers
+            else tc.kafka_broker_list
+        )
+        if not effective_brokers:
             console.print(
                 "[red]No Kafka brokers configured. "
-                "Pass --brokers or set KAFKA_BOOTSTRAP_SERVERS.[/red]"
+                "Pass --brokers, set KAFKA_BOOTSTRAP_SERVERS, or add kafka.brokers to config/.[/red]"
             )
             raise typer.Exit(1)
 
+        kafka_cfg = KafkaConfig(
+            bootstrap_servers=effective_brokers,
+            security_protocol=tc.kafka_security_protocol,
+            consumer_group=tc.kafka_consumer_group,
+            auto_offset_reset=tc.kafka_auto_offset_reset,
+            session_timeout_ms=tc.kafka_session_timeout_ms,
+            request_timeout_ms=tc.kafka_request_timeout_ms,
+        )
+
         watch_stream_kafka(
-            topic, cfg.kafka, resolved_schema,
-            effective_interval, effective_sample, window_capacity, effective_webhook,
+            topic, kafka_cfg, resolved_schema,
+            effective_interval, effective_sample, effective_window, effective_webhook,
         )
     else:
         from .drift_detector import watch_stream
-        watch_stream(stream_path, resolved_schema, effective_interval, effective_sample, window_capacity, effective_webhook)
+        watch_stream(stream_path, resolved_schema, effective_interval, effective_sample, effective_window, effective_webhook)
 
 
 @app.command(name="kafka-ping")
@@ -396,6 +553,126 @@ def kafka_ping(
 
 
 @app.command()
+def discover(
+    brokers: str | None = typer.Option(
+        None, "--brokers",
+        help="Kafka broker list (e.g. localhost:9092)",
+        envvar="KAFKA_BOOTSTRAP_SERVERS",
+    ),
+    filter: str = typer.Option("*", "--filter", "-f", help="Glob pattern to filter topics (e.g. 'events.*')"),
+    output_dir: str = typer.Option("schemas", "--output", "-o", help="Directory to check for existing schemas"),
+    env: str | None = typer.Option(None, "--env", help="Config environment (dev/staging/prod)"),
+    output_format: str = typer.Option("table", "--format", help="Output format: table | json"),
+):
+    """Discover Kafka topics and check which ones have schemas.
+
+    \b
+    Connects to the Kafka broker, lists all topics matching the filter, then
+    checks which ones have been initialised with 'streamforge init'.
+
+    \b
+    Examples:
+      streamforge discover --brokers localhost:9092
+      streamforge discover --brokers localhost:9092 --filter "events.*"
+      streamforge discover --brokers localhost:9092 --format json | jq '.[] | select(.has_schema == false)'
+    """
+    import fnmatch
+    import json as _json
+
+    from .schema_writer import load_drift_state
+
+    tc = load_topic_config(None, env)
+    effective_brokers = (
+        [b.strip() for b in brokers.split(",") if b.strip()]
+        if brokers
+        else tc.kafka_broker_list
+    )
+    if not effective_brokers:
+        console.print("[red]No Kafka brokers configured. Pass --brokers or set KAFKA_BOOTSTRAP_SERVERS.[/red]")
+        raise typer.Exit(1)
+
+    broker_str = ",".join(effective_brokers)
+
+    # List topics via confluent-kafka AdminClient or kafka-python
+    try:
+        try:
+            from confluent_kafka.admin import AdminClient
+            admin = AdminClient({"bootstrap.servers": broker_str})
+            metadata = admin.list_topics(timeout=10)
+            all_topics = list(metadata.topics.keys())
+        except ImportError:
+            from kafka import KafkaAdminClient  # type: ignore[import]
+            admin_client = KafkaAdminClient(
+                bootstrap_servers=effective_brokers,
+                client_id="streamforge-discover",
+                request_timeout_ms=10_000,
+            )
+            all_topics = admin_client.list_topics()
+            admin_client.close()
+    except Exception as e:
+        console.print(f"[red]Could not list Kafka topics:[/red] {e}")
+        raise typer.Exit(1)
+
+    # Filter internal topics and apply user glob filter
+    topics = [
+        t for t in sorted(all_topics)
+        if not t.startswith("_") and fnmatch.fnmatch(t, filter)
+    ]
+
+    schema_root = Path(output_dir)
+    results: list[dict] = []
+    for topic in topics:
+        schema_yaml = schema_root / topic / "schema.yaml"
+        has_schema = schema_yaml.exists()
+        version = None
+        open_incidents = 0
+        if has_schema:
+            try:
+                s = load_schema(str(schema_yaml))
+                version = s.version
+                state = load_drift_state(schema_root / topic)
+                from .models import DriftIncidentStatus
+                open_incidents = sum(1 for i in state.incidents if i.status == DriftIncidentStatus.OPEN)
+            except Exception:
+                pass
+        results.append({
+            "topic": topic,
+            "has_schema": has_schema,
+            "version": version,
+            "open_incidents": open_incidents,
+        })
+
+    if output_format == "json":
+        print(_json.dumps(results, indent=2))
+        return
+
+    t = Table(title=f"Kafka Topics — {effective_brokers[0]}", show_header=True, header_style="bold")
+    t.add_column("Topic", style="cyan")
+    t.add_column("Schema", justify="center")
+    t.add_column("Version", justify="center")
+    t.add_column("Open Incidents", justify="right")
+    for r in results:
+        schema_str = "[green]✓[/green]" if r["has_schema"] else "[dim]—[/dim]"
+        incidents_str = (
+            f"[red]{r['open_incidents']}[/red]" if r["open_incidents"] > 0
+            else "[dim]0[/dim]"
+        )
+        t.add_row(r["topic"], schema_str, r["version"] or "—", incidents_str)
+
+    console.print(t)
+    with_schema = sum(1 for r in results if r["has_schema"])
+    console.print(
+        f"\n[dim]{len(results)} topics | "
+        f"[green]{with_schema} with schema[/green] | "
+        f"[yellow]{len(results) - with_schema} without schema[/yellow][/dim]"
+    )
+    if len(results) - with_schema > 0:
+        console.print(
+            "[dim]Run 'streamforge init kafka://<topic> --brokers ...' to initialise a topic.[/dim]"
+        )
+
+
+@app.command()
 def report(
     stream_path: str = typer.Argument(...),
     output_dir: str = typer.Option("schemas", "--output", "-o"),
@@ -447,6 +724,135 @@ def report(
             console.print("\n[green]No drift reports found — schema is clean.[/green]")
     else:
         console.print("\n[green]No drift reports found — schema is clean.[/green]")
+
+
+@app.command()
+def validate(
+    stream_name: str = typer.Argument(..., help="Stream name or path (e.g. events.payments)"),
+    event: str | None = typer.Option(None, "--event", "-e", help="Inline JSON event string"),
+    file: str | None = typer.Option(None, "--file", "-f", help="Path to JSON event file"),
+    schema_path: str | None = typer.Option(None, "--schema", "-s", help="Path to schema.yaml (auto-detected if omitted)"),
+    output_dir: str = typer.Option("schemas", "--output", "-o"),
+    strict: bool = typer.Option(False, "--strict", help="Fail on unknown fields not in schema"),
+    output_format: str = typer.Option("table", "--format", help="Output format: table | json"),
+):
+    """Validate an event against its schema. Exit 0=valid, 1=invalid (CI gate).
+
+    \b
+    Reads event from --event, --file, or stdin (pipe-friendly).
+
+    \b
+    Examples:
+      echo '{"amount": 9.99}' | streamforge validate events.payments
+      streamforge validate events.payments --file event.json
+      streamforge validate events.payments --event '{"event_id":"x","amount":9.99}'
+      cat events.ndjson | streamforge validate events.payments --strict
+    """
+    import json as _json
+    import sys
+
+    from .sampler import flatten_nested
+
+    # Resolve schema
+    resolved_schema = schema_path or _auto_detect_schema(stream_name, output_dir)
+    if resolved_schema is None:
+        # Also try stream_name directly as a schema directory name
+        candidate = Path(output_dir) / stream_name / "schema.yaml"
+        if candidate.exists():
+            resolved_schema = str(candidate)
+    if not resolved_schema:
+        console.print(
+            f"[red]No schema.yaml found for '{stream_name}'. Run 'streamforge init' first.[/red]"
+        )
+        raise typer.Exit(1)
+
+    schema = load_schema(resolved_schema)
+    field_map = {f.path: f for f in schema.fields}
+
+    # Read event JSON
+    raw_json: str
+    if event:
+        raw_json = event
+    elif file:
+        raw_json = Path(file).read_text(encoding="utf-8").strip()
+    elif not sys.stdin.isatty():
+        raw_json = sys.stdin.read().strip()
+    else:
+        console.print("[red]Provide event via --event, --file, or stdin.[/red]")
+        raise typer.Exit(1)
+
+    try:
+        parsed = _json.loads(raw_json)
+    except _json.JSONDecodeError as e:
+        console.print(f"[red]Invalid JSON:[/red] {e}")
+        raise typer.Exit(1)
+
+    if not isinstance(parsed, dict):
+        console.print("[red]Event must be a JSON object (dict).[/red]")
+        raise typer.Exit(1)
+
+    flat_event = flatten_nested(parsed)
+
+    violations: list[dict] = []
+
+    # Check required fields are present
+    for field in schema.fields:
+        if field.required and field.path not in flat_event:
+            violations.append({
+                "field": field.path,
+                "rule": "required_missing",
+                "message": f"Required field '{field.path}' is absent",
+                "severity": "error",
+            })
+
+    # Check enum values
+    for path, value in flat_event.items():
+        if path not in field_map:
+            if strict:
+                violations.append({
+                    "field": path,
+                    "rule": "unknown_field",
+                    "message": f"Unknown field '{path}' (--strict mode)",
+                    "severity": "warning",
+                })
+            continue
+        field_schema = field_map[path]
+        if field_schema.enum_values and value is not None:
+            str_val = str(value)
+            if str_val not in field_schema.enum_values:
+                violations.append({
+                    "field": path,
+                    "rule": "enum_violation",
+                    "message": f"Value {str_val!r} not in allowed values: {field_schema.enum_values[:10]}",
+                    "severity": "error",
+                })
+
+    is_valid = not any(v["severity"] == "error" for v in violations)
+
+    if output_format == "json":
+        print(_json.dumps({
+            "valid": is_valid,
+            "stream": schema.stream_name,
+            "schema_version": schema.version,
+            "violations": violations,
+        }, indent=2))
+    else:
+        if is_valid and not violations:
+            console.print(f"[green]✓ Valid[/green] — event matches [cyan]{schema.stream_name}[/cyan] v{schema.version}")
+        else:
+            status_str = "[red]✗ Invalid[/red]" if not is_valid else "[yellow]⚠ Warnings[/yellow]"
+            console.print(f"{status_str} — [cyan]{schema.stream_name}[/cyan] v{schema.version}")
+            t = Table(show_header=True, header_style="bold")
+            t.add_column("Field", style="cyan")
+            t.add_column("Rule")
+            t.add_column("Message")
+            t.add_column("Severity", justify="center")
+            for v in violations:
+                sev_color = "red" if v["severity"] == "error" else "yellow"
+                t.add_row(v["field"], v["rule"], v["message"], f"[{sev_color}]{v['severity']}[/{sev_color}]")
+            console.print(t)
+
+    raise typer.Exit(0 if is_valid else 1)
 
 
 @app.command()
@@ -741,10 +1147,19 @@ def ui(
 @app.command()
 def export(
     schema_dir: str = typer.Argument(..., help="Path to a schema directory (e.g. schemas/stream_v1) or schema.yaml file"),
-    fmt: str = typer.Option("json-schema", "--format", "-f", help="Export format: json-schema | avro"),
-    output: str | None = typer.Option(None, "--output", "-o", help="Output file path (default: stdout)"),
+    fmt: str = typer.Option("json-schema", "--format", "-f", help="Export format: json-schema | avro | flink-ddl | ksqldb | proto"),
+    output: str | None = typer.Option(None, "--output", "-o", help="Output file path (default: auto)"),
+    brokers: str | None = typer.Option(None, "--brokers", help="Kafka broker(s) for connector DDL (optional)", envvar="KAFKA_BOOTSTRAP_SERVERS"),
 ):
-    """Export schema to JSON Schema (Draft 2020-12) or Apache Avro format."""
+    """Export schema to JSON Schema, Avro, Flink DDL, ksqlDB, or Protobuf format.
+
+    \b
+    Examples:
+      streamforge export schemas/events.payments --format avro
+      streamforge export schemas/events.payments --format flink-ddl --brokers localhost:9092
+      streamforge export schemas/events.payments --format ksqldb
+      streamforge export schemas/events.payments --format proto
+    """
     import json
 
     # Resolve schema.yaml path
@@ -772,14 +1187,28 @@ def export(
         doc = schema_to_avro(schema)
         result = json.dumps(doc, indent=2)
         suffix = ".avsc"
+    elif fmt == "flink-ddl":
+        from .exporters.flink_ddl import schema_to_flink_ddl
+        broker_list = [b.strip() for b in brokers.split(",") if b.strip()] if brokers else None
+        result = schema_to_flink_ddl(schema, brokers=broker_list)
+        suffix = ".sql"
+    elif fmt == "ksqldb":
+        from .exporters.ksqldb import schema_to_ksqldb
+        result = schema_to_ksqldb(schema)
+        suffix = ".ksql"
+    elif fmt == "proto":
+        from .exporters.protobuf import schema_to_proto
+        result = schema_to_proto(schema)
+        suffix = ".proto"
     else:
-        console.print(f"[red]Unknown format '{fmt}'. Use: json-schema | avro[/red]")
+        console.print(f"[red]Unknown format '{fmt}'. Use: json-schema | avro | flink-ddl | ksqldb | proto[/red]")
         raise typer.Exit(1)
 
     if output:
         out_path = Path(output)
     else:
-        out_path = schema_yaml.parent / f"{schema.stream_name}{suffix}"
+        safe_name = schema.stream_name.replace(".", "_")
+        out_path = schema_yaml.parent / f"{safe_name}{suffix}"
 
     out_path.write_text(result)
     console.print(f"✓ Exported [{fmt}] → [green]{out_path}[/green]")
@@ -983,6 +1412,243 @@ def generate(
         )
     else:
         sys.stdout.write(output_text)
+
+
+@app.command()
+def status(
+    stream_path: str | None = typer.Argument(None, help="Stream path (omit to show all streams)"),
+    output_dir: str = typer.Option("schemas", "--output", "-o"),
+    show_resolved: bool = typer.Option(False, "--all", "-a", help="Include resolved/accepted incidents"),
+    output_format: str = typer.Option("table", "--format", help="Output format: table | json"),
+):
+    """Show open drift incidents for a stream (or all streams)."""
+    import json as _json
+
+    from .models import DriftIncidentStatus
+    from .schema_writer import load_drift_state
+
+    schema_root = Path(output_dir)
+    if stream_path:
+        dirs = [schema_root / _stream_name(stream_path)]
+    else:
+        dirs = sorted(d for d in schema_root.iterdir() if d.is_dir()) if schema_root.exists() else []
+
+    all_results: list[dict] = []
+    any_found = False
+    for schema_dir in dirs:
+        state = load_drift_state(schema_dir)
+        incidents = state.incidents
+        if not show_resolved:
+            incidents = [i for i in incidents if i.status == DriftIncidentStatus.OPEN]
+        if not incidents:
+            continue
+        any_found = True
+
+        if output_format == "json":
+            all_results.append({
+                "stream": state.stream_name,
+                "incidents": [
+                    {
+                        "id": inc.id,
+                        "field": inc.field_path,
+                        "drift_type": inc.drift_type,
+                        "tier": inc.tier,
+                        "occurrences": inc.occurrences,
+                        "first_detected": inc.first_detected,
+                        "status": inc.status,
+                    }
+                    for inc in incidents
+                ],
+            })
+            continue
+
+        console.print(f"\n[bold cyan]{state.stream_name}[/bold cyan]")
+        t = Table(show_header=True, header_style="bold", show_lines=False)
+        t.add_column("ID", style="dim", no_wrap=True)
+        t.add_column("Field", style="cyan")
+        t.add_column("Drift Type")
+        t.add_column("Tier", justify="center")
+        t.add_column("Occurrences", justify="right")
+        t.add_column("First Detected")
+        t.add_column("Status")
+        for inc in incidents:
+            tier_color = "red" if inc.tier == 3 else "yellow" if inc.tier == 2 else "green"
+            status_color = {
+                "open": "red", "accepted": "green",
+                "suppressed": "yellow", "resolved": "dim",
+            }.get(inc.status, "white")
+            t.add_row(
+                inc.id[-20:],
+                inc.field_path + (f" [{inc.cluster_id}]" if inc.cluster_id else ""),
+                inc.drift_type.replace("_", " "),
+                f"[{tier_color}]T{inc.tier}[/{tier_color}]",
+                str(inc.occurrences),
+                inc.first_detected[:16].replace("T", " "),
+                f"[{status_color}]{inc.status}[/{status_color}]",
+            )
+        console.print(t)
+
+    if output_format == "json":
+        print(_json.dumps(all_results, indent=2))
+        return
+
+    if not any_found:
+        console.print("[green]✓ No open drift incidents.[/green]")
+        if not show_resolved:
+            console.print("[dim]Run with --all to include resolved/accepted incidents.[/dim]")
+
+
+@app.command()
+def accept(
+    stream_path: str = typer.Argument(..., help="Stream path (e.g. events/bookings/stream)"),
+    field: str | None = typer.Option(None, "--field", "-f", help="Accept only this field path (accepts all open if omitted)"),
+    output_dir: str = typer.Option("schemas", "--output", "-o"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
+    """Accept drift incidents — update schema.yaml and bump its version.
+
+    \b
+    Examples:
+      streamforge accept events/bookings/stream                # accept all open incidents
+      streamforge accept events/bookings/stream -f passenger_name  # accept one field
+    """
+    from .models import DriftIncidentStatus
+    from .schema_writer import accept_drift, load_drift_state
+
+    stream_name = _stream_name(stream_path)
+    schema_dir = Path(output_dir) / stream_name
+    schema_path = schema_dir / "schema.yaml"
+
+    if not schema_path.exists():
+        console.print(f"[red]No schema found at {schema_path}. Run 'streamforge init' first.[/red]")
+        raise typer.Exit(1)
+
+    state = load_drift_state(schema_dir)
+    open_incidents = [i for i in state.incidents if i.status == DriftIncidentStatus.OPEN]
+
+    if field:
+        open_incidents = [i for i in open_incidents if i.field_path == field]
+        if not open_incidents:
+            console.print(f"[yellow]No open incidents found for field '{field}'.[/yellow]")
+            raise typer.Exit(0)
+
+    if not open_incidents:
+        console.print("[green]✓ No open incidents to accept.[/green]")
+        raise typer.Exit(0)
+
+    # Show what will be accepted
+    console.print(f"\n[bold]Accepting {len(open_incidents)} incident(s) for [cyan]{stream_name}[/cyan]:[/bold]")
+    for inc in open_incidents:
+        tier_color = "red" if inc.tier == 3 else "yellow" if inc.tier == 2 else "green"
+        console.print(
+            f"  [{tier_color}]T{inc.tier}[/{tier_color}] "
+            f"[cyan]{inc.field_path}[/cyan] — {inc.drift_type.replace('_', ' ')} "
+            f"({inc.occurrences} occurrence(s))"
+        )
+
+    if not yes:
+        typer.confirm("\nThis will update schema.yaml and bump its version. Continue?", abort=True)
+
+    from .schema_writer import load_schema as _load_schema
+    current = _load_schema(str(schema_path))
+    updated = accept_drift(schema_dir, open_incidents, drifts_by_id={})
+    console.print(
+        f"\n[green]✓ Schema updated:[/green] v{current.version} → v{updated.version}"
+    )
+    console.print(f"  Written: [dim]{schema_path}[/dim]")
+    console.print(
+        "\n[dim]Restart 'streamforge watch' to monitor against the updated schema.[/dim]"
+    )
+
+    # VCS: create PR for accepted schema changes
+    from .vcs import SchemaCommitContext, get_vcs_backend
+    tc = load_topic_config(stream_name)
+    vcs = get_vcs_backend(tc.vcs_config)
+    if vcs and vcs.is_available() and tc.vcs_enabled:
+        highest_tier = max((i.tier for i in open_incidents), default=1)
+        # Build a markdown drift summary for the PR body
+        drift_lines = []
+        for inc in open_incidents:
+            drift_lines.append(
+                f"- **{inc.field_path}** — {inc.drift_type.replace('_', ' ')} "
+                f"(T{inc.tier}, {inc.occurrences} cycle(s))"
+            )
+        drift_summary = "\n".join(drift_lines)
+
+        ctx = SchemaCommitContext(
+            stream_name=stream_name,
+            old_version=current.version,
+            new_version=updated.version,
+            action="accept",
+            drift_summary=drift_summary,
+            tier=highest_tier,
+            files=[schema_dir / "schema.yaml", schema_dir / "drift_state.yaml"],
+        )
+
+        if tc.vcs_auto_pr:
+            result = vcs.create_schema_pr(
+                ctx=ctx,
+                base_branch=tc.vcs_pr_base_branch,
+                reviewers=tc.vcs_pr_reviewers,
+                labels=tc.vcs_pr_labels + [f"tier-{highest_tier}"],
+            )
+        else:
+            result = vcs.commit_schema(ctx)
+
+        if result.success:
+            msg = f"[green]✓ VCS:[/green] {result.message}"
+            if result.url:
+                msg += f"\n  PR: [link={result.url}]{result.url}[/link]"
+            console.print(msg)
+        else:
+            console.print(f"[yellow]⚠ VCS:[/yellow] {result.error}")
+
+
+@app.command()
+def suppress(
+    stream_path: str = typer.Argument(...),
+    field: str = typer.Option(..., "--field", "-f", help="Field path to suppress"),
+    days: int = typer.Option(7, "--days", "-d", help="Suppress for N days"),
+    reason: str = typer.Option("", "--reason", "-r", help="Reason for suppression"),
+    output_dir: str = typer.Option("schemas", "--output", "-o"),
+):
+    """Suppress a drift incident for N days (e.g. while upstream team fixes a known issue).
+
+    \b
+    Example:
+      streamforge suppress events/bookings/stream -f passenger_name --days 7 --reason "PII scrubber fix ETA March 24"
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from .models import DriftIncidentStatus
+    from .schema_writer import load_drift_state, save_drift_state
+
+    schema_dir = Path(output_dir) / _stream_name(stream_path)
+    state = load_drift_state(schema_dir)
+
+    until = (datetime.now(UTC) + timedelta(days=days)).isoformat()
+    updated = []
+    matched = 0
+    for inc in state.incidents:
+        if inc.field_path == field and inc.status == DriftIncidentStatus.OPEN:
+            inc = inc.model_copy(update={
+                "status": DriftIncidentStatus.SUPPRESSED,
+                "suppressed_until": until,
+                "resolution_note": reason or f"Suppressed for {days} day(s)",
+            })
+            matched += 1
+        updated.append(inc)
+
+    if not matched:
+        console.print(f"[yellow]No open incidents found for field '{field}'.[/yellow]")
+        raise typer.Exit(1)
+
+    save_drift_state(schema_dir, state.model_copy(update={"incidents": updated}))
+    console.print(
+        f"[green]✓ Suppressed {matched} incident(s) for '{field}' until {until[:10]}.[/green]"
+    )
+    if reason:
+        console.print(f"  Reason: {reason}")
 
 
 @app.command()

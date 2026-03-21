@@ -1,0 +1,21 @@
+# StreamForge — Staging Environment Overrides
+# =============================================
+# Mirrors production behaviour but with more verbose alerting.
+
+watch:
+  interval_seconds: 60
+  sample_size: 300
+  window_capacity: 2000
+  alert_tier: 2
+
+drift:
+  type_change_threshold: 0.03   # slightly tighter than prod defaults
+
+notifications:
+  slack:
+    enabled: true
+    min_tier: 2
+
+kafka:
+  brokers: "kafka-staging:9092"
+  consumer_group: "streamforge-profiler-staging"

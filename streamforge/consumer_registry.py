@@ -51,11 +51,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
-from .models import DriftReport, FieldDrift, DriftTier
+from .models import DriftReport, DriftTier, FieldDrift
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +66,7 @@ class ConsumedField:
     """One field that a consumer reads from a stream."""
     path: str                       # dot-notation, e.g., "user.email"
     required: bool = True           # If True, this field being removed/changed breaks the consumer
-    transform: Optional[str] = None # e.g., "int(source.amount)" — documents type coercion
+    transform: str | None = None # e.g., "int(source.amount)" — documents type coercion
 
 
 @dataclass
@@ -84,9 +83,9 @@ class StreamConsumer:
     criticality: str                    # "tier1" | "tier2" | "tier3"
     schema_version: str                 # which version of schema.yaml they're pinned to
     fields_used: list[ConsumedField] = field(default_factory=list)
-    description: Optional[str] = None
-    repo: Optional[str] = None          # e.g., "github.com/myorg/fraud-service"
-    runbook: Optional[str] = None       # link to oncall runbook
+    description: str | None = None
+    repo: str | None = None          # e.g., "github.com/myorg/fraud-service"
+    runbook: str | None = None       # link to oncall runbook
 
     @property
     def criticality_score(self) -> int:
@@ -150,7 +149,7 @@ class BlastRadius:
     def to_slack_text(self) -> str:
         """Format blast radius for a Slack notification block."""
         if not self.impacted:
-            return f"✅ No registered consumers are affected by this drift."
+            return "✅ No registered consumers are affected by this drift."
 
         lines = [f"*Blast Radius — {self.stream_name}*"]
         lines.append(f"{self.affected_count} of {self.total_consumers} consumers affected:")

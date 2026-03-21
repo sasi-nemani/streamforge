@@ -14,7 +14,7 @@ Streams every edit made to Wikipedia in real time via the Wikimedia SSE feed.
 
 ```bash
 # Collect 200 English Wikipedia article edits
-python taps/wikipedia.py --max 200
+python scripts/taps/wikipedia.py --max 200
 
 # Then infer the schema
 streamforge init events/wikipedia/live
@@ -40,7 +40,7 @@ Streams real-time price ticks for BTC, ETH, and SOL from the public Coinbase Exc
 
 ```bash
 # Collect 200 trade ticks
-python taps/coinbase.py --max 200
+python scripts/taps/coinbase.py --max 200
 
 # Profile the fields (price, volume, bid/ask spread)
 streamforge profile events/coinbase/live
@@ -66,10 +66,10 @@ Polls the OpenSky Network API for real-time aircraft positions worldwide (or wit
 
 ```bash
 # Collect ~500 flight position records (3-4 polls)
-python taps/opensky.py --max 500
+python scripts/taps/opensky.py --max 500
 
 # UK airspace only
-python taps/opensky.py --bbox 49 -11 61 2 --max 300
+python scripts/taps/opensky.py --bbox 49 -11 61 2 --max 300
 
 # Infer schema from flight data
 streamforge init events/opensky/live
@@ -97,13 +97,13 @@ Run this to collect data from all three streams simultaneously:
 
 ```bash
 # Terminal 1 — collect 200 Wikipedia edits (~2 min)
-python taps/wikipedia.py --max 200
+python scripts/taps/wikipedia.py --max 200
 
 # Terminal 2 — collect 200 Coinbase ticks (~1 min)
-python taps/coinbase.py --max 200
+python scripts/taps/coinbase.py --max 200
 
 # Terminal 3 — collect 300 flight positions (~1 min)
-python taps/opensky.py --max 300
+python scripts/taps/opensky.py --max 300
 ```
 
 Then infer schemas and open the dashboard:
@@ -128,9 +128,9 @@ If you want one clean flow for a live meeting:
 
 ```bash
 # 1. Collect data in separate terminals
-python3 taps/wikipedia.py --max 200
-python3 taps/coinbase.py --max 200
-python3 taps/opensky.py --max 300
+python3 scripts/taps/wikipedia.py --max 200
+python3 scripts/taps/coinbase.py --max 200
+python3 scripts/taps/opensky.py --max 300
 
 # 2. Infer contracts
 streamforge init events/wikipedia/live

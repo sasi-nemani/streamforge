@@ -42,7 +42,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ..models import FieldSchema, FieldType, InferredSchema
 
@@ -177,7 +177,7 @@ def field_to_avro_field(field: FieldSchema) -> dict:
     return avro_field
 
 
-def schema_to_avro(schema: InferredSchema, namespace: Optional[str] = None) -> dict:
+def schema_to_avro(schema: InferredSchema, namespace: str | None = None) -> dict:
     """
     Convert an InferredSchema to a complete Avro Record Schema.
 
@@ -243,7 +243,7 @@ def schema_to_avro(schema: InferredSchema, namespace: Optional[str] = None) -> d
 def export_to_file(
     schema: InferredSchema,
     output_path: str,
-    namespace: Optional[str] = None,
+    namespace: str | None = None,
     indent: int = 2,
 ) -> str:
     """
@@ -317,7 +317,6 @@ def _build_nested_record(
         parts = f.path.split(".")
         if len(parts) > 1:
             # Create a shallow copy with the sub-path
-            from dataclasses import replace
             sub_field = FieldSchema(
                 name=parts[-1],
                 path=".".join(parts[1:]),

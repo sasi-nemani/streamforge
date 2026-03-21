@@ -96,7 +96,10 @@ streamforge ui
 |---------|-------------|
 | `init <path>` | Infer schema from events. Writes `profile.yaml`, `schema.yaml`, `stream_policy.yaml`, `inference_report.md` |
 | `plan <path>` | One-shot drift check. Exits 1 on policy-blocked drift. Use as CI gate |
-| `watch <path>` | Continuous drift monitoring. Writes dated reports to `drift_reports/` |
+| `watch <path>` | Continuous drift monitoring. Writes dated reports to `drift_reports/` and tracks incidents in `drift_state.yaml` |
+| `status [path]` | Show open drift incidents (all streams if path omitted). Add `--all` to include resolved |
+| `accept <path>` | Accept open drift → updates `schema.yaml`, bumps version, closes incident |
+| `suppress <path> -f <field>` | Mute a field's incident for N days (while upstream team fixes a known issue) |
 | `report <path>` | Print schema and drift history to terminal |
 | `profile <path>` | Field stats without LLM — type, presence rate, cardinality, cluster discovery |
 | `export <dir>` | Export `schema.yaml` to JSON Schema (Draft 2020-12) or Apache Avro |
@@ -105,7 +108,7 @@ streamforge ui
 | `history velocity` | Compute per-field trend analysis from historical snapshots |
 | `history propose` | Generate schema update proposals from trend evidence |
 | `demo` | Synthetic demo — no API key, no Kafka. Generates events, injects drift, detects live |
-| `ui` | Visual dashboard — live schema viewer, drift timeline |
+| `ui` | Visual dashboard — live schema viewer, drift timeline, open incidents |
 
 ---
 
@@ -129,6 +132,66 @@ The pattern: **infer** from production data → **declare** the contract in code
 | **Tier 1** | New optional field added, presence rate increased | Log only |
 | **Tier 2** | Type widened (int → float), enum expanded, timestamp format changed | Alert + report |
 | **Tier 3** | Required field removed, incompatible type break, new PII field | Block (exit 1 in CI) |
+
+---
+
+## Drift incident lifecycle
+
+Drift reports are **incidents, not alerts**. Every distinct drift fingerprint (field + drift_type) is opened as an incident in `schemas/<stream>/drift_state.yaml` and only fires once — subsequent watch cycles that detect the same drift update the occurrence counter but produce no new report file.
+
+```
+detected → open → accepted (schema updated) → done
+                → suppressed (muted for N days) → re-opens after expiry
+                → resolved (drift cleared on its own)
+```
+
+**Operational flow**
+
+```bash
+# 1. Watch detects passenger_name as new PII — writes ONE report
+streamforge watch events/bookings/stream
+
+# 2. See what's open (all streams)
+streamforge status
+# ┌──────────────────────────────────────────────────────┐
+# │ bookings.stream                                       │
+# │  T3  passenger_name  new pii  3× since 2026-03-17    │
+# └──────────────────────────────────────────────────────┘
+
+# 3a. Accept it — updates schema.yaml, bumps version, closes incident
+streamforge accept events/bookings/stream
+# ✓ Schema updated: v1.0.0 → v2.0.0
+
+# 3b. Or suppress it while upstream fixes the producer
+streamforge suppress events/bookings/stream \
+  --field passenger_name --days 7 \
+  --reason "PII scrubber fix ETA March 24"
+
+# 4. Restart watch — no duplicate reports for accepted/suppressed incidents
+streamforge watch events/bookings/stream
+```
+
+**`drift_state.yaml`** (auto-managed, human-readable):
+```yaml
+stream_name: bookings.stream
+incidents:
+  - id: drift-2026-03-17-1143-passenger_name
+    field_path: passenger_name
+    drift_type: new_pii
+    tier: 3
+    first_detected: "2026-03-17T11:43:00Z"
+    last_seen: "2026-03-17T14:23:00Z"
+    occurrences: 6
+    status: open          # open | accepted | suppressed | resolved
+```
+
+**Schema version bumping on accept:**
+
+| Highest incident tier | Version bump |
+|-----------------------|-------------|
+| Tier 3 (breaking)     | MAJOR (1.x.x → 2.0.0) |
+| Tier 2 (manageable)   | MINOR (1.0.x → 1.1.0) |
+| Tier 1 (trivial)      | PATCH (1.0.0 → 1.0.1) |
 
 ---
 
