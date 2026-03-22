@@ -3138,7 +3138,7 @@ drift_reports/
 
     steps = [
         (_GREEN,  "Install StreamForge",              "pip install streamforge-cli"),
-        (_BLUE,   "Set your API key",                 "export ANTHROPIC_API_KEY=sk-ant-..."),
+        (_BLUE,   "Set your API key",                 "export ANTHROPIC_API_KEY=<your-key>"),
         (_BLUE,   "Install tap adapters for your sources",
                   "pip install streamforge-tap-kafka streamforge-tap-sqs streamforge-tap-ibmmq streamforge-tap-pubsub"),
         (_ORANGE, "Tap each source to capture a sample",

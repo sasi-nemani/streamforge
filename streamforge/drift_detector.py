@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 # Heuristic thresholds — kept as backstops where statistical tests are not
 # applicable (e.g. sample too small for normal approximation to be valid).
 TYPE_DRIFT_THRESHOLD = float(os.environ.get("STREAMFORGE_DRIFT_TYPE_THRESHOLD", "0.05"))
-PRESENCE_DRIFT_THRESHOLD = 0.15
-ENUM_DRIFT_THRESHOLD = 0.05
+PRESENCE_DRIFT_THRESHOLD = float(os.environ.get("STREAMFORGE_DRIFT_PRESENCE_THRESHOLD", "0.15"))
+ENUM_DRIFT_THRESHOLD = float(os.environ.get("STREAMFORGE_DRIFT_ENUM_THRESHOLD", "0.05"))
 
 # Statistical test configuration
 # alpha=0.01: 1% false positive rate — conservative for production monitoring
@@ -661,16 +661,6 @@ def _load_checkpoint(checkpoint_path: Path) -> list[dict]:
 # Mirrors the profiler's _TYPE_FIELDS list.
 _TYPE_FIELDS = ("type", "event_type", "schema", "kind", "_type", "record_type", "msg_type")
 
-
-def _find_cluster_field(profile: dict) -> str | None:
-    """
-    Return the routing_field stored explicitly in profile.yaml, or None.
-
-    The explicit field name was introduced alongside get_routing_field() in
-    profiler.py.  Older profile.yaml files omit it; in that case routing falls
-    back to the _TYPE_FIELDS scan inside _route_event_to_cluster().
-    """
-    return profile.get("routing_field")  # None for structural/legacy profiles
 
 
 def _route_event_to_cluster(event: dict, profile: dict) -> str | None:

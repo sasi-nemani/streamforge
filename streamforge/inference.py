@@ -75,7 +75,10 @@ def _apply_schema_hints(
       If the field path contains a known PII substring (case-insensitive),
       ensure that PII category is present in pii_categories.
     """
-    compiled = _compile_hint_patterns(hints)
+    # Use the module-level pre-compiled patterns when called with the default
+    # _SCHEMA_HINTS dict; only re-compile when a custom hints dict is passed
+    # (e.g. in tests that inject a different hints fixture).
+    compiled = _COMPILED_HINT_PATTERNS if hints is _SCHEMA_HINTS else _compile_hint_patterns(hints)
     pii_floors = hints.get("pii_name_floors", [])
     result = []
 

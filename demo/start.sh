@@ -143,7 +143,7 @@ streamforge init "kafka://$TOPIC" \
 INIT_EXIT=$?
 if [ $INIT_EXIT -ne 0 ]; then
     error "streamforge init failed (exit $INIT_EXIT). See $LOG_DIR/init.log"
-    cat "$LOG_DIR/init.log" | tail -20
+    tail -20 "$LOG_DIR/init.log"
     exit 1
 fi
 info "Schema inference complete → $LOG_DIR/init.log"
