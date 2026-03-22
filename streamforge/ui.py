@@ -825,10 +825,21 @@ _pii_streams:   set[str] = set()
 for _sn in stream_names:
     if load_drift_reports(_sn):
         _drift_streams.add(_sn)
-    for _f in schemas.get(_sn, {}).get("fields", []):
-        if _f.get("pii"):
-            _pii_streams.add(_sn)
-            break
+    # For multi-schema streams, PII lives in profile.yaml sub-schemas, not schema.yaml
+    _prof = load_profile(_sn)
+    if _prof:
+        for _sub in _prof.get("sub_schemas", []):
+            for _f in _sub.get("fields", []):
+                if _f.get("pii_categories"):
+                    _pii_streams.add(_sn)
+                    break
+            if _sn in _pii_streams:
+                break
+    else:
+        for _f in schemas.get(_sn, {}).get("fields", []):
+            if _f.get("pii"):
+                _pii_streams.add(_sn)
+                break
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1071,12 +1082,14 @@ def render_incident_strip(drift_streams, schemas):
     top     = tier3[0] if tier3 else (fields[0] if fields else None)
 
     drift_type_label = {
-        "field_removed": "field removed",
-        "type_changed":  "type mismatch",
-        "field_added":   "unexpected new field",
-        "enum_changed":  "enum values changed",
-        "new_pii":       "new PII field detected",
-        "presence_drop": "presence rate dropped",
+        "field_removed":              "field removed",
+        "type_changed":               "type mismatch",
+        "field_added":                "unexpected new field",
+        "enum_changed":               "enum values changed",
+        "new_pii":                    "new PII field detected",
+        "presence_drop":              "presence rate dropped",
+        "cluster_routing_regression": "cluster routing regression",
+        "new_cluster":                "new event family detected",
     }.get(top.get("drift_type", "") if top else "", "schema drift")
 
     field_path = top["path"] if top else "multiple fields"
@@ -1524,8 +1537,18 @@ def render_stream_detail(stream_name: str):
     policy_data    = load_policy(stream_name)
     consumers_data = load_consumers(stream_name)
 
-    all_fields = sd.get("fields", [])
-    pii_fields = [f for f in all_fields if f.get("pii")]
+    # For multi-schema streams, aggregate fields and PII from all sub-schemas in profile.yaml.
+    # schema.yaml only contains the primary cluster; profile.yaml has the full picture.
+    if profile_data and profile_data.get("sub_schemas"):
+        all_fields = [
+            f
+            for sub in profile_data["sub_schemas"]
+            for f in sub.get("fields", [])
+        ]
+        pii_fields = [f for f in all_fields if f.get("pii_categories")]
+    else:
+        all_fields = sd.get("fields", [])
+        pii_fields = [f for f in all_fields if f.get("pii")]
 
     # ── Header ────────────────────────────────────────────────────────────────
     has_drift = bool(drift_reports)
@@ -1725,7 +1748,7 @@ def render_stream_detail(stream_name: str):
                     sr   = sub.get("sample_rate", 0)
                     conf = sub.get("inference_confidence", 0)
                     sf   = sub.get("fields", [])
-                    pf   = [f for f in sf if f.get("pii")]
+                    pf   = [f for f in sf if f.get("pii") or f.get("pii_categories")]
                     ps   = ", ".join(f"`{f['path']}`" for f in pf[:2]) + (f" +{len(pf)-2}" if len(pf) > 2 else "")
                     conf_c = _GREEN if conf >= 0.8 else _ORANGE
                     rows.append(

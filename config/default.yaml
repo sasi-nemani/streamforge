@@ -38,7 +38,7 @@ watch:
 # ── Init settings ──────────────────────────────────────────────────────────────
 init:
   # How many events to sample when building the initial schema
-  sample_size: 500
+  sample_size: 2000
 
 # ── Drift detection thresholds ─────────────────────────────────────────────────
 drift:

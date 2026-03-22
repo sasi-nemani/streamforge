@@ -14,8 +14,17 @@ events/*/live/
 # Real GitHub event data (contains public issue bodies with potential secret patterns)
 events/github/
 
-# Drift reports — runtime output
+# Generated runtime output (schemas/ and drift_reports/ produced by demo/watch)
 drift_reports/
+schemas/
+
+# Runtime logs (keep .gitkeep placeholder only)
+logs/*.log
+logs/*.log.*
+
+# Test coverage
+.coverage
+htmlcov/
 
 # Editor / OS
 .DS_Store

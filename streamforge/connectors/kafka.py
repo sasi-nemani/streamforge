@@ -133,7 +133,31 @@ class KafkaConnector(StreamConnector):
         if _CONFLUENT_AVAILABLE:
             self._consumer = self._build_confluent_consumer()
         else:
-            self._consumer = self._build_kafka_python_consumer()
+            consumer = self._build_kafka_python_consumer()
+            # Explicitly assign ALL partitions of the topic so that the
+            # first poll() reads from every partition, not just whichever
+            # fills its fetch buffer first.  subscribe() is asynchronous
+            # and leads to skewed sampling from whichever partition
+            # completes rebalance fastest.
+            try:
+                partitions = consumer.partitions_for_topic(self.topic) or set()
+                if partitions:
+                    from kafka import TopicPartition as _TP
+                    tps = [_TP(self.topic, p) for p in sorted(partitions)]
+                    consumer.assign(tps)
+                    # For earliest-reset consumers (init / plan) we must seek
+                    # explicitly; committed offsets from prior runs are ignored
+                    # because assign() bypasses the group coordinator.
+                    if self.cfg.auto_offset_reset == "earliest":
+                        consumer.seek_to_beginning(*tps)
+                    logger.debug(
+                        "Assigned %d partition(s) explicitly", len(tps),
+                        extra={"topic": self.topic, "partitions": sorted(partitions)},
+                    )
+            except Exception as exc:
+                logger.warning("Could not assign partitions explicitly: %s — falling back to subscribe()", exc)
+                consumer.subscribe([self.topic])
+            self._consumer = consumer
 
         self._start_time = time.monotonic()
         return self
@@ -248,19 +272,92 @@ class KafkaConnector(StreamConnector):
         return events
 
     def _read_kafka_python(self, max_messages: int, timeout_ms: int) -> list[dict]:
-        """Poll using kafka-python consumer."""
+        """Poll using kafka-python consumer.
+
+        For earliest-offset consumers (init / plan): reads one partition at a
+        time and distributes the budget evenly.  kafka-python's poll() fills
+        max_records from whichever partition's fetch buffer is ready first;
+        reading per-partition prevents one partition from starving others.
+
+        For latest-offset consumers (watch / ping): uses a simple poll loop.
+        Events are actively being produced, so all partitions will have
+        pending records and poll() naturally interleaves them.
+        """
         events: list[dict] = []
-        # kafka-python poll() returns a dict of TopicPartition → [messages]
-        raw = self._consumer.poll(timeout_ms=timeout_ms, max_records=max_messages)
+        deadline = time.monotonic() + timeout_ms / 1_000
 
-        for partition_messages in raw.values():
-            for msg in partition_messages:
-                if len(events) >= max_messages:
+        if self.cfg.auto_offset_reset != "earliest":
+            # ── Latest mode: simple loop ──────────────────────────────────
+            while len(events) < max_messages and time.monotonic() < deadline:
+                remaining_ms = max(100, int((deadline - time.monotonic()) * 1_000))
+                raw = self._consumer.poll(
+                    timeout_ms=remaining_ms,
+                    max_records=max_messages - len(events),
+                )
+                if not raw:
                     break
-                parsed = self._parse_message(msg.value)
-                if parsed is not None:
-                    events.append(parsed)
+                for msgs in raw.values():
+                    for m in msgs:
+                        if len(events) >= max_messages:
+                            break
+                        parsed = self._parse_message(m.value)
+                        if parsed is not None:
+                            events.append(parsed)
+            self._last_batch = events
+            self._messages_read += len(events)
+            return events
 
+        # ── Earliest mode: per-partition reading ─────────────────────────
+        # kafka-python's poll() fills max_records from whichever single
+        # partition fills its fetch buffer first, silently skipping others.
+        # Reading one partition at a time guarantees all partitions
+        # contribute to the sample.
+        assigned = list(self._consumer.assignment())
+        if not assigned:
+            raw = self._consumer.poll(timeout_ms=timeout_ms, max_records=max_messages)
+            for msgs in raw.values():
+                for m in msgs:
+                    if len(events) >= max_messages:
+                        break
+                    parsed = self._parse_message(m.value)
+                    if parsed is not None:
+                        events.append(parsed)
+            self._last_batch = events
+            self._messages_read += len(events)
+            return events
+
+        per_partition = max(1, max_messages // len(assigned))
+        ms_per_partition = max(500, int(timeout_ms / len(assigned)))
+
+        for tp in sorted(assigned, key=lambda p: p.partition):
+            if len(events) >= max_messages or time.monotonic() >= deadline:
+                break
+
+            want = min(per_partition, max_messages - len(events))
+            tp_deadline = min(deadline, time.monotonic() + ms_per_partition / 1_000)
+
+            self._consumer.assign([tp])
+            tp_events: list[dict] = []
+
+            while len(tp_events) < want and time.monotonic() < tp_deadline:
+                remaining_ms = max(100, int((tp_deadline - time.monotonic()) * 1_000))
+                raw = self._consumer.poll(
+                    timeout_ms=remaining_ms,
+                    max_records=want - len(tp_events),
+                )
+                if not raw:
+                    break
+                for msgs in raw.values():
+                    for m in msgs:
+                        if len(tp_events) >= want:
+                            break
+                        parsed = self._parse_message(m.value)
+                        if parsed is not None:
+                            tp_events.append(parsed)
+
+            events.extend(tp_events)
+
+        self._consumer.assign(assigned)
         self._last_batch = events
         self._messages_read += len(events)
         return events
@@ -354,7 +451,14 @@ class KafkaConnector(StreamConnector):
         if self.cfg.ssl_key_location:
             kwargs["ssl_keyfile"] = self.cfg.ssl_key_location
 
-        consumer = KafkaConsumer(self.topic, **kwargs)
+        # Do NOT pass the topic here — we assign partitions explicitly in
+        # __aenter__ after calling partitions_for_topic().  This lets us use
+        # assign() instead of subscribe() so partition assignment is
+        # synchronous and we can call seek_to_beginning() before the first
+        # poll().  Without this, poll() may return up to max_records from
+        # whichever single partition fills its fetch buffer first, silently
+        # skipping the others.
+        consumer = KafkaConsumer(**kwargs)
         return consumer
 
 

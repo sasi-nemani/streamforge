@@ -501,6 +501,39 @@ def _bump_version(version: str, tier: int) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Schema snapshot archiving
+# ---------------------------------------------------------------------------
+
+def _archive_schema(schema_dir: Path, schema: InferredSchema) -> None:
+    """
+    Copy schema.yaml to .history/schema_v{version}.yaml before it is overwritten.
+
+    Skips silently if:
+    - schema.yaml does not exist yet (first init — nothing to archive)
+    - the target history file already exists (prevents accidental overwrite)
+
+    Uses shutil.copy2 to preserve the original file's modification time,
+    so history files have accurate timestamps for display in 'streamforge report'.
+    """
+    import shutil
+
+    src = schema_dir / "schema.yaml"
+    if not src.exists():
+        return
+
+    history_dir = schema_dir / ".history"
+    history_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = history_dir / f"schema_v{schema.version}.yaml"
+    if dest.exists():
+        # Already archived — do not overwrite (same version, same content)
+        return
+
+    shutil.copy2(src, dest)
+    logger.debug("Archived schema v%s → %s", schema.version, dest)
+
+
+# ---------------------------------------------------------------------------
 # Accept drift — update schema.yaml to absorb accepted drift
 # ---------------------------------------------------------------------------
 
@@ -588,6 +621,8 @@ def accept_drift(
         "inferred_at": now,
         "fields": list(fields_by_path.values()),
     })
+    # Archive the current version before overwriting schema.yaml
+    _archive_schema(schema_dir, schema)
     write_schema(updated, str(schema_dir.parent))
 
     # Mark incidents accepted in drift_state

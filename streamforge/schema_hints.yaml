@@ -1,0 +1,72 @@
+# StreamForge schema type hints
+# ─────────────────────────────────────────────────────────────────────────────
+# Three roles:
+#   1. type_patterns  — injected into the LLM system prompt as a vocabulary
+#                       reference, AND used post-inference to override obvious
+#                       type mis-labels by pattern-matching sample values.
+#   2. pii_name_floors — if a field path contains the given substring, that PII
+#                        category is guaranteed to be set regardless of whether
+#                        the LLM flagged it.
+#
+# Add domain-specific entries here to extend inference accuracy for your streams.
+# ─────────────────────────────────────────────────────────────────────────────
+
+type_patterns:
+  - name: timestamp_epoch_ms
+    description: "13-digit integer Unix timestamp (milliseconds since epoch)"
+    # Matches integers in the range 1_300_000_000_000 – 1_999_999_999_999
+    # (approx. 2011-03 to 2033-05)
+    regex: "^1[3-9]\\d{11}$"
+    field_type: timestamp_epoch_ms
+    confidence_floor: 0.99
+
+  - name: timestamp_iso8601
+    description: "ISO 8601 datetime string, e.g. 2024-03-21T00:00:00Z"
+    regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+    field_type: timestamp_iso8601
+    confidence_floor: 0.99
+
+  - name: uuid_v4
+    description: "UUID v4 (8-4-4-4-12 lowercase hex groups)"
+    regex: "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    field_type: uuid
+    confidence_floor: 0.99
+
+  - name: email
+    description: "Email address"
+    regex: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$"
+    field_type: email
+    confidence_floor: 0.97
+
+  - name: ipv4
+    description: "IPv4 dotted-quad address, e.g. 192.168.1.1"
+    regex: "^(\\d{1,3}\\.){3}\\d{1,3}$"
+    field_type: string
+    confidence_floor: 0.97
+
+pii_name_floors:
+  # Guarantee PII category if field path CONTAINS the given substring.
+  # Checked case-insensitively against the full dot-notation path.
+  - substring: "passport"
+    pii_category: passport
+
+  - substring: "card_last_four"
+    pii_category: card_number
+
+  - substring: "card_number"
+    pii_category: card_number
+
+  - substring: "dob"
+    pii_category: date_of_birth
+
+  - substring: "date_of_birth"
+    pii_category: date_of_birth
+
+  - substring: "birth_date"
+    pii_category: date_of_birth
+
+  - substring: "loyalty"
+    pii_category: loyalty_number
+
+  - substring: "frequent_flyer"
+    pii_category: loyalty_number

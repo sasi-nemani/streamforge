@@ -257,11 +257,12 @@ class TestDetectDriftMultiSchema:
 
     def test_detects_drift_in_one_cluster(self):
         profile = self._profile_two_clusters()
-        # Inject drift: amount becomes string in payment_initiated events
+        # Inject drift: amount becomes string in payment_initiated events.
+        # Use 200+ events per cluster to exceed MIN_CLUSTER_EVENTS_FOR_DRIFT.
         sample = []
-        for i in range(30):
+        for i in range(200):
             sample.append({"event_type": "payment_initiated", "amount": f"bad_str_{i}"})
-        for i in range(30):
+        for i in range(200):
             sample.append({
                 "event_type": "payment_completed",
                 "amount": float(i),
@@ -305,7 +306,7 @@ class TestDetectDriftMultiSchema:
 
     def test_skips_clusters_with_too_few_events(self):
         profile = self._profile_two_clusters()
-        # Only 3 events for payment_initiated — below the minimum of 5
+        # Only 3 events for payment_initiated — below MIN_CLUSTER_EVENTS_FOR_DRIFT
         sample = [{"event_type": "payment_initiated", "amount": "bad"} for _ in range(3)]
         sample += [
             {"event_type": "payment_completed", "amount": 1.0, "receipt_url": "u"}

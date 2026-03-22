@@ -40,9 +40,15 @@ app = typer.Typer(
 console = Console()
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(
+from .logging_config import configure as _configure_logging
+_log_dir = os.environ.get("STREAMFORGE_LOG_DIR")
+_log_file = str(Path(_log_dir) / "streamforge.log") if _log_dir else None
+if _log_dir:
+    Path(_log_dir).mkdir(parents=True, exist_ok=True)
+_configure_logging(
     level=os.environ.get("STREAMFORGE_LOG_LEVEL", "WARNING"),
-    format="%(levelname)s %(name)s: %(message)s",
+    fmt=os.environ.get("STREAMFORGE_LOG_FMT", "human"),
+    log_file=_log_file,
 )
 
 # Env vars checked in order: LLM_API_KEY, GROQ_API_KEY, OPENAI_API_KEY
@@ -193,7 +199,7 @@ def init(
 
         if not all_events:
             console.print(f"[red]No events received from topic '{topic}' within 15s.[/red]")
-            console.print("[dim]Make sure the feed is running: python3 kafka_docker_demo/feed_kafka.py[/dim]")
+            console.print("[dim]Make sure the feed is running: python3 demo/feed_all.py[/dim]")
             raise typer.Exit(1)
 
         console.print(f"✓ Consumed [green]{len(all_events)}[/green] events from Kafka")
@@ -678,7 +684,7 @@ def report(
     output_dir: str = typer.Option("schemas", "--output", "-o"),
 ):
     """Print current schema and drift history for a stream."""
-    stream_name = _stream_name(stream_path)
+    stream_name = stream_path[len("kafka://"):] if stream_path.startswith("kafka://") else _stream_name(stream_path)
     schema_path = Path(output_dir) / stream_name / "schema.yaml"
 
     if not schema_path.exists():
@@ -711,6 +717,21 @@ def report(
     console.print(f"\nInferred: {schema.inferred_at}")
     console.print(f"Events sampled: {schema.event_count_sampled}")
     console.print(f"Overall confidence: {schema.inference_confidence:.0%}")
+
+    # Schema version history
+    from datetime import datetime
+
+    history_dir = Path(output_dir) / stream_name / ".history"
+    if history_dir.exists():
+        history_files = sorted(history_dir.glob("schema_v*.yaml"))
+        if history_files:
+            console.print(f"\n[bold]Schema Version History[/bold]")
+            for hf in history_files:
+                mtime = hf.stat().st_mtime
+                ts = datetime.fromtimestamp(mtime, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
+                ver = hf.stem.replace("schema_", "")  # "schema_v1.0.0" → "v1.0.0"
+                console.print(f"  [dim]{ver}[/dim]  {ts}  [dim]{hf}[/dim]")
+            console.print(f"  [bold]v{schema.version}[/bold]  (current)  [dim]{schema_path}[/dim]")
 
     # Drift history
     drift_dir = Path("drift_reports") / stream_name
@@ -864,25 +885,82 @@ def plan(
     api_key: str | None = typer.Option(None, "--api-key"),
     model: str = typer.Option(DEFAULT_MODEL, "--model", "-m"),
     base_url: str = typer.Option(DEFAULT_BASE_URL, "--base-url"),
+    brokers: str | None = typer.Option(
+        None, "--brokers",
+        help="Kafka broker list for kafka:// URIs (e.g. localhost:9092).",
+        envvar="KAFKA_BOOTSTRAP_SERVERS",
+    ),
 ):
     """One-shot drift check. Like 'terraform plan' — shows drift without persisting."""
-    resolved_schema = schema_path or _auto_detect_schema(stream_path, output_dir)
-    if not resolved_schema:
-        console.print(
-            "[red]No schema.yaml found. Run 'streamforge init' first or pass --schema.[/red]"
-        )
-        raise typer.Exit(1)
+    is_kafka = stream_path.startswith("kafka://")
+
+    # For kafka:// URIs, auto-detect schema using the topic name directly
+    if is_kafka:
+        topic = stream_path[len("kafka://"):]
+        stream_name = topic
+        if not schema_path:
+            candidate = Path(output_dir) / topic / "schema.yaml"
+            if candidate.exists():
+                resolved_schema: str | None = str(candidate)
+            else:
+                console.print(
+                    "[red]No schema.yaml found. Run 'streamforge init' first or pass --schema.[/red]"
+                )
+                raise typer.Exit(1)
+        else:
+            resolved_schema = schema_path
+    else:
+        resolved_schema = schema_path or _auto_detect_schema(stream_path, output_dir)
+        if not resolved_schema:
+            console.print(
+                "[red]No schema.yaml found. Run 'streamforge init' first or pass --schema.[/red]"
+            )
+            raise typer.Exit(1)
+        stream_name = Path(stream_path).name
 
     baseline = load_schema(resolved_schema)
-    stream_name = Path(stream_path).name
     policy = load_policy(output_dir, baseline.stream_name)
 
     console.print(f"[bold]StreamForge Plan[/bold] — checking [cyan]{stream_name}[/cyan] against schema v{baseline.version}")
 
-    events = load_events_from_folder(stream_path)
-    if not events:
-        console.print(f"[red]No events found in {stream_path}[/red]")
-        raise typer.Exit(1)
+    if is_kafka:
+        import asyncio
+
+        from .config import KafkaConfig
+        from .connectors.kafka import KafkaConnector, KafkaConnectorError
+
+        broker_list = (
+            [b.strip() for b in brokers.split(",") if b.strip()]
+            if brokers
+            else ["localhost:9092"]
+        )
+        kafka_cfg = KafkaConfig(
+            bootstrap_servers=broker_list,
+            auto_offset_reset="earliest",
+            consumer_group=f"streamforge-plan-{topic}",
+        )
+        console.print(f"Consuming up to {sample_size} events from [cyan]{topic}[/cyan] (Kafka)...")
+
+        async def _consume_plan() -> list[dict]:
+            async with KafkaConnector(topic, kafka_cfg) as conn:
+                return await conn.read_batch(max_messages=sample_size, timeout_ms=15_000)
+
+        try:
+            events = asyncio.run(_consume_plan())
+        except KafkaConnectorError as e:
+            console.print(f"[red]Kafka error:[/red] {e}")
+            raise typer.Exit(1)
+
+        if not events:
+            console.print(f"[red]No events received from topic '{topic}' within 15s.[/red]")
+            raise typer.Exit(1)
+
+        console.print(f"✓ Consumed [green]{len(events)}[/green] events from Kafka")
+    else:
+        events = load_events_from_folder(stream_path)
+        if not events:
+            console.print(f"[red]No events found in {stream_path}[/red]")
+            raise typer.Exit(1)
 
     effective_sample = sample_size if sample_size != 200 else policy.sample_size
     sample = reservoir_sample(events, effective_sample)

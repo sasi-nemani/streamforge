@@ -38,6 +38,23 @@ _STAT_ALPHA = float(os.environ.get("STREAMFORGE_STAT_ALPHA", "0.01"))
 # Minimum sample size to trust the binomial normal approximation
 _MIN_SAMPLE_FOR_STAT = 30
 
+# Minimum cluster events in the watch window before drift checks run.
+# Clusters with fewer events are skipped with a debug log — they are under-sampled
+# in this poll cycle, not necessarily a real routing regression (which requires
+# baseline_rate>=10% AND zero events in a >=30-event sample — see below).
+MIN_CLUSTER_EVENTS_FOR_DRIFT = int(
+    os.environ.get("STREAMFORGE_MIN_CLUSTER_EVENTS_FOR_DRIFT", "200")
+)
+
+
+def _new_cluster_threshold() -> float:
+    """Return the minimum unknown-event rate that triggers new_cluster drift.
+
+    Defaults to 0.05 (5%).  Override via STREAMFORGE_NEW_CLUSTER_THRESHOLD env var
+    (e.g. 0.12 to suppress low-level IoT subtype noise in large multi-schema topics).
+    """
+    return float(os.environ.get("STREAMFORGE_NEW_CLUSTER_THRESHOLD", "0.05"))
+
 # Timestamp types — semantically equivalent conversions are Tier 2
 TIMESTAMP_TYPES = {
     FieldType.TIMESTAMP_EPOCH_MS,
@@ -53,12 +70,30 @@ TYPE_WIDENING = {
     (FieldType.STRING, FieldType.MIXED),
 }
 
+# Type refinements — NOT drift.
+# When statistical fallback (60% confidence) infers a generic type (string,
+# integer) and the drift detector later observes a more-specific compatible
+# sub-type, that is a schema precision improvement, not a schema change.
+# Checking these pairs silences false-positive alerts caused by the fallback.
+TYPE_REFINEMENTS = {
+    # string subtypes
+    (FieldType.STRING, FieldType.UUID),
+    (FieldType.STRING, FieldType.EMAIL),
+    (FieldType.STRING, FieldType.PHONE),
+    (FieldType.STRING, FieldType.DATE),
+    (FieldType.STRING, FieldType.TIMESTAMP_ISO8601),
+    (FieldType.STRING, FieldType.TIMESTAMP_RFC2822),
+    # integer subtypes
+    (FieldType.INTEGER, FieldType.TIMESTAMP_EPOCH_MS),
+}
+
 
 def _infer_field_type_from_values(values: list[Any]) -> FieldType:
     """Quick statistical type inference on a list of values."""
     import re
     UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
     ISO_RE = re.compile(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}')
+    DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')   # YYYY-MM-DD (date without time)
     EMAIL_RE = re.compile(r'^[^@]+@[^@]+\.[^@]+$')
 
     if not values:
@@ -90,6 +125,8 @@ def _infer_field_type_from_values(values: list[Any]) -> FieldType:
                 t = "email"
             elif ISO_RE.match(sv):
                 t = "timestamp_iso8601"
+            elif DATE_RE.match(sv):
+                t = "date"
             else:
                 t = "string"
         else:
@@ -168,7 +205,11 @@ def detect_drift(
     if not new_sample:
         return None
 
-    new_field_values, new_presence_rates = get_all_field_paths(new_sample)
+    # Strip internal metadata fields (underscore-prefix convention) before comparison.
+    # Matches the filtering done by init/plan so the same events produce the same field
+    # set regardless of whether they pass through inference or drift detection.
+    clean_sample = [{k: v for k, v in e.items() if not k.startswith("_")} for e in new_sample]
+    new_field_values, new_presence_rates = get_all_field_paths(clean_sample)
     baseline_by_path = {f.path: f for f in baseline_schema.fields}
 
     drifts: list[FieldDrift] = []
@@ -194,9 +235,17 @@ def detect_drift(
             )
             presence_drift = presence_test.is_significant
         else:
-            # Small sample: fall back to absolute threshold
+            # Small sample: fall back to absolute threshold.
+            # Optional fields (presence < 0.8) have inherently higher variance
+            # in small samples — require a larger shift before flagging to avoid
+            # false positives on probabilistic fields like contact_email (50%).
+            _threshold = (
+                PRESENCE_DRIFT_THRESHOLD
+                if baseline_field.presence_rate >= 0.8
+                else PRESENCE_DRIFT_THRESHOLD * 2  # 30pp for optional fields
+            )
             presence_drift = (
-                abs(baseline_field.presence_rate - new_presence) > PRESENCE_DRIFT_THRESHOLD
+                abs(baseline_field.presence_rate - new_presence) > _threshold
             )
             presence_test = None  # no test result to log
 
@@ -264,7 +313,14 @@ def detect_drift(
             observed_type = _infer_field_type_from_values(new_values[:50])
             baseline_type = baseline_field.field_type
 
-            if observed_type != baseline_type and observed_type != FieldType.NULL:
+            if (
+                observed_type != baseline_type
+                and observed_type != FieldType.NULL
+                # Suppress: observed is a valid subtype of the baseline generic type.
+                # This is a schema precision improvement (e.g. statistical fallback
+                # inferred "string" but we now see "uuid") — not a real change.
+                and (baseline_type, observed_type) not in TYPE_REFINEMENTS
+            ):
                 # Build type count distribution from observed values
                 observed_type_counts: dict[str, int] = {}
                 sample_slice = new_values[:200]
@@ -702,6 +758,8 @@ def detect_drift_multi_schema(
     profile: dict,
     new_sample: list[dict],
     stream_name: str,
+    *,
+    warmup: bool = False,
 ) -> list[DriftReport]:
     """
     Run per-cluster drift detection using the full profile.yaml.
@@ -720,6 +778,10 @@ def detect_drift_multi_schema(
     """
     sub_schemas = profile.get("sub_schemas", [])
     if not sub_schemas:
+        return []
+
+    # Warmup guard: accumulate window but suppress all alerts during grace period
+    if warmup:
         return []
 
     # Route each event to a cluster
@@ -785,12 +847,15 @@ def detect_drift_multi_schema(
             ))
             continue  # nothing to drift-check without events
 
-        if len(cluster_events) < 5:
-            # Too few events — below statistical threshold.
+        if len(cluster_events) < MIN_CLUSTER_EVENTS_FOR_DRIFT:
+            # Under-sampled in this poll window — below the statistical threshold
+            # for reliable drift detection.  Skip rather than fire false alerts.
+            # This is distinct from cluster_routing_regression (which requires
+            # zero events AND a large-enough total sample).
             logger.debug(
                 "cluster %s: only %d events in sample — skipping drift check "
-                "(need ≥5; consider increasing --sample-size)",
-                cid, len(cluster_events),
+                "(need ≥%d; consider increasing --sample-size or preseed count)",
+                cid, len(cluster_events), MIN_CLUSTER_EVENTS_FOR_DRIFT,
             )
             continue
 
@@ -810,7 +875,7 @@ def detect_drift_multi_schema(
     # a new event type has appeared.  "new_cluster" semantics: something added.
     # Contrast with "cluster_routing_regression": something disappeared.
     unknown_rate = len(unknown) / max(len(new_sample), 1)
-    if unknown_rate >= 0.05:
+    if unknown_rate >= _new_cluster_threshold():
         new_family_drift = FieldDrift(
             field_path="__cluster__",
             drift_type="new_cluster",
@@ -1168,6 +1233,7 @@ async def _watch_kafka_async(
     )
 
     window = EventWindow(capacity=window_capacity)
+    warmup_cycles_remaining = int(os.environ.get("STREAMFORGE_WARMUP_CYCLES", "2"))
 
     # Warm-start: restore rolling window from previous checkpoint
     checkpoint_events = _load_checkpoint(checkpoint_path)
@@ -1208,6 +1274,17 @@ async def _watch_kafka_async(
 
                 sample = window.sample(sample_size)
 
+                in_warmup = warmup_cycles_remaining > 0
+                if in_warmup:
+                    warmup_cycles_remaining -= 1
+                    print(
+                        f"[{now_str}] ○ {stream_name} — grace period "
+                        f"({warmup_cycles_remaining} cycle(s) remaining, {len(window)} in window)"
+                    )
+                    _save_checkpoint(window, checkpoint_path)
+                    _write_poll_state(schema_dir, len(sample), len(window), len(batch))
+                    continue
+
                 if multi_schema:
                     reports = detect_drift_multi_schema(profile, sample, stream_name)
                     if not reports:
@@ -1229,6 +1306,8 @@ async def _watch_kafka_async(
                         _print_drift_report(report, drift_output_dir, webhook_url)
 
                 _save_checkpoint(window, checkpoint_path)
+                # Update UI poll state after every productive cycle
+                _write_poll_state(schema_dir, len(sample), len(window), len(batch))
 
     except KeyboardInterrupt:
         _save_checkpoint(window, checkpoint_path)
@@ -1270,6 +1349,15 @@ def watch_stream_kafka(
         webhook_url:           Optional webhook for drift notifications.
     """
     import asyncio
+    import sys
+
+    # Ensure print() output appears immediately even when stdout is redirected
+    # to a file (e.g. in demo.sh). Python uses block buffering for non-ttys;
+    # reconfigure() switches to line-buffered mode for the duration of watch.
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except AttributeError:
+        pass  # not available in all environments
 
     asyncio.run(_watch_kafka_async(
         topic, kafka_cfg, schema_path,

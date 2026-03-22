@@ -169,10 +169,11 @@ def configure(
 
     # ── stderr handler ────────────────────────────────────────────────────────
     stderr_handler = logging.StreamHandler(sys.stderr)
-    if fmt == "structured":
-        stderr_handler.setFormatter(StructuredFormatter())
-    else:
-        stderr_handler.setFormatter(HumanFormatter())
+    # Use colour/human format only when stderr is a real terminal.
+    # When redirected to a file (e.g. >> watch.log 2>&1) fall back to
+    # structured JSON so ANSI escape codes don't pollute the log file.
+    use_human = fmt != "structured" and getattr(sys.stderr, "isatty", lambda: False)()
+    stderr_handler.setFormatter(HumanFormatter() if use_human else StructuredFormatter())
     root.addHandler(stderr_handler)
 
     # ── file handler (always structured JSON for machine parsing) ─────────────
