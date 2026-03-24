@@ -1,0 +1,674 @@
+# StreamForge Stream Profile — bookings.stream
+# Profiled: 2026-03-24T13:30:16.734785+00:00
+# Events sampled: 200
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 4
+# Discovery method: event_type_field
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: bookings.stream
+profiled_at: '2026-03-24T13:30:16.734785+00:00'
+total_events_sampled: 200
+parse_success_rate: 1.0
+discovery_method: event_type_field
+routing_field: event_type
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: booking.cancelled
+  detection_method: event_type_field
+  event_count: 58
+  sample_rate: 0.29
+  inference_confidence: 0.6
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.99
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: total_price
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 0.931
+    confidence: 0.6862
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.931
+    confidence: 0.6862
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].first_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.931
+    confidence: 0.6862
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].last_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.931
+    confidence: 0.6862
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].date_of_birth
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.931
+    confidence: 0.6862
+    pii:
+    - date_of_birth
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].passport_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.931
+    confidence: 0.6862
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_email
+    type: email
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.97
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_phone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: loyalty_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - loyalty_number
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: passenger_name
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.069
+    confidence: 0.5138
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: booking.created
+  detection_method: event_type_field
+  event_count: 53
+  sample_rate: 0.265
+  inference_confidence: 0.6
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.99
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: total_price
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 0.9623
+    confidence: 0.6925
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9623
+    confidence: 0.6925
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].first_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9623
+    confidence: 0.6925
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].last_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9623
+    confidence: 0.6925
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].date_of_birth
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9623
+    confidence: 0.6925
+    pii:
+    - date_of_birth
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].passport_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9623
+    confidence: 0.6925
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_email
+    type: email
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.97
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_phone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: loyalty_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - loyalty_number
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: passenger_name
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.0377
+    confidence: 0.5075
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: booking.check_in
+  detection_method: event_type_field
+  event_count: 46
+  sample_rate: 0.23
+  inference_confidence: 0.622
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: total_price
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 0.913
+    confidence: 0.6826
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.913
+    confidence: 0.6826
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].first_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.913
+    confidence: 0.6826
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].last_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.913
+    confidence: 0.6826
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].date_of_birth
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.913
+    confidence: 0.6826
+    pii:
+    - date_of_birth
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].passport_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.913
+    confidence: 0.6826
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_email
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_phone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: loyalty_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - loyalty_number
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: passenger_name
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.087
+    confidence: 0.5174
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: booking.amended
+  detection_method: event_type_field
+  event_count: 43
+  sample_rate: 0.215
+  inference_confidence: 0.601
+  top_keys:
+  - event_id
+  - event_type
+  - booking_reference
+  - created_at
+  - total_price
+  - currency
+  - cabin_class
+  - contact_email
+  - contact_phone
+  - flights
+  - loyalty_number
+  - passengers
+  - passenger_name
+  fields:
+  - path: event_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: booking_reference
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: created_at
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: total_price
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: cabin_class
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 0.9535
+    confidence: 0.6907
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9535
+    confidence: 0.6907
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].first_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9535
+    confidence: 0.6907
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].last_name
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9535
+    confidence: 0.6907
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].date_of_birth
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9535
+    confidence: 0.6907
+    pii:
+    - date_of_birth
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: passengers[].passport_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 0.9535
+    confidence: 0.6907
+    pii:
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_email
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - email
+    notes: Statistically inferred (LLM fallback)
+  - path: contact_phone
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - phone
+    notes: Statistically inferred (LLM fallback)
+  - path: flights
+    type: array
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: loyalty_number
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    pii:
+    - loyalty_number
+    - passport
+    notes: Statistically inferred (LLM fallback)
+  - path: passenger_name
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.0465
+    confidence: 0.5093
+    pii:
+    - name
+    notes: Statistically inferred (LLM fallback)
