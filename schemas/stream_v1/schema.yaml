@@ -1,0 +1,127 @@
+# StreamForge Schema — stream_v1
+# Version: 1.0.0
+# Inferred: 2026-03-24T13:06:42.073554+00:00
+# Events sampled: 300
+# Overall confidence: 95%
+#
+# This file is the source of truth for stream: stream_v1
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: stream_v1
+version: 1.0.0
+inferred_at: '2026-03-24T13:06:42.073554+00:00'
+inference_confidence: 0.95
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 300
+fields:
+- path: event_id
+  type: uuid
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Unique identifier for the event
+- path: event_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Type of event (e.g. payment.processed)
+- path: transaction_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Unique identifier for the transaction
+- path: amount
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Amount of the transaction
+- path: currency
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Currency of the transaction
+- path: status
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Status of the transaction (e.g. COMPLETED, FAILED)
+- path: payment_method
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Payment method used (e.g. APPLE_PAY, CARD)
+- path: user
+  type: object
+  required: true
+  nullable: false
+  presence_rate: 0.96
+  confidence: 0.99
+  notes: 'Nested object — contains: email, name, user_id'
+- path: user.user_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 0.96
+  confidence: 0.99
+  notes: Unique identifier for the user
+- path: user.email
+  type: email
+  required: true
+  nullable: false
+  presence_rate: 0.96
+  confidence: 0.99
+  pii:
+  - email
+  notes: Email address of the user
+- path: user.name
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 0.96
+  confidence: 0.99
+  pii:
+  - name
+  notes: Name of the user
+- path: metadata
+  type: object
+  required: true
+  nullable: false
+  presence_rate: 0.895
+  confidence: 0.99
+  notes: 'Nested object — contains: ip_address, region, user_agent'
+- path: metadata.ip_address
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 0.895
+  confidence: 0.99
+  pii:
+  - ip_address
+  notes: IP address of the user
+- path: metadata.user_agent
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 0.895
+  confidence: 0.99
+  notes: User agent of the user
+- path: metadata.region
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 0.895
+  confidence: 0.99
+  notes: Region of the user
