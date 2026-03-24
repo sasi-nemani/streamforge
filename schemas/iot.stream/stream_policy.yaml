@@ -1,0 +1,26 @@
+# StreamForge Stream Policy — iot.stream
+# Edit this file to control how drift is handled for this stream.
+# Changes take effect on the next 'streamforge watch' or 'streamforge plan' run.
+
+stream: iot.stream
+
+# How many events to sample per watch cycle
+sample_size: 300
+
+# Watch loop cadence (seconds)
+poll_interval_seconds: 30
+
+# Minimum drift tier that triggers an alert (1=all, 2=breaking+, 3=critical only)
+alert_tier: 2
+
+# Action per tier: log | alert | block
+#   log   — write to drift_reports/, dim console line
+#   alert — write to drift_reports/, highlighted console output
+#   block — write to drift_reports/, highlighted console, exit 1 (CI gate)
+actions:
+  tier_1: log
+  tier_2: alert
+  tier_3: block
+
+# Optional webhook URL for drift notifications (null to disable)
+webhook_url: null

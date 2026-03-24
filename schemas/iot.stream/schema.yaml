@@ -1,0 +1,83 @@
+# StreamForge Schema — iot.stream
+# Version: 1.0.0
+# Inferred: 2026-03-24T13:20:26.126125+00:00
+# Events sampled: 300
+# Overall confidence: 60%
+#
+# This file is the source of truth for stream: iot.stream
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: iot.stream
+version: 1.0.0
+inferred_at: '2026-03-24T13:20:26.126125+00:00'
+inference_confidence: 0.6
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 300
+event_types:
+- struct:586e225f
+- struct:ffdb7591
+- struct:8f839e43
+fields:
+- path: sensor_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: sensor_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: location
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: value
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: unit
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: timestamp
+  type: mixed
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: battery_level
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: signal_strength
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)
+- path: anomaly
+  type: boolean
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.7
+  notes: Statistically inferred (LLM fallback)

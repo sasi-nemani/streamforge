@@ -1,0 +1,277 @@
+# StreamForge Stream Profile — iot.stream
+# Profiled: 2026-03-24T13:20:26.126125+00:00
+# Events sampled: 300
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 3
+# Discovery method: structural_fingerprint
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: iot.stream
+profiled_at: '2026-03-24T13:20:26.126125+00:00'
+total_events_sampled: 300
+parse_success_rate: 1.0
+discovery_method: structural_fingerprint
+routing_field: null
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: struct:586e225f
+  detection_method: structural_fingerprint
+  event_count: 249
+  sample_rate: 0.83
+  inference_confidence: 0.6
+  top_keys:
+  - sensor_id
+  - sensor_type
+  - location
+  - value
+  - unit
+  - timestamp
+  - battery_level
+  - signal_strength
+  - anomaly
+  fields:
+  - path: sensor_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: value
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: unit
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: battery_level
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: signal_strength
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: anomaly
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:ffdb7591
+  detection_method: structural_fingerprint
+  event_count: 40
+  sample_rate: 0.1333
+  inference_confidence: 0.58
+  top_keys:
+  - sensor_id
+  - sensor_type
+  - location
+  - timestamp
+  - battery_level
+  - signal_strength
+  - anomaly
+  - reading
+  fields:
+  - path: sensor_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: battery_level
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: signal_strength
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: anomaly
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: reading
+    type: object
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: 'Nested object — contains: unit, value'
+  - path: reading.value
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: reading.unit
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+- cluster_id: struct:8f839e43
+  detection_method: structural_fingerprint
+  event_count: 11
+  sample_rate: 0.0367
+  inference_confidence: 0.377
+  top_keys:
+  - sensor_id
+  - sensor_type
+  - location
+  - value
+  - unit
+  - timestamp
+  - battery_level
+  - signal_strength
+  - anomaly
+  - alert_level
+  - alert_message
+  fields:
+  - path: sensor_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: sensor_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: location
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: value
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: unit
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: timestamp
+    type: mixed
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: battery_level
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: signal_strength
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: anomaly
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: alert_level
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
+  - path: alert_message
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.7
+    notes: Statistically inferred (LLM fallback)
