@@ -61,6 +61,9 @@ jobs:
   schema-guard:
     name: Schema Drift Check — ${{ matrix.stream_name }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     # ── Stream matrix: one job per stream ───────────────────────────────────
     # Add your streams here. Each entry maps a stream path to its schema.
