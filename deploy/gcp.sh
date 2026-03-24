@@ -85,6 +85,13 @@ GROQ_API_KEY="${GROQ_API_KEY:-}"
 OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
 
+# ── VCS / GitHub integration ────────────────────────────────────────────────────
+# Required for schema-as-code: StreamForge commits inferred schemas to git and
+# opens PRs on drift acceptance. Set these to enable automatic schema commits
+# from the GCP watch VM.
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+GITHUB_REPO="${GITHUB_REPO:-}"
+
 # ── StreamForge tuning ─────────────────────────────────────────────────────────
 # SF_MIN_EVENTS_BEFORE_INIT: don't attempt init until at least this many events
 # have accumulated in the topic. Defaults to SF_SAMPLE_SIZE (no point inferring
@@ -253,6 +260,8 @@ _upload_code() {
     printf 'STREAMFORGE_WARMUP_CYCLES=%s\n'                "$SF_WARMUP_CYCLES"                >> "$env_file"
     printf 'STREAMFORGE_STABILITY_CYCLES=%s\n'             "$SF_STABILITY_CYCLES"             >> "$env_file"
     printf 'STREAMFORGE_CONSECUTIVE_DRIFT_THRESHOLD=%s\n'  "$SF_CONSECUTIVE_DRIFT_THRESHOLD"  >> "$env_file"
+    printf 'GITHUB_TOKEN=%s\n'   "$GITHUB_TOKEN"   >> "$env_file"
+    printf 'GITHUB_REPO=%s\n'    "$GITHUB_REPO"    >> "$env_file"
 
     # Validate keys before uploading
     local has_key=false
@@ -261,6 +270,14 @@ _upload_code() {
         warn "WARNING: all LLM API keys are empty — inference will use statistical fallback only."
     else
         info "LLM key(s) present — writing to .env.deploy"
+    fi
+
+    # Validate GitHub token for schema-as-code integration
+    if [[ -z "$GITHUB_TOKEN" ]]; then
+        warn "WARNING: GITHUB_TOKEN is not set — schema commits and PRs will be disabled on the VM."
+        warn "  Set GITHUB_TOKEN to enable automatic schema-as-code commits from GCP."
+    else
+        info "GITHUB_TOKEN present — schema-as-code VCS integration enabled."
     fi
 
     gcloud compute scp "$env_file" "${GCP_INSTANCE_NAME}:/tmp/streamforge.env.deploy" \

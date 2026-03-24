@@ -14,9 +14,16 @@ events/*/live/
 # Real GitHub event data (contains public issue bodies with potential secret patterns)
 events/github/
 
-# Generated runtime output (schemas/ and drift_reports/ produced by demo/watch)
+# Drift reports are runtime output — not committed
 drift_reports/
-schemas/
+
+# schemas/ is intentionally NOT ignored — it is the source of truth.
+# Schema files are committed and version-controlled ("schema as code").
+# Runtime state and raw samples within schemas/ are excluded:
+schemas/**/.watch_state/
+schemas/**/.samples/
+schemas/**/.stable
+schemas/**/.streamforge/
 
 # Runtime logs (keep .gitkeep placeholder only)
 logs/*.log

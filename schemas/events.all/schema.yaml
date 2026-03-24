@@ -1,0 +1,227 @@
+# StreamForge Schema — events.all
+# Version: 1.0.0
+# Inferred: 2026-03-22T16:37:14.277783+00:00
+# Events sampled: 300
+# Overall confidence: 85%
+#
+# This file is the source of truth for stream: events.all
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: events.all
+version: 1.0.0
+inferred_at: '2026-03-22T16:37:14.277783+00:00'
+inference_confidence: 0.85
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 300
+event_types:
+- iot_sensor
+- booking.updated
+- payment.created
+- payment.failed
+- payment.updated
+- booking.cancelled
+- booking.created
+fields:
+- path: event_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.9
+  notes: Type of event
+- path: device_id
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.9
+  notes: Unique identifier for the device
+- path: sensor_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.9
+  notes: Type of sensor
+- path: location
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.9
+  notes: Location of the sensor
+- path: firmware
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.9
+  notes: Version of the firmware
+- path: timestamp
+  type: timestamp_iso8601
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Timestamp of the event
+- path: battery_pct
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 0.37
+  confidence: 0.8
+  notes: Battery percentage
+- path: temperature_c
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.21
+  confidence: 0.8
+  notes: Temperature in Celsius
+- path: debug
+  type: object
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+- path: debug.rssi
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: RSSI value
+- path: debug.uptime_s
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Uptime in seconds
+- path: debug.free_heap
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Free heap size in bytes
+- path: watts
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Power consumption in watts
+- path: voltage
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Voltage in volts
+- path: current_amps
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Current in amperes
+- path: power_factor
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Power factor
+- path: motion_detected
+  type: boolean
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Motion detected
+- path: confidence
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Confidence level
+- path: zone
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 0.19
+  confidence: 0.7
+  notes: Zone identifier
+- path: humidity_pct
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.16
+  confidence: 0.6
+  notes: Humidity percentage
+- path: dew_point_c
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.16
+  confidence: 0.6
+  notes: Dew point temperature in Celsius
+- path: co2_ppm
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 0.16
+  confidence: 0.6
+  notes: CO2 concentration in ppm
+- path: pm25
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.16
+  confidence: 0.6
+  notes: PM2.5 concentration in μg/m³
+- path: pm10
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.16
+  confidence: 0.6
+  notes: PM10 concentration in μg/m³
+- path: tvoc_ppb
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 0.16
+  confidence: 0.6
+  notes: TVOC concentration in ppb
+- path: aqi
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 0.16
+  confidence: 0.6
+  notes: Air quality index
+- path: kwh_today
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.12
+  confidence: 0.5
+  notes: Energy consumption in kWh
+- path: pressure_hpa
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.09
+  confidence: 0.5
+  notes: Pressure in hPa
+- path: altitude_m
+  type: float
+  required: true
+  nullable: false
+  presence_rate: 0.09
+  confidence: 0.5
+  notes: Altitude in meters

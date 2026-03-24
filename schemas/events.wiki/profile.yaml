@@ -1,0 +1,303 @@
+# StreamForge Stream Profile — events.wiki
+# Profiled: 2026-03-24T11:30:15.813210+00:00
+# Events sampled: 400
+# Parse success rate: 100.0%
+# Sub-schemas discovered: 2
+# Discovery method: event_type_field
+#
+# Each sub-schema is a distinct event shape found in the stream.
+# Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
+
+stream: events.wiki
+profiled_at: '2026-03-24T11:30:15.813210+00:00'
+total_events_sampled: 400
+parse_success_rate: 1.0
+discovery_method: event_type_field
+routing_field: type
+profile_model: llama-3.3-70b-versatile
+sub_schemas:
+- cluster_id: edit
+  detection_method: event_type_field
+  event_count: 347
+  sample_rate: 0.8675
+  inference_confidence: 0.95
+  top_keys:
+  - event_type
+  - wiki
+  - type
+  - namespace
+  - title
+  - title_url
+  - comment
+  - user
+  - bot
+  - minor
+  - old_length
+  - new_length
+  - length_delta
+  - revision_id
+  - parent_revision_id
+  fields:
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    enum_values:
+    - wikipedia_edit
+    notes: The type of event
+  - path: wiki
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    enum_values:
+    - enwiki
+    - commonswiki
+    - tgwiki
+    - dewiki
+    notes: The wiki where the event occurred
+  - path: type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    enum_values:
+    - edit
+    notes: The type of edit
+  - path: namespace
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The namespace of the edited page
+  - path: title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    pii:
+    - card_number
+    notes: The title of the edited page
+  - path: title_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The URL of the edited page
+  - path: comment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    pii:
+    - card_number
+    notes: The comment left by the editor
+  - path: user
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The username of the editor
+  - path: bot
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Whether the edit was made by a bot
+  - path: minor
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Whether the edit was minor
+  - path: old_length
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The length of the page before the edit
+  - path: new_length
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The length of the page after the edit
+  - path: length_delta
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The change in length of the page
+  - path: revision_id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The ID of the revision
+  - path: parent_revision_id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The ID of the parent revision
+  - path: timestamp
+    type: timestamp_iso8601
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The timestamp of the edit
+- cluster_id: new
+  detection_method: event_type_field
+  event_count: 53
+  sample_rate: 0.1325
+  inference_confidence: 0.95
+  top_keys:
+  - event_type
+  - wiki
+  - type
+  - namespace
+  - title
+  - title_url
+  - comment
+  - user
+  - bot
+  - minor
+  - old_length
+  - new_length
+  - length_delta
+  - revision_id
+  - parent_revision_id
+  fields:
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    enum_values:
+    - wikipedia_edit
+    notes: The type of event.
+  - path: wiki
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The wiki where the event occurred.
+  - path: type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    enum_values:
+    - new
+    notes: The type of edit.
+  - path: namespace
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The namespace of the page.
+  - path: title
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The title of the page.
+  - path: title_url
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The URL of the page.
+  - path: comment
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The comment left by the user.
+  - path: user
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The user who made the edit.
+  - path: bot
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Whether the edit was made by a bot.
+  - path: minor
+    type: boolean
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: Whether the edit was minor.
+  - path: old_length
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The length of the page before the edit.
+  - path: new_length
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The length of the page after the edit.
+  - path: length_delta
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The change in length of the page.
+  - path: revision_id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The ID of the revision.
+  - path: parent_revision_id
+    type: integer
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The ID of the parent revision.
+  - path: timestamp
+    type: timestamp_iso8601
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: The timestamp of the edit.

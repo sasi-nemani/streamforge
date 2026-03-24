@@ -1,100 +1,219 @@
 # StreamForge Schema — events.iot
 # Version: 1.0.0
-# Inferred: 2026-03-19T16:04:55.567580+00:00
-# Events sampled: 150
-# Overall confidence: 60%
+# Inferred: 2026-03-24T11:29:42.257066+00:00
+# Events sampled: 400
+# Overall confidence: 80%
 #
 # This file is the source of truth for stream: events.iot
 # Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
 
 stream: events.iot
 version: 1.0.0
-inferred_at: '2026-03-19T16:04:55.567580+00:00'
-inference_confidence: 0.6
+inferred_at: '2026-03-24T11:29:42.257066+00:00'
+inference_confidence: 0.8
 inference_model: llama-3.3-70b-versatile
-event_count_sampled: 150
-event_types:
-- struct:92ee5a55
-- struct:533cf3de
-- struct:086e34d2
-- struct:80db632c
-- struct:5f5c1e05
-- struct:8115fb4c
-- struct:e07a853b
-- struct:550925de
-- struct:e24e8c70
-- struct:616dc770
-- struct:82f03776
-- struct:64a644b6
-- struct:efdcacb9
+event_count_sampled: 400
 fields:
+- path: event_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: Type of event
 - path: device_id
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 1.0
+  notes: ID of the device
 - path: sensor_type
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 1.0
+  notes: Type of sensor
 - path: location
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 1.0
+  notes: Location of the device
 - path: firmware
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 1.0
+  notes: Firmware version
 - path: timestamp
-  type: string
+  type: timestamp_iso8601
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 1.0
+  notes: Timestamp of the event
+- path: battery_pct
+  type: integer
+  required: false
+  nullable: true
+  presence_rate: 0.325
+  confidence: 0.5
+  notes: Battery percentage
+- path: debug
+  type: object
+  required: false
+  nullable: false
+  presence_rate: 0.24
+  confidence: 0.5
+  notes: 'Nested object — contains: free_heap, rssi, uptime_s'
+- path: debug.rssi
+  type: integer
+  required: false
+  nullable: true
+  presence_rate: 0.24
+  confidence: 0.5
+  notes: RSSI of the device
+- path: debug.uptime_s
+  type: integer
+  required: false
+  nullable: true
+  presence_rate: 0.24
+  confidence: 0.5
+  notes: Uptime of the device in seconds
+- path: debug.free_heap
+  type: integer
+  required: false
+  nullable: true
+  presence_rate: 0.24
+  confidence: 0.5
+  notes: Free heap memory
+- path: motion_detected
+  type: boolean
+  required: false
+  nullable: true
+  presence_rate: 0.205
+  confidence: 0.5
+  notes: Whether motion was detected
+- path: confidence
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.205
+  confidence: 0.5
+  notes: Confidence level of the event
+- path: zone
+  type: string
+  required: false
+  nullable: true
+  presence_rate: 0.205
+  confidence: 0.5
+  notes: Zone of the device
+- path: pressure_hpa
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.185
+  confidence: 0.5
+  notes: Pressure in hPa
+- path: altitude_m
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.185
+  confidence: 0.5
+  notes: Altitude in meters
+- path: humidity_pct
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.165
+  confidence: 0.5
+  notes: Humidity percentage
+- path: dew_point_c
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.165
+  confidence: 0.5
+  notes: Dew point in Celsius
+- path: watts
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.16
+  confidence: 0.5
+  notes: Power consumption in watts
+- path: voltage
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.16
+  confidence: 0.5
+  notes: Voltage
+- path: current_amps
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.16
+  confidence: 0.5
+  notes: Current in amps
+- path: power_factor
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.16
+  confidence: 0.5
+  notes: Power factor
+- path: temperature_c
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.16
+  confidence: 0.5
+  notes: Temperature in Celsius
 - path: co2_ppm
   type: integer
-  required: true
-  nullable: false
-  presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  required: false
+  nullable: true
+  presence_rate: 0.125
+  confidence: 0.5
+  notes: CO2 concentration in ppm
 - path: pm25
   type: float
-  required: true
-  nullable: false
-  presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  required: false
+  nullable: true
+  presence_rate: 0.125
+  confidence: 0.5
+  notes: PM2.5 concentration
 - path: pm10
   type: float
-  required: true
-  nullable: false
-  presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  required: false
+  nullable: true
+  presence_rate: 0.125
+  confidence: 0.5
+  notes: PM10 concentration
 - path: tvoc_ppb
   type: integer
-  required: true
-  nullable: false
-  presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  required: false
+  nullable: true
+  presence_rate: 0.125
+  confidence: 0.5
+  notes: TVOC concentration in ppb
 - path: aqi
   type: integer
-  required: true
-  nullable: false
-  presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  required: false
+  nullable: true
+  presence_rate: 0.125
+  confidence: 0.5
+  notes: Air quality index
+- path: kwh_today
+  type: float
+  required: false
+  nullable: true
+  presence_rate: 0.08
+  confidence: 0.5
+  notes: Energy consumption in kWh today

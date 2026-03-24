@@ -1,0 +1,50 @@
+# Fires when schema files are merged to main.
+# Notifies all registered consumers that a schema changed.
+name: StreamForge Schema Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'schemas/**'
+
+jobs:
+  notify:
+    name: Schema Change — ${{ github.event.head_commit.message }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # need parent commit to diff
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install StreamForge
+        run: pip install --quiet -e .
+
+      - name: Detect changed schemas
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'schemas/**' | grep schema.yaml || true)
+          echo "changed_schemas=$CHANGED" >> $GITHUB_OUTPUT
+          echo "Changed schemas:"
+          echo "$CHANGED"
+
+      - name: Run StreamForge discover
+        run: |
+          python3 -m streamforge discover --output-format json 2>/dev/null || \
+          python3 -m streamforge discover
+
+      - name: Upload schema snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-snapshot-${{ github.sha }}
+          path: schemas/
+          retention-days: 90

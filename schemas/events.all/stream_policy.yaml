@@ -1,8 +1,8 @@
-# StreamForge Stream Policy — events.iot
+# StreamForge Stream Policy — events.all
 # Edit this file to control how drift is handled for this stream.
 # Changes take effect on the next 'streamforge watch' or 'streamforge plan' run.
 
-stream: events.iot
+stream: events.all
 
 # How many events to sample per watch cycle
 sample_size: 400

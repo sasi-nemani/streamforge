@@ -1,9 +1,9 @@
 # Inference Report — events.bookings
 
-**Inferred:** 2026-03-19T16:04:50.267794+00:00  
+**Inferred:** 2026-03-24T11:31:30.447586+00:00  
 **Model:** llama-3.3-70b-versatile  
-**Events sampled:** 150  
-**Overall confidence:** 60%
+**Events sampled:** 400  
+**Overall confidence:** 92%
 
 ---
 
@@ -11,7 +11,7 @@
 
 | Total events | Clean (used for inference) | Partial (excluded) | Parse rate |
 |---|---|---|---|
-| 150 | 150 | 0 | 100.0% |
+| 400 | 400 | 0 | 100.0% |
 
 ---
 
@@ -19,27 +19,25 @@
 
 | Field | Type | Required | Confidence | PII |
 |-------|------|----------|------------|-----|
-| `booking_ref` | string | ✓ | 70% | — |
-| `event_type` | string | ✓ | 70% | — |
-| `airline` | string | ✓ | 70% | — |
-| `origin` | string | ✓ | 70% | — |
-| `destination` | string | ✓ | 70% | — |
-| `cabin` | string | ✓ | 70% | — |
-| `status` | string | ✓ | 70% | — |
-| `total_price` | float | ✓ | 70% | — |
-| `currency` | string | ✓ | 70% | — |
-| `created_at` | string | ✓ | 70% | — |
-| `passengers` | array | ✓ | 70% | — |
-| `passengers[].passenger_name` | string | ✓ | 70% | name |
-| `passengers[].ticket_number` | string | ✓ | 70% | passport |
-| `passengers[].passport_number` | string | ○ | 65% | passport |
-| `contact_email` | string | ○ | 61% | email |
-| `contact_phone` | string | ○ | 58% | phone |
-| `seat_preference` | string | ○ | 54% | — |
-| `passengers[].frequent_flyer_number` | string | ○ | 61% | loyalty_number |
-| `baggage_allowance_kg` | integer | ○ | 56% | — |
-| `passengers[].date_of_birth` | string | ○ | 58% | phone, date_of_birth |
-| `special_meal` | string | ○ | 54% | — |
+| `booking_ref` | string | ✓ | 95% | — |
+| `event_type` | string | ✓ | 95% | — |
+| `airline` | string | ✓ | 95% | — |
+| `origin` | string | ✓ | 95% | — |
+| `destination` | string | ✓ | 95% | — |
+| `cabin` | string | ✓ | 95% | — |
+| `status` | string | ✓ | 95% | — |
+| `total_price` | float | ✓ | 95% | — |
+| `currency` | string | ✓ | 95% | — |
+| `created_at` | timestamp_iso8601 | ✓ | 99% | — |
+| `passengers` | array | ✓ | 95% | — |
+| `passengers[].passenger_name` | string | ✓ | 95% | name |
+| `passengers[].ticket_number` | string | ✓ | 95% | passport |
+| `passengers[].passport_number` | string | ○ | 85% | passport |
+| `passengers[].frequent_flyer_number` | string | ○ | 85% | loyalty_number |
+| `contact_email` | email | ○ | 97% | email |
+| `passengers[].date_of_birth` | date | ○ | 85% | phone, date_of_birth |
+| `contact_phone` | string | ○ | 85% | phone |
+| `baggage_allowance_kg` | integer | ○ | 85% | — |
 
 ---
 
@@ -48,33 +46,7 @@
 - **`passengers[].passenger_name`** — name
 - **`passengers[].ticket_number`** — passport
 - **`passengers[].passport_number`** — passport
-- **`contact_email`** — email
-- **`contact_phone`** — phone
 - **`passengers[].frequent_flyer_number`** — loyalty_number
+- **`contact_email`** — email
 - **`passengers[].date_of_birth`** — phone, date_of_birth
-
----
-
-## Low Confidence Fields (< 80%)
-
-- **`booking_ref`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`event_type`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`airline`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`origin`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`destination`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`cabin`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`status`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`total_price`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`currency`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`created_at`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`passengers`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].passenger_name`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].ticket_number`** — 70% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].passport_number`** — 65% confidence — Statistically inferred (LLM fallback)
-- **`contact_email`** — 61% confidence — Statistically inferred (LLM fallback)
-- **`contact_phone`** — 58% confidence — Statistically inferred (LLM fallback)
-- **`seat_preference`** — 54% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].frequent_flyer_number`** — 61% confidence — Statistically inferred (LLM fallback)
-- **`baggage_allowance_kg`** — 56% confidence — Statistically inferred (LLM fallback)
-- **`passengers[].date_of_birth`** — 58% confidence — Statistically inferred (LLM fallback)
-- **`special_meal`** — 54% confidence — Statistically inferred (LLM fallback)
+- **`contact_phone`** — phone

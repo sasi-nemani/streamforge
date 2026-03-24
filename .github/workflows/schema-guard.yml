@@ -128,6 +128,11 @@ jobs:
           fi
           echo "skip=false" >> $GITHUB_OUTPUT
 
+      # ── 5b. Lint all schemas (schema-as-code contract checks) ──────────────
+      - name: Lint all schemas
+        if: steps.verify.outputs.skip != 'true'
+        run: python3 -m pytest tests/test_schema_as_code.py -v --tb=short
+
       # ── 6. Run schema guard ────────────────────────────────────────────────
       - name: Run StreamForge plan
         if: steps.verify.outputs.skip != 'true'

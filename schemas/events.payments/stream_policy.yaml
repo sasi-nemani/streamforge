@@ -5,7 +5,7 @@
 stream: events.payments
 
 # How many events to sample per watch cycle
-sample_size: 150
+sample_size: 400
 
 # Watch loop cadence (seconds)
 poll_interval_seconds: 30

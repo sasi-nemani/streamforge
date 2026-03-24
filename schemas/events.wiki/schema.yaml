@@ -1,0 +1,144 @@
+# StreamForge Schema — events.wiki
+# Version: 1.0.0
+# Inferred: 2026-03-24T11:30:15.813210+00:00
+# Events sampled: 400
+# Overall confidence: 95%
+#
+# This file is the source of truth for stream: events.wiki
+# Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
+
+stream: events.wiki
+version: 1.0.0
+inferred_at: '2026-03-24T11:30:15.813210+00:00'
+inference_confidence: 0.95
+inference_model: llama-3.3-70b-versatile
+event_count_sampled: 400
+event_types:
+- edit
+- new
+fields:
+- path: event_type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  enum_values:
+  - wikipedia_edit
+  notes: The type of event
+- path: wiki
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  enum_values:
+  - enwiki
+  - commonswiki
+  - tgwiki
+  - dewiki
+  notes: The wiki where the event occurred
+- path: type
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  enum_values:
+  - edit
+  notes: The type of edit
+- path: namespace
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The namespace of the edited page
+- path: title
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  pii:
+  - card_number
+  notes: The title of the edited page
+- path: title_url
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The URL of the edited page
+- path: comment
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  pii:
+  - card_number
+  notes: The comment left by the editor
+- path: user
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The username of the editor
+- path: bot
+  type: boolean
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: Whether the edit was made by a bot
+- path: minor
+  type: boolean
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: Whether the edit was minor
+- path: old_length
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The length of the page before the edit
+- path: new_length
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The length of the page after the edit
+- path: length_delta
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The change in length of the page
+- path: revision_id
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The ID of the revision
+- path: parent_revision_id
+  type: integer
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The ID of the parent revision
+- path: timestamp
+  type: timestamp_iso8601
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 1.0
+  notes: The timestamp of the edit

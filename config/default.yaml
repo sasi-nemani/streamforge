@@ -128,10 +128,10 @@ inference:
 # Env vars take precedence over values here:
 #   GITHUB_TOKEN, GITHUB_REPO, GITLAB_TOKEN, GITLAB_REPO, GITLAB_URL
 vcs:
-  enabled: false
+  enabled: true
 
   # "git" | "github" | "gitlab"
-  backend: git
+  backend: github
 
   # Git remote and branch settings
   remote: origin
@@ -150,7 +150,7 @@ vcs:
 
   # Identity used for commits (not your personal git config)
   commit_author_name: "StreamForge Bot"
-  commit_author_email: "streamforge-bot@noreply.local"
+  commit_author_email: "streamforge-bot@noreply.github.com"
 
   # GitHub-specific (or set env vars)
   github_repo: ""       # "owner/repo"  — set via GITHUB_REPO

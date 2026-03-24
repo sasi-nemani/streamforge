@@ -1,86 +1,85 @@
 # StreamForge Schema — events.payments
 # Version: 1.0.0
-# Inferred: 2026-03-19T16:04:45.710762+00:00
-# Events sampled: 150
-# Overall confidence: 60%
+# Inferred: 2026-03-24T11:29:57.838393+00:00
+# Events sampled: 400
+# Overall confidence: 85%
 #
 # This file is the source of truth for stream: events.payments
 # Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
 
 stream: events.payments
 version: 1.0.0
-inferred_at: '2026-03-19T16:04:45.710762+00:00'
-inference_confidence: 0.6
+inferred_at: '2026-03-24T11:29:57.838393+00:00'
+inference_confidence: 0.85
 inference_model: llama-3.3-70b-versatile
-event_count_sampled: 150
+event_count_sampled: 400
 event_types:
-- payment.failed
-- payment.created
 - payment.updated
-- payment
+- payment.created
+- payment.failed
 fields:
 - path: event_id
-  type: string
+  type: uuid
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.99
+  notes: Unique event identifier
 - path: event_type
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Type of event, always 'payment.updated' in the sample data
 - path: user_id
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Unique user identifier
 - path: merchant
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Payment merchant, one of 'checkout', 'stripe', 'adyen', 'square', 'braintree'
 - path: currency
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Currency of the transaction, one of 'GBP', 'JPY', 'SGD', 'USD', 'AUD'
 - path: status
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Status of the payment, one of 'refunded', 'failed', 'completed', 'pending'
 - path: amount
   type: float
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Amount of the transaction
 - path: timestamp
-  type: integer
+  type: timestamp_epoch_ms
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.99
+  notes: Timestamp of the event in Unix epoch milliseconds
 - path: user_email
-  type: string
+  type: email
   required: false
-  nullable: false
-  presence_rate: 0.7308
-  confidence: 0.6462
+  nullable: true
+  presence_rate: 1.0
+  confidence: 0.97
   pii:
   - email
-  notes: Statistically inferred (LLM fallback)
+  notes: Email address of the user, missing in some events

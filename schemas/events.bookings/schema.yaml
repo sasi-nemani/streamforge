@@ -1,18 +1,18 @@
 # StreamForge Schema — events.bookings
 # Version: 1.0.0
-# Inferred: 2026-03-19T16:04:50.267794+00:00
-# Events sampled: 150
-# Overall confidence: 60%
+# Inferred: 2026-03-24T11:31:30.447586+00:00
+# Events sampled: 400
+# Overall confidence: 92%
 #
 # This file is the source of truth for stream: events.bookings
 # Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
 
 stream: events.bookings
 version: 1.0.0
-inferred_at: '2026-03-19T16:04:50.267794+00:00'
-inference_confidence: 0.6
+inferred_at: '2026-03-24T11:31:30.447586+00:00'
+inference_confidence: 0.92
 inference_model: llama-3.3-70b-versatile
-event_count_sampled: 150
+event_count_sampled: 400
 event_types:
 - booking.created
 - booking.cancelled
@@ -23,160 +23,146 @@ fields:
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Booking reference code
 - path: event_type
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Type of booking event
 - path: airline
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Airline code
 - path: origin
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Origin airport code
 - path: destination
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Destination airport code
 - path: cabin
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Cabin class
 - path: status
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Booking status
 - path: total_price
   type: float
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Total booking price
 - path: currency
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Currency code
 - path: created_at
-  type: string
+  type: timestamp_iso8601
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.99
+  notes: Creation timestamp
 - path: passengers
   type: array
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.95
+  notes: Array of passenger objects
 - path: passengers[].passenger_name
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
+  confidence: 0.95
   pii:
   - name
-  notes: Statistically inferred (LLM fallback)
+  notes: Passenger name
 - path: passengers[].ticket_number
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
+  confidence: 0.95
   pii:
   - passport
-  notes: Statistically inferred (LLM fallback)
+  notes: Ticket number
 - path: passengers[].passport_number
   type: string
   required: false
-  nullable: false
-  presence_rate: 0.7544
-  confidence: 0.6509
+  nullable: true
+  presence_rate: 0.7483
+  confidence: 0.85
   pii:
   - passport
-  notes: Statistically inferred (LLM fallback)
-- path: contact_email
-  type: string
-  required: false
-  nullable: false
-  presence_rate: 0.5263
-  confidence: 0.6053
-  pii:
-  - email
-  notes: Statistically inferred (LLM fallback)
-- path: contact_phone
-  type: string
-  required: false
-  nullable: false
-  presence_rate: 0.386
-  confidence: 0.5772
-  pii:
-  - phone
-  notes: Statistically inferred (LLM fallback)
-- path: seat_preference
-  type: string
-  required: false
-  nullable: false
-  presence_rate: 0.1754
-  confidence: 0.5351
-  notes: Statistically inferred (LLM fallback)
+  notes: Passport number (present in ~75% of passengers)
 - path: passengers[].frequent_flyer_number
   type: string
   required: false
-  nullable: false
-  presence_rate: 0.5263
-  confidence: 0.6053
+  nullable: true
+  presence_rate: 0.6434
+  confidence: 0.85
   pii:
   - loyalty_number
-  notes: Statistically inferred (LLM fallback)
-- path: baggage_allowance_kg
-  type: integer
+  notes: Frequent flyer number (present in ~64% of passengers)
+- path: contact_email
+  type: email
   required: false
-  nullable: false
-  presence_rate: 0.2982
-  confidence: 0.5596
-  notes: Statistically inferred (LLM fallback)
+  nullable: true
+  presence_rate: 0.4895
+  confidence: 0.97
+  pii:
+  - email
+  notes: Contact email (present in ~49% of events)
 - path: passengers[].date_of_birth
-  type: string
+  type: date
   required: false
-  nullable: false
-  presence_rate: 0.4211
-  confidence: 0.5842
+  nullable: true
+  presence_rate: 0.4476
+  confidence: 0.85
   pii:
   - phone
   - date_of_birth
-  notes: Statistically inferred (LLM fallback)
-- path: special_meal
+  notes: Date of birth (present in ~45% of passengers)
+- path: contact_phone
   type: string
   required: false
-  nullable: false
-  presence_rate: 0.2105
-  confidence: 0.5421
-  notes: Statistically inferred (LLM fallback)
+  nullable: true
+  presence_rate: 0.3776
+  confidence: 0.85
+  pii:
+  - phone
+  notes: Contact phone number (present in ~38% of events)
+- path: baggage_allowance_kg
+  type: integer
+  required: false
+  nullable: true
+  presence_rate: 0.3287
+  confidence: 0.85
+  notes: Baggage allowance in kg (present in ~33% of events)

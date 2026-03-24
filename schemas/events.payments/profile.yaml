@@ -1,188 +1,26 @@
 # StreamForge Stream Profile — events.payments
-# Profiled: 2026-03-19T16:04:45.710762+00:00
-# Events sampled: 150
+# Profiled: 2026-03-24T11:29:57.838393+00:00
+# Events sampled: 400
 # Parse success rate: 100.0%
-# Sub-schemas discovered: 4
+# Sub-schemas discovered: 3
 # Discovery method: event_type_field
 #
 # Each sub-schema is a distinct event shape found in the stream.
 # Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
 
 stream: events.payments
-profiled_at: '2026-03-19T16:04:45.710762+00:00'
-total_events_sampled: 150
+profiled_at: '2026-03-24T11:29:57.838393+00:00'
+total_events_sampled: 400
 parse_success_rate: 1.0
 discovery_method: event_type_field
 routing_field: event_type
 profile_model: llama-3.3-70b-versatile
 sub_schemas:
-- cluster_id: payment.failed
-  detection_method: event_type_field
-  event_count: 52
-  sample_rate: 0.3467
-  inference_confidence: 0.6
-  top_keys:
-  - event_id
-  - event_type
-  - user_id
-  - merchant
-  - currency
-  - status
-  - amount
-  - timestamp
-  - user_email
-  fields:
-  - path: event_id
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: event_type
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: user_id
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: merchant
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: currency
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: status
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: amount
-    type: float
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: timestamp
-    type: integer
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: user_email
-    type: string
-    required: false
-    nullable: false
-    presence_rate: 0.7308
-    confidence: 0.6462
-    pii:
-    - email
-    notes: Statistically inferred (LLM fallback)
-- cluster_id: payment.created
-  detection_method: event_type_field
-  event_count: 49
-  sample_rate: 0.3267
-  inference_confidence: 0.6
-  top_keys:
-  - event_id
-  - event_type
-  - user_id
-  - merchant
-  - currency
-  - status
-  - amount
-  - timestamp
-  - user_email
-  fields:
-  - path: event_id
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: event_type
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: user_id
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: merchant
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: currency
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: status
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: amount
-    type: float
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: timestamp
-    type: integer
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: user_email
-    type: string
-    required: false
-    nullable: false
-    presence_rate: 0.5918
-    confidence: 0.6184
-    pii:
-    - email
-    notes: Statistically inferred (LLM fallback)
 - cluster_id: payment.updated
   detection_method: event_type_field
-  event_count: 48
-  sample_rate: 0.32
-  inference_confidence: 0.6
+  event_count: 148
+  sample_rate: 0.37
+  inference_confidence: 0.85
   top_keys:
   - event_id
   - event_type
@@ -195,106 +33,244 @@ sub_schemas:
   - user_email
   fields:
   - path: event_id
-    type: string
+    type: uuid
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.99
+    notes: Unique event identifier
   - path: event_type
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Type of event, always 'payment.updated' in the sample data
   - path: user_id
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Unique user identifier
   - path: merchant
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Payment merchant, one of 'checkout', 'stripe', 'adyen', 'square', 'braintree'
   - path: currency
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Currency of the transaction, one of 'GBP', 'JPY', 'SGD', 'USD', 'AUD'
   - path: status
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Status of the payment, one of 'refunded', 'failed', 'completed', 'pending'
   - path: amount
     type: float
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Amount of the transaction
   - path: timestamp
-    type: integer
+    type: timestamp_epoch_ms
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.99
+    notes: Timestamp of the event in Unix epoch milliseconds
   - path: user_email
-    type: string
+    type: email
     required: false
-    nullable: false
-    presence_rate: 0.6458
-    confidence: 0.6292
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.97
     pii:
     - email
-    notes: Statistically inferred (LLM fallback)
-- cluster_id: payment
+    notes: Email address of the user, missing in some events
+- cluster_id: payment.created
   detection_method: event_type_field
-  event_count: 1
-  sample_rate: 0.0067
-  inference_confidence: 0.18
+  event_count: 128
+  sample_rate: 0.32
+  inference_confidence: 0.85
   top_keys:
+  - event_id
   - event_type
-  - amount
-  - currency
   - user_id
+  - merchant
+  - currency
+  - status
+  - amount
+  - timestamp
+  - user_email
   fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.99
+    notes: Unique event identifier
   - path: event_type
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: amount
-    type: float
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
-  - path: currency
-    type: string
-    required: true
-    nullable: false
-    presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Type of event, always 'payment.created' in the sample data
   - path: user_id
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.7
-    notes: Statistically inferred (LLM fallback)
+    confidence: 0.9
+    notes: Unique user identifier
+  - path: merchant
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - square
+    - stripe
+    - braintree
+    - adyen
+    notes: Payment merchant
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - AUD
+    - SGD
+    - GBP
+    - JPY
+    notes: Currency of the transaction
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    enum_values:
+    - completed
+    - pending
+    - refunded
+    - failed
+    notes: Status of the payment
+  - path: amount
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Amount of the transaction
+  - path: timestamp
+    type: timestamp_epoch_ms
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.99
+    notes: Timestamp of the event in Unix epoch milliseconds
+  - path: user_email
+    type: email
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.97
+    pii:
+    - email
+    notes: User's email address, often null in the sample data
+- cluster_id: payment.failed
+  detection_method: event_type_field
+  event_count: 124
+  sample_rate: 0.31
+  inference_confidence: 0.85
+  top_keys:
+  - event_id
+  - event_type
+  - user_id
+  - merchant
+  - currency
+  - status
+  - amount
+  - timestamp
+  - user_email
+  fields:
+  - path: event_id
+    type: uuid
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.99
+    notes: Unique event identifier
+  - path: event_type
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Type of event, always 'payment.failed' in the sample data
+  - path: user_id
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Unique user identifier
+  - path: merchant
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Payment merchant, e.g. 'stripe', 'braintree', 'adyen', 'square', 'checkout'
+  - path: currency
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Currency of the transaction, e.g. 'SGD', 'GBP', 'EUR', 'AUD', 'USD'
+  - path: status
+    type: string
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Status of the payment, e.g. 'pending', 'failed', 'completed', 'refunded'
+  - path: amount
+    type: float
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.9
+    notes: Amount of the transaction
+  - path: timestamp
+    type: timestamp_epoch_ms
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 0.99
+    notes: Timestamp of the event in Unix epoch milliseconds
+  - path: user_email
+    type: email
+    required: false
+    nullable: true
+    presence_rate: 1.0
+    confidence: 0.97
+    pii:
+    - email
+    notes: Email address of the user, sometimes null
