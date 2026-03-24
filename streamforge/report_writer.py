@@ -39,6 +39,19 @@ def format_drift_detail(drift: FieldDrift) -> str:
         if drift.correction_confidence is not None:
             lines.append(f"- **Correction confidence**: {drift.correction_confidence:.0%}")
 
+    # Always include a "How to fix" section
+    lines.append("")
+    lines.append("### How to fix")
+    if drift.proposed_correction and drift.proposed_correction.strip():
+        lines.append("```")
+        lines.append(drift.proposed_correction.strip())
+        lines.append("```")
+    else:
+        lines.append("No automated fix available for this drift type. Recommended steps:")
+        lines.append("1. Review the drift report with the producer team")
+        lines.append("2. Update `schema.yaml` to reflect the new contract: `streamforge accept`")
+        lines.append("3. Monitor for recurrence: `streamforge watch kafka://<topic>`")
+
     return "\n".join(lines)
 
 

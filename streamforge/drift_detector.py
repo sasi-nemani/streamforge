@@ -403,6 +403,7 @@ def detect_drift(
 
             # Full removal: observed presence negligible
             if new_presence < 0.05 and baseline_field.presence_rate >= 0.2:
+                _leaf = path.split(".")[-1]
                 drift = FieldDrift(
                     field_path=path,
                     drift_type="field_removed",
@@ -411,6 +412,16 @@ def detect_drift(
                     affected_event_rate=1.0 - new_presence,
                     tier=DriftTier.TIER_1,
                     auto_correctable=False,
+                    proposed_correction=(
+                        f"`{path}` was removed by the producer.\n"
+                        f"Options:\n"
+                        f"  1. Pin consumer to the last producer version that includes `{path}`\n"
+                        f"  2. Update consumer to handle missing `{path}` gracefully:\n"
+                        f"     Python: value = event.get('{_leaf}')  # returns None if missing\n"
+                        f"     Java:   Object value = event.getOrDefault(\"{_leaf}\", null);\n"
+                        f"  3. Alert the producer team — this may be an unintentional rollout"
+                    ),
+                    correction_confidence=0.9,
                 )
                 drift.tier = classify_drift_tier(drift)
                 drifts.append(drift)
@@ -509,9 +520,18 @@ def detect_drift(
                         (baseline_type in TIMESTAMP_TYPES and observed_type in TIMESTAMP_TYPES)
                         or (baseline_type, observed_type) in TYPE_WIDENING
                     )
-                    proposed = None
-                    if baseline_type in TIMESTAMP_TYPES and observed_type in TIMESTAMP_TYPES:
-                        proposed = f"timestamp_parse(source.{path.split('.')[-1]})"
+                    _leaf = path.split(".")[-1]
+                    prev_type_label = baseline_type.value
+                    new_type_label = observed_type.value
+                    proposed = (
+                        f"`{path}` changed from `{prev_type_label}` to `{new_type_label}`.\n"
+                        f"Options:\n"
+                        f"  1. Defensive parse (handles both types):\n"
+                        f"     Python: val = float(event['{_leaf}']) if isinstance(event['{_leaf}'], str) else event['{_leaf}']\n"
+                        f"     Java:   Object v = event.get(\"{_leaf}\"); double d = v instanceof String ? Double.parseDouble((String)v) : ((Number)v).doubleValue();\n"
+                        f"  2. Coordinate with producer to standardise on one type\n"
+                        f"  3. Update schema: mark field type as `mixed` to acknowledge the variance"
+                    )
 
                     drift = FieldDrift(
                         field_path=path,
@@ -524,7 +544,7 @@ def detect_drift(
                         tier=DriftTier.TIER_1,
                         auto_correctable=auto,
                         proposed_correction=proposed,
-                        correction_confidence=0.85 if auto else None,
+                        correction_confidence=0.85 if auto else 0.7,
                     )
                     drift.tier = classify_drift_tier(drift)
                     drifts.append(drift)

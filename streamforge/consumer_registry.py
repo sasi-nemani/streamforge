@@ -51,10 +51,17 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from .models import DriftReport, DriftTier, FieldDrift
+
+# Re-export for patching in tests
+try:
+    from kafka.admin import KafkaAdminClient  # type: ignore[import]
+except ImportError:
+    KafkaAdminClient = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -473,3 +480,66 @@ def format_blast_radius_table(br: BlastRadius) -> str:
         lines.append(f"- {ic.recommendation}")
 
     return "\n".join(lines)
+
+
+# ── Kafka Auto-Discovery ───────────────────────────────────────────────────────
+
+def discover_consumers_from_kafka(topic: str, brokers: str) -> list[dict[str, Any]]:
+    """
+    Query Kafka Admin API for consumer groups subscribed to `topic`.
+    Returns list of dicts: {group_id, member_count, lag, team}
+    Falls back to [] on any error — never raises.
+    """
+    try:
+        admin = KafkaAdminClient(bootstrap_servers=brokers, request_timeout_ms=5000)
+        groups = admin.list_consumer_groups()
+        result: list[dict[str, Any]] = []
+        for group_id, _ in groups:
+            try:
+                desc_list = admin.describe_consumer_groups([group_id])
+                for g in desc_list:
+                    # Check active members assigned to the topic
+                    members_on_topic = [
+                        m for m in g.members
+                        if any(
+                            tp.topic == topic
+                            for tp in (
+                                m.member_assignment.assignment
+                                if m.member_assignment
+                                else []
+                            )
+                        )
+                    ]
+                    # Also include Empty/Stable groups that have committed offsets
+                    # for this topic (they've consumed before, even if inactive now)
+                    state = getattr(g, "state", "")
+                    if members_on_topic:
+                        result.append({
+                            "group_id": group_id,
+                            "member_count": len(members_on_topic),
+                            "lag": None,
+                            "team": None,
+                            "state": state,
+                        })
+                    elif state in ("Empty", "Stable") and not g.members:
+                        # Check committed offsets to confirm this group used this topic
+                        try:
+                            offsets = admin.list_consumer_group_offsets(group_id)
+                            topic_partitions = [tp for tp in offsets if tp.topic == topic]
+                            if topic_partitions:
+                                result.append({
+                                    "group_id": group_id,
+                                    "member_count": 0,
+                                    "lag": None,
+                                    "team": None,
+                                    "state": "inactive",
+                                })
+                        except Exception:
+                            pass
+            except Exception:
+                continue
+        admin.close()
+        return result
+    except Exception as exc:
+        logger.warning("Consumer auto-discovery failed: %s", exc)
+        return []
