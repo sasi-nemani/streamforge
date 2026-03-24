@@ -69,11 +69,10 @@ jobs:
       fail-fast: false    # Run all streams even if one fails
       matrix:
         stream:
-          - "events/payments/stream_v1|schemas/stream_v1/schema.yaml"
-          - "events/flights/stream|schemas/flights.stream/schema.yaml"
-          - "events/bookings/stream|schemas/bookings.stream/schema.yaml"
-          # Add more streams here:
-          # - "events/your-stream|schemas/your-stream/schema.yaml"
+          - "events/payments/stream_v1|schemas/events.payments/schema.yaml"
+          - "events/flights/stream|schemas/events.flights/schema.yaml"
+          - "events/bookings/stream|schemas/events.bookings/schema.yaml"
+          - "events/iot/stream|schemas/events.iot/schema.yaml"
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────

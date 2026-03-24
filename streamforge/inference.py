@@ -18,6 +18,21 @@ logger = logging.getLogger(__name__)
 # statistical_inference(). LLMs produce low-quality output on tiny samples.
 MIN_EVENTS_FOR_LLM_INFERENCE = 50
 
+
+def _min_events_for_llm() -> int:
+    """Return the minimum events threshold for LLM inference.
+
+    Reads STREAMFORGE_MIN_EVENTS_FOR_LLM env var; defaults to 50.
+    Falls back to default on non-numeric values.
+    """
+    raw = os.environ.get("STREAMFORGE_MIN_EVENTS_FOR_LLM", "")
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    return MIN_EVENTS_FOR_LLM_INFERENCE
+
 # ── Schema hints ─────────────────────────────────────────────────────────────
 _HINTS_FILE = Path(__file__).parent / "schema_hints.yaml"
 
@@ -141,7 +156,12 @@ LOCAL_CONFIDENCE_THRESHOLD = 0.80
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
-# ── OpenRouter fallback (third in cascade) ───────────────────────────────────
+# ── OpenAI fallback (third in cascade) ───────────────────────────────────────
+# Used when OPENAI_API_KEY is set and Groq fails.
+OPENAI_BASE_URL = "https://api.openai.com/v1"
+OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
+
+# ── OpenRouter fallback (fourth in cascade) ───────────────────────────────────
 # Used when OPENROUTER_API_KEY is set and earlier providers fail.
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODELS = [
@@ -740,8 +760,9 @@ def infer_schema(
       1. Local Ollama (http://127.0.0.1:11434) — json-mode, 2 retries
          → accepted only if confidence >= LOCAL_CONFIDENCE_THRESHOLD (0.80)
       2. Groq (or whatever base_url is passed in) — tool-call mode
-      3. OpenRouter — json-mode (if OPENROUTER_API_KEY is set)
-      4. Statistical inference — last resort, no LLM needed
+      3. OpenAI (gpt-4o-mini) — tool-call mode (if OPENAI_API_KEY is set)
+      4. OpenRouter — json-mode (if OPENROUTER_API_KEY is set)
+      5. Statistical inference — last resort, no LLM needed
     """
     compressed_stats = _compress_field_stats(field_stats)
     prompt = build_inference_prompt(compressed_stats, presence_rates, sample_events)
@@ -786,7 +807,23 @@ def infer_schema(
         # Coverage check: if Groq returns far fewer fields than observed, escalate
         llm_fields = _check_field_coverage(llm_fields, field_stats)
 
-    # ── 3. OpenRouter fallback ─────────────────────────────────────────────────
+    # ── 3. OpenAI fallback ─────────────────────────────────────────────────────
+    if llm_fields is None:
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if openai_key and openai_key != api_key:
+            openai_model = os.environ.get("OPENAI_MODEL", OPENAI_DEFAULT_MODEL)
+            logger.warning(
+                "Primary provider exhausted — trying OpenAI fallback (model: %s)", openai_model
+            )
+            oa_client = OpenAI(api_key=openai_key, base_url=OPENAI_BASE_URL)
+            llm_fields, overall_confidence, event_type_values = _call_llm(
+                oa_client, openai_model, prompt, field_stats, presence_rates, max_retries,
+            )
+            llm_fields = _check_field_coverage(llm_fields, field_stats)
+            if llm_fields is not None:
+                model = openai_model
+
+    # ── 4. OpenRouter fallback ─────────────────────────────────────────────────
     if llm_fields is None:
         openrouter_key = os.environ.get("OPENROUTER_API_KEY")
         if openrouter_key:
@@ -807,7 +844,7 @@ def infer_schema(
                     model = or_model
                     break
 
-    # ── 4. Statistical fallback ────────────────────────────────────────────────
+    # ── 5. Statistical fallback ────────────────────────────────────────────────
     if llm_fields is None:
         logger.warning("All LLM attempts failed, falling back to statistical inference")
         llm_fields = statistical_inference(field_stats, presence_rates)
@@ -876,11 +913,11 @@ def infer_sub_schema(
             key_counts[k] = key_counts.get(k, 0) + 1
     top_keys = sorted(key_counts, key=lambda k: -key_counts[k])[:15]
 
-    if len(sample) < MIN_EVENTS_FOR_LLM_INFERENCE:
+    if len(sample) < _min_events_for_llm():
         logger.info(
             "Cluster %s: only %d events — below MIN_EVENTS_FOR_LLM_INFERENCE (%d), "
             "using statistical inference",
-            cluster_id, len(sample), MIN_EVENTS_FOR_LLM_INFERENCE,
+            cluster_id, len(sample), _min_events_for_llm(),
         )
         fields = statistical_inference(field_stats, presence_rates)
         confidence = min(0.65, 0.3 + 0.007 * len(sample))

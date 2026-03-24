@@ -4,6 +4,12 @@ from typing import Any
 from pydantic import BaseModel
 
 
+class DriftClass(StrEnum):
+    DRIFT     = "drift"      # breaking change — alert path
+    EVOLUTION = "evolution"  # additive/non-breaking — schema PR path
+    NOISE     = "noise"      # below threshold or low confidence — suppress
+
+
 class FieldType(StrEnum):
     STRING = "string"
     INTEGER = "integer"
@@ -81,6 +87,7 @@ class FieldDrift(BaseModel):
     proposed_correction: str | None = None
     correction_confidence: float | None = None
     cluster_id: str | None = None  # sub-schema cluster this drift belongs to; None = flat schema path
+    drift_class: DriftClass = DriftClass.DRIFT  # classification: drift | evolution | noise
 
 
 class DriftReport(BaseModel):
@@ -91,6 +98,8 @@ class DriftReport(BaseModel):
     drifts: list[FieldDrift]
     highest_tier: DriftTier
     summary: str
+    evolution_count: int = 0  # number of EVOLUTION-class drifts in this report
+    noise_count: int = 0      # number of NOISE-class drifts in this report
 
 
 class SubSchema(BaseModel):

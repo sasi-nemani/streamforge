@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-feed_all.py — Write all event types into a single merged Kafka topic (events.all).
+feed_all.py — Write each event type to its own dedicated Kafka topic.
 
-Each event gets a top-level _type field so StreamForge can discover sub-schemas:
-  _type: "payment"        → payment transactions with PII (email)
-  _type: "booking"        → flight bookings with PII (passport, DOB, loyalty)
-  _type: "iot_sensor"     → IoT sensor readings (6 sensor types, mixed schema)
-  _type: "wikipedia_edit" → synthetic Wikipedia-style edit events (no network needed)
+Topics (one per stream — each gets its own schema contract):
+  events.payments   → payment transactions with PII (email)
+  events.bookings   → flight bookings with PII (passport, DOB, loyalty)
+  events.iot        → IoT sensor readings (6 sensor types, mixed schema)
+  events.wiki       → real Wikimedia RecentChanges SSE stream (all wikis,
+                      high volume). Falls back to synthetic if offline.
 
 Usage:
-  # Seed 500 events then run in live mode (default for setup.sh):
+  # Seed 500 events per topic then run in live mode:
   python3 demo/feed_all.py --preseed 500
 
   # Seed only, then exit (for CI / one-shot seeding):
@@ -18,11 +19,15 @@ Usage:
   # Live mode only (no preseed):
   python3 demo/feed_all.py
 
+  # High-throughput mode (10× rates):
+  python3 demo/feed_all.py --payment-rate 20 --booking-rate 10 --iot-rate 50
+
 Notes:
+  - Each topic is an independent stream with its own schema.yaml.
   - Payments are ALWAYS phase-1 (clean schema). Drift is injected separately
     via inject_drift.py for predictable demo timing.
-  - Wikipedia uses a fully synthetic generator — no external SSE connection.
-  - All events go to topic: events.all
+  - Wikipedia uses the public Wikimedia SSE endpoint (no auth required).
+    All ~300 wikis are consumed for high volume; filter with --wiki-filter enwiki.
 """
 
 import argparse
@@ -34,6 +39,8 @@ import threading
 import time
 import uuid
 from datetime import UTC, datetime
+
+import httpx
 
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
@@ -61,7 +68,13 @@ if _LOG_DIR:
 _counts: dict = {"payment": 0, "booking": 0, "iot_sensor": 0, "wikipedia_edit": 0}
 _counts_lock = threading.Lock()
 
-TOPIC = "events.all"
+# Per-type topic routing — each data source gets its own schema contract
+TOPICS: dict[str, str] = {
+    "payment":       "events.payments",
+    "booking":       "events.bookings",
+    "iot_sensor":    "events.iot",
+    "wikipedia_edit":"events.wiki",
+}
 
 # ── Kafka producer ─────────────────────────────────────────────────────────────
 
@@ -84,8 +97,9 @@ def make_producer(brokers: str) -> KafkaProducer:
 
 
 def publish(producer: KafkaProducer, event: dict) -> None:
-    producer.send(TOPIC, event, key=event.get("_type", "unknown").encode())
     etype = event.get("_type", "unknown")
+    topic = TOPICS.get(etype, f"events.{etype}")
+    producer.send(topic, event, key=etype.encode())
     if etype in _counts:
         with _counts_lock:
             _counts[etype] += 1
@@ -265,38 +279,37 @@ def feed_iot(producer: KafkaProducer, rate_hz: float = 5.0) -> None:
         time.sleep(interval + random.uniform(-0.02, 0.02))
 
 
-# ── Synthetic Wikipedia edit events (no external SSE needed) ──────────────────
+# ── Wikipedia edit events — real Wikimedia SSE stream ─────────────────────────
+# Source: https://stream.wikimedia.org/v2/stream/recentchange
+# All ~300 wikis by default (~10-30 events/s). Use --wiki-filter enwiki for lower volume.
+# Falls back to synthetic if network is unavailable.
 
-_WIKI_NAMESPACES = [0, 0, 0, 0, 1, 4, 10, 14]  # 0=article (most common)
+WIKI_SSE_URL = "https://stream.wikimedia.org/v2/stream/recentchange"
+
+_WIKI_NAMESPACES = [0, 0, 0, 0, 1, 4, 10, 14]
 _WIKI_TITLES = [
     "Python (programming language)", "Artificial intelligence", "Kafka (software)",
-    "Data engineering", "Apache Kafka", "Event-driven architecture", "Schema registry",
-    "Machine learning", "Stream processing", "Database normalization",
-    "Distributed computing", "Microservices", "DevOps", "Cloud computing",
-    "PostgreSQL", "Data lake", "ETL", "Real-time analytics", "Flink", "Spark",
+    "Data engineering", "Apache Kafka", "Event-driven architecture",
+    "Machine learning", "Stream processing", "Distributed computing",
 ]
-_WIKI_USERS = [
-    "WikiEditor42", "DataNerd", "TechWriter", "AnonymousContrib", "RobotCleanup",
-    "FactChecker", "StyleBot", "LinksFixed", "CitationNeeded", "GrammarPolice",
-]
+_WIKI_USERS = ["WikiEditor42", "DataNerd", "TechWriter", "AnonymousContrib", "RobotCleanup"]
 
 
-def _wikipedia_event() -> dict:
+def _wikipedia_synthetic_event() -> dict:
+    """Synthetic fallback used for preseed and when SSE is unavailable."""
     title = random.choice(_WIKI_TITLES)
     old_len = random.randint(1000, 50000)
     new_len = old_len + random.randint(-500, 2000)
     return {
         "_type": "wikipedia_edit",
-        "event_type": "wikipedia_edit",  # enables routing in StreamForge multi-schema mode
+        "event_type": "wikipedia_edit",
         "wiki": "enwiki",
-        "type": random.choice(["edit", "new", "edit", "edit"]),  # mostly edits
+        "type": random.choice(["edit", "new", "edit", "edit"]),
         "namespace": random.choice(_WIKI_NAMESPACES),
         "title": title,
         "title_url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}",
-        "comment": random.choice([
-            "fixed typo", "added citation", "reverted vandalism",
-            "updated statistics", "copyedit", "added section", "removed spam",
-        ]),
+        "comment": random.choice(["fixed typo", "added citation", "reverted vandalism",
+                                  "updated statistics", "copyedit", "added section"]),
         "user": random.choice(_WIKI_USERS),
         "bot": random.random() < 0.15,
         "minor": random.random() < 0.4,
@@ -309,20 +322,100 @@ def _wikipedia_event() -> dict:
     }
 
 
-def feed_wikipedia(producer: KafkaProducer, rate_hz: float = 1.5) -> None:
-    log.info("[wikipedia_edit] starting at %.1f events/s (synthetic)", rate_hz)
-    interval = 1.0 / rate_hz
+def _parse_sse_event(raw: dict) -> dict | None:
+    """Map a raw Wikimedia RecentChanges event to our internal format."""
+    if raw.get("type") not in ("edit", "new"):
+        return None
+    length = raw.get("length") or {}
+    revision = raw.get("revision") or {}
+    old_len = length.get("old") or 0
+    new_len = length.get("new") or 0
+    return {
+        "_type": "wikipedia_edit",
+        "event_type": "wikipedia_edit",
+        "wiki": raw.get("wiki", ""),
+        "type": raw.get("type", "edit"),
+        "namespace": raw.get("namespace", 0),
+        "title": raw.get("title", ""),
+        "title_url": raw.get("title_url", ""),
+        "comment": (raw.get("comment") or "")[:200],
+        "user": raw.get("user", ""),
+        "bot": raw.get("bot", False),
+        "minor": raw.get("minor", False),
+        "old_length": old_len,
+        "new_length": new_len,
+        "length_delta": new_len - old_len,
+        "revision_id": revision.get("new") or 0,
+        "parent_revision_id": revision.get("old") or 0,
+        "timestamp": (raw.get("meta") or {}).get("dt") or datetime.now(UTC).isoformat(),
+    }
+
+
+_SSE_HEADERS = {
+    "Accept": "text/event-stream",
+    "User-Agent": "StreamForge/0.1 (schema-inference demo; https://github.com/streamforge)",
+}
+_SSE_CONNECT_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=None, pool=None)
+
+
+def _feed_wikipedia_sse(producer: KafkaProducer, wiki_filter: str | None) -> None:
+    """Stream real edits from Wikimedia SSE. Reconnects on disconnect.
+    Falls back to synthetic after 3 consecutive connection failures."""
+    failures = 0
+    while failures < 3:
+        try:
+            log.info("[wikipedia_edit] connecting to %s (filter=%s)", WIKI_SSE_URL, wiki_filter or "all")
+            with httpx.stream("GET", WIKI_SSE_URL, timeout=_SSE_CONNECT_TIMEOUT,
+                              headers=_SSE_HEADERS) as resp:
+                resp.raise_for_status()
+                failures = 0  # reset on successful connect
+                buf = ""
+                for chunk in resp.iter_text():
+                    buf += chunk
+                    while "\n\n" in buf:
+                        block, buf = buf.split("\n\n", 1)
+                        for line in block.splitlines():
+                            if not line.startswith("data:"):
+                                continue
+                            try:
+                                raw = json.loads(line[5:].strip())
+                                if wiki_filter and raw.get("wiki") != wiki_filter:
+                                    continue
+                                ev = _parse_sse_event(raw)
+                                if ev:
+                                    publish(producer, ev)
+                            except (json.JSONDecodeError, KeyError):
+                                pass
+        except Exception as exc:
+            failures += 1
+            log.warning("[wikipedia_edit] SSE error (%d/3): %s — retrying in 5s", failures, exc)
+            time.sleep(5)
+
+    fallback_rate = 5.0
+    log.warning("[wikipedia_edit] SSE unavailable after 3 attempts — synthetic fallback at %.1f/s", fallback_rate)
+    interval = 1.0 / fallback_rate
     while True:
-        publish(producer, _wikipedia_event())
+        publish(producer, _wikipedia_synthetic_event())
         time.sleep(interval + random.uniform(-0.1, 0.3))
+
+
+def feed_wikipedia(producer: KafkaProducer, rate_hz: float = 0.0,
+                   wiki_filter: str | None = None) -> None:
+    """
+    Connect to the live Wikimedia SSE stream for real edit events.
+    rate_hz is unused when the live stream is active (events arrive at natural pace).
+    Falls back to synthetic generation at rate_hz (default 5/s) if offline.
+    """
+    log.info("[wikipedia_edit] starting live SSE stream (filter=%s)", wiki_filter or "all wikis")
+    _feed_wikipedia_sse(producer, wiki_filter)
 
 
 # ── Preseed: burst-write N events across all types then return ────────────────
 
 def preseed(producer: KafkaProducer, n: int) -> None:
     """Write n events as fast as possible (no sleep). ~125 per event type."""
-    log.info("Preseeding %d events into %s...", n, TOPIC)
-    generators = [_payment_event, _booking_event, _iot_event, _wikipedia_event]
+    log.info("Preseeding %d events across %d topics...", n, len(TOPICS))
+    generators = [_payment_event, _booking_event, _iot_event, _wikipedia_synthetic_event]
     per_type = n // len(generators)
     total = 0
 
@@ -337,7 +430,7 @@ def preseed(producer: KafkaProducer, n: int) -> None:
         total += 1
 
     producer.flush(timeout=10)
-    log.info("Preseed complete: %d events written to %s", total, TOPIC)
+    log.info("Preseed complete: %d events written across topics: %s", total, ", ".join(TOPICS.values()))
 
 
 # ── Metrics thread ────────────────────────────────────────────────────────────
@@ -376,10 +469,13 @@ def main() -> None:
                         help="Burst-write this many events before going live (0 = skip)")
     parser.add_argument("--no-live", action="store_true",
                         help="Exit after preseed instead of running live feeds")
-    parser.add_argument("--payment-rate", type=float, default=2.0, metavar="HZ")
-    parser.add_argument("--booking-rate", type=float, default=1.0, metavar="HZ")
-    parser.add_argument("--iot-rate",     type=float, default=5.0, metavar="HZ")
-    parser.add_argument("--wiki-rate",    type=float, default=1.5, metavar="HZ")
+    parser.add_argument("--payment-rate", type=float, default=10.0, metavar="HZ")
+    parser.add_argument("--booking-rate", type=float, default=5.0, metavar="HZ")
+    parser.add_argument("--iot-rate",     type=float, default=25.0, metavar="HZ")
+    parser.add_argument("--wiki-rate",    type=float, default=5.0, metavar="HZ",
+                        help="Synthetic fallback rate when SSE is unavailable")
+    parser.add_argument("--wiki-filter",  default=None, metavar="WIKI",
+                        help="Filter SSE to a single wiki (e.g. enwiki). Default: all wikis")
     args = parser.parse_args()
 
     producer = make_producer(args.brokers)
@@ -394,12 +490,13 @@ def main() -> None:
         return
 
     print(f"\n{'─'*60}")
-    print(f"  StreamForge Demo — live feeds → {TOPIC}")
+    print(f"  StreamForge Demo — live feeds → 4 dedicated topics")
     print(f"{'─'*60}")
+    wiki_src = f"SSE stream (filter={args.wiki_filter or 'all wikis'})"
     print(f"  payment       → {args.payment_rate:.1f} events/s  (clean schema)")
     print(f"  booking       → {args.booking_rate:.1f} events/s  (PII: passport, DOB, loyalty)")
     print(f"  iot_sensor    → {args.iot_rate:.1f} events/s  (6 sensor types, mixed schema)")
-    print(f"  wikipedia_edit→ {args.wiki_rate:.1f} events/s  (synthetic)")
+    print(f"  wikipedia_edit→ real-time {wiki_src}")
     print(f"{'─'*60}")
     print("  Drift injected on demand via: python3 demo/inject_drift.py")
     print("  Kafka UI: http://localhost:8080")
@@ -410,7 +507,7 @@ def main() -> None:
         threading.Thread(target=feed_payments,  args=(producer, args.payment_rate), daemon=True, name="payment"),
         threading.Thread(target=feed_bookings,  args=(producer, args.booking_rate), daemon=True, name="booking"),
         threading.Thread(target=feed_iot,       args=(producer, args.iot_rate),     daemon=True, name="iot"),
-        threading.Thread(target=feed_wikipedia, args=(producer, args.wiki_rate),    daemon=True, name="wiki"),
+        threading.Thread(target=feed_wikipedia, args=(producer, args.wiki_rate, args.wiki_filter), daemon=True, name="wiki"),
         threading.Thread(target=_metrics_loop, daemon=True, name="metrics"),
     ]
     for t in threads:

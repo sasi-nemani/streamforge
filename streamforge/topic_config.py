@@ -122,6 +122,24 @@ class NotifPagerDuty:
 
 
 @dataclass
+class StabilityConfig:
+    """
+    Parameters that govern the LEARNING → STABILIZING → STABLE state machine
+    in the watch loop.
+
+    All fields can be overridden per-topic in config/topics/<topic>.yaml under
+    a ``stability:`` key, or globally in config/default.yaml.
+    Env vars (STREAMFORGE_WARMUP_CYCLES etc.) remain as a fallback when no
+    StabilityConfig is present (backward-compat for GCP deploys).
+    """
+    warmup_cycles: int = 10
+    stability_cycles: int = 3
+    consecutive_drift_threshold: int = 2
+    new_cluster_threshold: float = 0.12
+    new_cluster_is_evolution: bool = False
+
+
+@dataclass
 class TopicConfig:
     """
     Unified, resolved configuration for a specific topic + environment.
@@ -161,6 +179,9 @@ class TopicConfig:
     # Notifications
     slack: NotifSlack = field(default_factory=NotifSlack)
     pagerduty: NotifPagerDuty = field(default_factory=NotifPagerDuty)
+
+    # Stability state-machine parameters
+    stability: StabilityConfig = field(default_factory=StabilityConfig)
 
     # Inference
     inference_model: str = "llama-3.3-70b-versatile"
@@ -280,6 +301,7 @@ def load_topic_config(
     inf = raw.get("inference", {})
     v = raw.get("vcs", {})
     reg = raw.get("registry", {})
+    stab_raw = raw.get("stability", {})
 
     actions_raw = w.get("actions", {})
     actions = {
@@ -362,4 +384,66 @@ def load_topic_config(
         registry_format=reg.get("format", "avro"),
         registry_subject_suffix=reg.get("subject_suffix", "-value"),
         registry_glue_registry_name=os.environ.get("GLUE_REGISTRY_NAME", reg.get("glue_registry_name", "StreamForge")),
+        # Stability
+        stability=StabilityConfig(
+            warmup_cycles=int(stab_raw.get("warmup_cycles", 10)),
+            stability_cycles=int(stab_raw.get("stability_cycles", 3)),
+            consecutive_drift_threshold=int(stab_raw.get("consecutive_drift_threshold", 2)),
+            new_cluster_threshold=float(stab_raw.get("new_cluster_threshold", 0.12)),
+            new_cluster_is_evolution=bool(stab_raw.get("new_cluster_is_evolution", False)),
+        ),
     )
+
+
+# ── Scaffold helper ────────────────────────────────────────────────────────────
+
+_SCAFFOLD_TEMPLATE = """\
+# StreamForge — Topic Config: {topic}
+# {bar}
+# Override any default.yaml values here. Uncomment blocks to activate.
+#
+# Resolution order: this file > config/<env>.yaml > config/default.yaml
+
+# watch:
+#   interval_seconds: 30
+#   sample_size: 200
+#   window_capacity: 2000
+#   alert_tier: 2
+
+# stability:
+#   warmup_cycles: 10        # Phase 1: observe this many cycles before alerting
+#   stability_cycles: 3      # Phase 2: consecutive clean cycles needed for STABLE
+#   consecutive_drift_threshold: 2  # Phase 3: flap suppression
+#   new_cluster_threshold: 0.12     # fraction of events that form a new cluster
+#   new_cluster_is_evolution: false # true = auto-accept new clusters as evolution
+
+# drift:
+#   type_change_threshold: 0.05
+#   presence_drop_threshold: 0.15
+"""
+
+
+def scaffold_topic_config(topic: str, config_root: Path = _CONFIG_ROOT) -> Path | None:
+    """
+    Create ``config_root/topics/<topic>.yaml`` with commented-out defaults.
+
+    Returns the Path of the created file, or None if the file already exists.
+    This function is idempotent: safe to call multiple times.
+
+    Args:
+        topic:       Topic / stream name (e.g. "events.payments").
+        config_root: Override the config/ directory (useful in tests).
+    """
+    topics_dir = Path(config_root) / "topics"
+    target = topics_dir / f"{topic}.yaml"
+
+    if target.exists():
+        return None
+
+    topics_dir.mkdir(parents=True, exist_ok=True)
+
+    bar = "=" * (len("StreamForge — Topic Config: ") + len(topic))
+    content = _SCAFFOLD_TEMPLATE.format(topic=topic, bar=bar)
+    target.write_text(content, encoding="utf-8")
+    logger.debug("Scaffolded topic config: %s", target)
+    return target

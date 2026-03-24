@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 
 from .models import (
+    DriftClass,
     DriftReport,
     DriftTier,
     FieldDrift,
@@ -54,6 +55,17 @@ def _new_cluster_threshold() -> float:
     (e.g. 0.12 to suppress low-level IoT subtype noise in large multi-schema topics).
     """
     return float(os.environ.get("STREAMFORGE_NEW_CLUSTER_THRESHOLD", "0.05"))
+
+
+def _routing_regression_floor() -> float:
+    """Return the minimum *relative* rate drop that triggers partial routing regression.
+
+    A cluster's observed rate dropping by less than this fraction of its baseline is
+    treated as noise and suppressed.  Defaults to 0.20 (20% relative drop).
+    Override via STREAMFORGE_ROUTING_REGRESSION_FLOOR env var
+    (e.g. 0.10 to be more sensitive, 0.35 to suppress noisy low-volume clusters).
+    """
+    return float(os.environ.get("STREAMFORGE_ROUTING_REGRESSION_FLOOR", "0.20"))
 
 # Timestamp types — semantically equivalent conversions are Tier 2
 TIMESTAMP_TYPES = {
@@ -196,10 +208,139 @@ def classify_drift_tier(drift: FieldDrift) -> DriftTier:
     return DriftTier.TIER_2
 
 
+def classify_drift_class(
+    drift: FieldDrift,
+    stability_cfg=None,  # StabilityConfig | None
+) -> DriftClass:
+    """
+    Assign a DriftClass to a FieldDrift.
+
+    Called right after classify_drift_tier() — the tier is already set on drift.
+    stability_cfg is a StabilityConfig (or None for conservative defaults).
+
+    Rules (in priority order):
+      1. correction_confidence < 0.50 → NOISE (low-confidence signal, suppress)
+      2. drift_type-specific rules (see table in CLAUDE.md)
+    """
+    dt = drift.drift_type
+
+    # Rule 0: low-confidence signal → NOISE regardless of drift type.
+    # Uses correction_confidence as the proxy for signal quality.
+    if drift.correction_confidence is not None and drift.correction_confidence < 0.50:
+        return DriftClass.NOISE
+
+    # Rule 1: new cluster (unknown event family)
+    if dt == "new_cluster":
+        if stability_cfg is not None and stability_cfg.new_cluster_is_evolution:
+            return DriftClass.EVOLUTION
+        return DriftClass.DRIFT
+
+    # Rule 2: field_added — low presence → EVOLUTION, high presence → DRIFT
+    if dt == "field_added":
+        observed = drift.observed_presence_rate or 0.0
+        return DriftClass.EVOLUTION if observed < 0.5 else DriftClass.DRIFT
+
+    # Rule 3: field_removed → always DRIFT (data always disappears)
+    if dt == "field_removed":
+        return DriftClass.DRIFT
+
+    # Rule 4: type_changed — widening or timestamp format → EVOLUTION, narrowing → DRIFT
+    if dt == "type_changed":
+        prev_t = drift.previous_type
+        obs_t = drift.observed_type
+        # Timestamp format change is semantically equivalent → EVOLUTION
+        if prev_t in TIMESTAMP_TYPES and obs_t in TIMESTAMP_TYPES:
+            return DriftClass.EVOLUTION
+        # Type widening → EVOLUTION
+        if (prev_t, obs_t) in TYPE_WIDENING:
+            return DriftClass.EVOLUTION
+        # Everything else (narrowing, incompatible change) → DRIFT
+        return DriftClass.DRIFT
+
+    # Rule 5: enum_changed — only additions → EVOLUTION, any removal → DRIFT
+    if dt == "enum_changed":
+        prev_vals = set(drift.previous_enum_values or [])
+        obs_vals = set(drift.observed_enum_values or [])
+        removed = prev_vals - obs_vals
+        if removed:
+            return DriftClass.DRIFT
+        return DriftClass.EVOLUTION
+
+    # Rule 6: presence rate changes
+    if dt == "presence_increase":
+        return DriftClass.EVOLUTION
+    if dt == "presence_drop":
+        return DriftClass.DRIFT
+
+    # Catch-all: conservative default → DRIFT
+    return DriftClass.DRIFT
+
+
+def _handle_evolution(
+    signals: list[FieldDrift],
+    stream_name: str,
+    schema_dir,          # Path | None
+    topic_cfg=None,      # TopicConfig | None
+) -> None:
+    """
+    Handle EVOLUTION-class drift signals.
+
+    Prints an info-level message listing each evolution signal.
+    If topic_cfg.vcs_enabled, attempts to trigger the VCS flow (commit_schema).
+    Never raises — all errors are caught and logged.
+    """
+    if not signals:
+        return
+
+    try:
+        now_str = datetime.now().strftime("%H:%M:%S")
+        print(
+            f"[{now_str}] \U0001f504 {stream_name} — EVOLUTION: "
+            f"{len(signals)} additive change(s) detected (no alert)"
+        )
+        for s in signals:
+            print(f"           \u00b7 {s.field_path}: {s.drift_type} ({s.affected_event_rate:.0%})")
+    except Exception as e:
+        logger.debug("_handle_evolution print failed: %s", e)
+
+    # VCS flow — only when enabled
+    if topic_cfg is None or not getattr(topic_cfg, "vcs_enabled", False):
+        return
+
+    try:
+        from .vcs import VCSConfig, get_vcs_backend
+        from .vcs.base import SchemaCommitContext
+
+        vcs_cfg = topic_cfg.vcs_config
+        backend = get_vcs_backend(vcs_cfg, repo_root=Path("."))
+        if backend is None or not backend.is_available():
+            logger.debug("VCS backend unavailable — skipping evolution commit")
+            return
+
+        ctx = SchemaCommitContext(
+            stream_name=stream_name,
+            old_version=None,
+            new_version="evolution",
+            action="evolution",
+            drift_summary=f"EVOLUTION: {len(signals)} additive change(s) in {stream_name}",
+            tier=1,
+            files=[],
+        )
+        result = backend.commit_schema(ctx)
+        if result:
+            logger.info("VCS evolution commit: %s", result)
+        else:
+            logger.warning("VCS evolution commit failed (non-fatal): %s", result)
+    except Exception as e:
+        logger.warning("_handle_evolution VCS flow failed (non-fatal): %s", e)
+
+
 def detect_drift(
     baseline_schema: InferredSchema,
     new_sample: list[dict],
     stream_name: str,
+    *,
+    stability_cfg=None,  # StabilityConfig | None
 ) -> DriftReport | None:
     """Compare new_sample against baseline_schema. Returns DriftReport or None."""
     if not new_sample:
@@ -466,6 +607,10 @@ def detect_drift(
     if not drifts:
         return None
 
+    # Assign drift_class to every FieldDrift (Part C)
+    for d in drifts:
+        d.drift_class = classify_drift_class(d, stability_cfg)
+
     highest = max(d.tier for d in drifts)
     now = datetime.now(UTC).isoformat()
 
@@ -483,6 +628,9 @@ def detect_drift(
 
     summary = f"Detected {len(drifts)} drift event(s): " + "; ".join(summary_parts) + "."
 
+    evolution_count = sum(1 for d in drifts if d.drift_class == DriftClass.EVOLUTION)
+    noise_count = sum(1 for d in drifts if d.drift_class == DriftClass.NOISE)
+
     return DriftReport(
         stream_name=stream_name,
         detected_at=now,
@@ -491,6 +639,8 @@ def detect_drift(
         drifts=drifts,
         highest_tier=highest,
         summary=summary,
+        evolution_count=evolution_count,
+        noise_count=noise_count,
     )
 
 
@@ -750,6 +900,7 @@ def detect_drift_multi_schema(
     stream_name: str,
     *,
     warmup: bool = False,
+    stability_cfg=None,  # StabilityConfig | None
 ) -> list[DriftReport]:
     """
     Run per-cluster drift detection using the full profile.yaml.
@@ -837,6 +988,50 @@ def detect_drift_multi_schema(
             ))
             continue  # nothing to drift-check without events
 
+        # ── Partial routing regression ─────────────────────────────────────────
+        # A cluster that receives significantly fewer events than expected at init
+        # may indicate imprecise routing boundaries or a partially deprecated event type.
+        # Only fire when the relative drop exceeds _routing_regression_floor() AND
+        # the cluster has enough events to distinguish a real rate drop from noise.
+        if (
+            baseline_rate >= _REGRESSION_MIN_BASELINE
+            and len(new_sample) >= _REGRESSION_MIN_SAMPLE
+            and len(cluster_events) >= _REGRESSION_MIN_SAMPLE
+        ):
+            observed_rate = len(cluster_events) / len(new_sample)
+            if observed_rate < baseline_rate:
+                relative_drop = (baseline_rate - observed_rate) / baseline_rate
+                if relative_drop >= _routing_regression_floor():
+                    partial_drift = FieldDrift(
+                        field_path="__cluster__",
+                        drift_type="cluster_routing_regression",
+                        cluster_id=cid,
+                        previous_presence_rate=baseline_rate,
+                        observed_presence_rate=round(observed_rate, 4),
+                        affected_event_rate=round(relative_drop, 4),
+                        tier=DriftTier.TIER_2,
+                        auto_correctable=False,
+                        proposed_correction=(
+                            f"Cluster '{cid}' expected {baseline_rate:.0%} of events "
+                            f"but received only {observed_rate:.0%} ({relative_drop:.0%} relative drop). "
+                            f"Possible causes: imprecise cluster boundary, event type partially renamed, "
+                            f"or reduced producer throughput. Consider re-running 'streamforge init'."
+                        ),
+                    )
+                    reports.append(DriftReport(
+                        stream_name=stream_name,
+                        detected_at=now,
+                        schema_version="profile.yaml",
+                        events_sampled=len(new_sample),
+                        drifts=[partial_drift],
+                        highest_tier=DriftTier.TIER_2,
+                        summary=(
+                            f"Partial cluster routing regression: '{cid}' received "
+                            f"{observed_rate:.0%} of events (baseline {baseline_rate:.0%}, "
+                            f"{relative_drop:.0%} relative drop)."
+                        ),
+                    ))
+
         if len(cluster_events) < MIN_CLUSTER_EVENTS_FOR_DRIFT:
             # Under-sampled in this poll window — below the statistical threshold
             # for reliable drift detection.  Skip rather than fire false alerts.
@@ -850,7 +1045,7 @@ def detect_drift_multi_schema(
             continue
 
         sub = _sub_schema_to_inferred_schema(cluster, stream_name)
-        report = detect_drift(sub, cluster_events, stream_name)
+        report = detect_drift(sub, cluster_events, stream_name, stability_cfg=stability_cfg)
         if report is None:
             continue
 
@@ -865,7 +1060,12 @@ def detect_drift_multi_schema(
     # a new event type has appeared.  "new_cluster" semantics: something added.
     # Contrast with "cluster_routing_regression": something disappeared.
     unknown_rate = len(unknown) / max(len(new_sample), 1)
-    if unknown_rate >= _new_cluster_threshold():
+    _nc_threshold = (
+        stability_cfg.new_cluster_threshold
+        if stability_cfg is not None and hasattr(stability_cfg, "new_cluster_threshold")
+        else _new_cluster_threshold()
+    )
+    if unknown_rate >= _nc_threshold:
         new_family_drift = FieldDrift(
             field_path="__cluster__",
             drift_type="new_cluster",
@@ -877,6 +1077,9 @@ def detect_drift_multi_schema(
                 f"sub-schema. Run 'streamforge init' to rediscover clusters."
             ),
         )
+        new_family_drift.drift_class = classify_drift_class(new_family_drift, stability_cfg)
+        evolution_count = 1 if new_family_drift.drift_class == DriftClass.EVOLUTION else 0
+        noise_count = 1 if new_family_drift.drift_class == DriftClass.NOISE else 0
         reports.append(DriftReport(
             stream_name=stream_name,
             detected_at=now,
@@ -888,6 +1091,8 @@ def detect_drift_multi_schema(
                 f"{unknown_rate:.0%} of sampled events ({len(unknown)}) match no known "
                 f"cluster — new event family may have been introduced."
             ),
+            evolution_count=evolution_count,
+            noise_count=noise_count,
         ))
 
     return reports
@@ -992,6 +1197,26 @@ def watch_stream(
 
     from .models import DriftIncident, DriftIncidentStatus
     from .schema_writer import load_drift_state, save_drift_state
+    from .watch_state import WatchState as _WatchState
+
+    # Load (or create) persistent watch state — survives restarts
+    _wstate = _WatchState.load(stream_name)
+    if _wstate.phase == "STABLE":
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Resumed in STABLE phase (stable since {_wstate.stable_since or 'unknown'})"
+        )
+    elif _wstate.phase == "STABILIZING":
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Resumed in STABILIZING phase "
+            f"({_wstate.stability_clean_count}/3 clean cycles)"
+        )
+    else:
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Phase: LEARNING — {_wstate.warmup_remaining} observation cycle(s) before stabilization check"
+        )
 
     window = EventWindow(capacity=window_capacity)
     file_line_counts: dict[str, int] = {}
@@ -1048,6 +1273,9 @@ def watch_stream(
                 time.sleep(poll_interval_seconds)
                 continue
 
+            # Advance warmup counter (file-based loop uses simple cycle count)
+            _wstate.tick_warmup()
+
             sample = window.sample(sample_size)
 
             all_detected: list[FieldDrift] = []
@@ -1059,6 +1287,21 @@ def watch_stream(
                 single_report = detect_drift(baseline, sample, stream_name)
                 if single_report:
                     all_detected = single_report.drifts
+
+            # During LEARNING phase: suppress non-critical drift alerts
+            if _wstate.is_learning and all_detected:
+                _critical_in_learning = [d for d in all_detected if d.tier == DriftTier.TIER_3]
+                if not _critical_in_learning:
+                    _sig_count = len(all_detected)
+                    print(
+                        f"[{now_str}] ○ {stream_name} — LEARNING "
+                        f"({_wstate.warmup_remaining} cycle(s) remaining, "
+                        f"{_sig_count} signal(s) observed — suppressed)"
+                    )
+                    _wstate.save()
+                    time.sleep(poll_interval_seconds)
+                    continue
+                # Critical drifts are never suppressed even during LEARNING
 
             current_sigs: set[tuple[str | None, str, str]] = {
                 (d.cluster_id, d.field_path, d.drift_type) for d in all_detected
@@ -1157,6 +1400,13 @@ def watch_stream(
 
             active_drift_sigs = current_sigs - non_actionable
 
+            # Update WatchState phase machine
+            if new_drifts_to_report:
+                _wstate.mark_drift()
+            else:
+                _wstate.mark_clean()
+            _wstate.save()
+
             # Fix 2 — save window checkpoint after each successful poll
             _save_checkpoint(window, checkpoint_path)
 
@@ -1223,7 +1473,102 @@ async def _watch_kafka_async(
     )
 
     window = EventWindow(capacity=window_capacity)
-    warmup_cycles_remaining = int(os.environ.get("STREAMFORGE_WARMUP_CYCLES", "2"))
+
+    # ── Stability state machine ────────────────────────────────────────────────
+    # Phase 1 LEARNING:     observe N cycles, no alerts (even Tier-1/2).
+    #                       Tier-3 always alerts immediately (data integrity risk).
+    # Phase 2 STABILIZING:  require M consecutive clean cycles before declaring stable.
+    #                       Resets if Tier-2+ drift appears during this phase.
+    # Phase 3 STABLE:       full alerting on. Tier-1/2 requires K consecutive drift
+    #                       cycles before alerting (suppresses flapping / rollout noise).
+    #                       Tier-3 always alerts immediately.
+    #
+    # Configurable via env:
+    #   STREAMFORGE_WARMUP_CYCLES            default 10  (Phase 1 length)
+    #   STREAMFORGE_STABILITY_CYCLES         default 3   (Phase 2 consecutive-clean needed)
+    #   STREAMFORGE_CONSECUTIVE_DRIFT_THRESHOLD default 2 (Phase 3 flap suppression)
+    #
+    # State is persisted in schemas/<stream>/.watch_state.json so restarts
+    # resume from the correct phase rather than resetting to LEARNING.
+
+    # Stability parameters: prefer TopicConfig.stability, fall back to env vars
+    # (env var fallback keeps backward-compat for GCP deployments without config/).
+    _tc = None
+    try:
+        from .topic_config import load_topic_config as _load_tc
+        _tc = _load_tc(topic)
+        _stab = getattr(_tc, "stability", None)
+    except Exception:
+        _stab = None
+
+    _warmup_total = (
+        _stab.warmup_cycles if _stab else
+        int(os.environ.get("STREAMFORGE_WARMUP_CYCLES", "10"))
+    )
+    _stability_needed = (
+        _stab.stability_cycles if _stab else
+        int(os.environ.get("STREAMFORGE_STABILITY_CYCLES", "3"))
+    )
+    _consec_threshold = (
+        _stab.consecutive_drift_threshold if _stab else
+        int(os.environ.get("STREAMFORGE_CONSECUTIVE_DRIFT_THRESHOLD", "2"))
+    )
+
+    # Load persistent watch state via WatchState (migrating legacy .watch_state.json if present)
+    from .watch_state import WatchState as _WatchState
+    _legacy_state_file = schema_dir / ".watch_state.json"
+    _kws = (
+        _WatchState.migrate_legacy(topic, _legacy_state_file)
+        or _WatchState.load(topic)
+    )
+    # Sync warmup_remaining with configured warmup total on first load
+    if not _kws.warmup_done and _kws.cycle_count == 0:
+        _kws.warmup_remaining = _warmup_total
+
+    _phase                 = _kws.phase
+    _warmup_remaining      = _kws.warmup_remaining
+    _stability_clean_count = _kws.stability_clean_count
+    _consec_drift_count    = _kws.consecutive_drifts
+
+    def _save_watch_state_kws() -> None:
+        _kws.phase = _phase
+        _kws.warmup_remaining = _warmup_remaining
+        _kws.stability_clean_count = _stability_clean_count
+        _kws.consecutive_drifts = _consec_drift_count
+        _kws.save()
+
+    def _mark_stable(state: dict) -> None:
+        nonlocal _phase
+        _phase = "STABLE"
+        _kws.phase = "STABLE"
+        _kws.stable_since = datetime.now().isoformat()
+        _kws.save()
+        stable_file = schema_dir / ".stable"
+        stable_file.write_text(
+            f"stable_since: {_kws.stable_since}\n"
+            f"warmup_cycles: {_warmup_total}\n"
+            f"stability_cycles: {_stability_needed}\n"
+        )
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"✅ {stream_name} — SYSTEM STABLE — full drift alerting now active"
+        )
+
+    if _phase == "STABLE":
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Resumed in STABLE phase (stable since {_kws.stable_since or 'unknown'})"
+        )
+    elif _phase == "STABILIZING":
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Resumed in STABILIZING phase ({_stability_clean_count}/{_stability_needed} clean cycles)"
+        )
+    else:
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Phase: LEARNING — {_warmup_remaining} observation cycle(s) before stabilization check"
+        )
 
     # Warm-start: restore rolling window from previous checkpoint
     checkpoint_events = _load_checkpoint(checkpoint_path)
@@ -1264,39 +1609,169 @@ async def _watch_kafka_async(
 
                 sample = window.sample(sample_size)
 
-                in_warmup = warmup_cycles_remaining > 0
-                if in_warmup:
-                    warmup_cycles_remaining -= 1
-                    print(
-                        f"[{now_str}] ○ {stream_name} — grace period "
-                        f"({warmup_cycles_remaining} cycle(s) remaining, {len(window)} in window)"
+                # ── Phase 1: LEARNING ──────────────────────────────────────────
+                if _phase == "LEARNING":
+                    _warmup_remaining -= 1
+                    # Run detection only to catch Tier-3 (critical) even in learning
+                    _learning_reports = (
+                        detect_drift_multi_schema(profile, sample, stream_name, stability_cfg=_stab)
+                        if multi_schema
+                        else ([r] if (r := detect_drift(baseline, sample, stream_name)) else [])
                     )
+                    _critical = [r for r in _learning_reports if r.highest_tier == DriftTier.TIER_3]
+                    if _critical:
+                        for report in _critical:
+                            print(
+                                f"[{now_str}] 🔴 {stream_name} — TIER-3 CRITICAL during LEARNING "
+                                f"— alerting immediately (data integrity risk)"
+                            )
+                            _print_drift_report(report, drift_output_dir, webhook_url)
+                    else:
+                        _non_critical_count = sum(len(r.drifts) for r in _learning_reports)
+                        _observed_note = (
+                            f", {_non_critical_count} signal(s) observed (suppressed)"
+                            if _non_critical_count else ""
+                        )
+                        print(
+                            f"[{now_str}] ○ {stream_name} — LEARNING "
+                            f"({_warmup_remaining} cycle(s) remaining, "
+                            f"{len(window)} in window{_observed_note})"
+                        )
+
+                    if _warmup_remaining <= 0:
+                        _phase = "STABILIZING"
+                        _stability_clean_count = 0
+                        print(
+                            f"[{now_str}] {stream_name} — LEARNING complete → entering STABILIZING phase "
+                            f"(need {_stability_needed} consecutive clean cycles)"
+                        )
+
+                    _save_watch_state_kws()
                     _save_checkpoint(window, checkpoint_path)
                     _write_poll_state(schema_dir, len(sample), len(window), len(batch))
                     continue
 
-                if multi_schema:
-                    reports = detect_drift_multi_schema(profile, sample, stream_name)
-                    if not reports:
-                        print(
-                            f"[{now_str}] ✓ {stream_name} — "
-                            f"{len(sample)} sampled / {len(window)} in window — all clusters clean"
-                        )
-                    else:
-                        for report in reports:
+                # ── Phase 2: STABILIZING ───────────────────────────────────────
+                if _phase == "STABILIZING":
+                    _stab_reports = (
+                        detect_drift_multi_schema(profile, sample, stream_name, stability_cfg=_stab)
+                        if multi_schema
+                        else ([r] if (r := detect_drift(baseline, sample, stream_name)) else [])
+                    )
+                    _critical = [r for r in _stab_reports if r.highest_tier == DriftTier.TIER_3]
+                    _significant = [r for r in _stab_reports if r.highest_tier >= DriftTier.TIER_2]
+
+                    if _critical:
+                        for report in _critical:
+                            print(
+                                f"[{now_str}] 🔴 {stream_name} — TIER-3 CRITICAL during STABILIZING "
+                                f"— alerting immediately"
+                            )
                             _print_drift_report(report, drift_output_dir, webhook_url)
-                else:
-                    report = detect_drift(baseline, sample, stream_name)
-                    if report is None:
+                        # Reset stability clock on critical drift
+                        _stability_clean_count = 0
+                    elif _significant:
                         print(
-                            f"[{now_str}] ✓ {stream_name} — "
-                            f"{len(sample)} sampled / {len(window)} in window — schema clean"
+                            f"[{now_str}] ⚡ {stream_name} — STABILIZING — Tier-2 drift observed, "
+                            f"resetting clean-cycle counter (was {_stability_clean_count}/{_stability_needed})"
                         )
+                        _stability_clean_count = 0
                     else:
+                        _stability_clean_count += 1
+                        print(
+                            f"[{now_str}] ○ {stream_name} — STABILIZING "
+                            f"({_stability_clean_count}/{_stability_needed} clean cycles, "
+                            f"{len(window)} in window)"
+                        )
+                        if _stability_clean_count >= _stability_needed:
+                            _mark_stable({})
+                            _phase = "STABLE"
+                            _consec_drift_count = 0
+
+                    _save_watch_state_kws()
+                    _save_checkpoint(window, checkpoint_path)
+                    _write_poll_state(schema_dir, len(sample), len(window), len(batch))
+                    continue
+
+                # ── Phase 3: STABLE ────────────────────────────────────────────
+                if multi_schema:
+                    reports = detect_drift_multi_schema(profile, sample, stream_name, stability_cfg=_stab)
+                else:
+                    _r = detect_drift(baseline, sample, stream_name)
+                    reports = [_r] if _r else []
+
+                if not reports:
+                    _consec_drift_count = 0
+                    print(
+                        f"[{now_str}] ✓ {stream_name} — "
+                        f"{len(sample)} sampled / {len(window)} in window — all clusters clean"
+                    )
+                else:
+                    # Split each report's drifts by drift_class before routing.
+                    # Build a DRIFT-only view for the alert path and collect
+                    # evolution / noise signals for their respective handlers.
+                    _drift_reports: list[DriftReport] = []
+                    _evolution_drifts: list[FieldDrift] = []
+                    _noise_count = 0
+
+                    for report in reports:
+                        _rd = [d for d in report.drifts if d.drift_class == DriftClass.DRIFT]
+                        _re = [d for d in report.drifts if d.drift_class == DriftClass.EVOLUTION]
+                        _rn = [d for d in report.drifts if d.drift_class == DriftClass.NOISE]
+
+                        _evolution_drifts.extend(_re)
+                        _noise_count += len(_rn)
+
+                        if _rd:
+                            _drift_reports.append(
+                                report.model_copy(update={
+                                    "drifts": _rd,
+                                    "highest_tier": max(d.tier for d in _rd),
+                                    "evolution_count": 0,
+                                    "noise_count": len(_rn),
+                                })
+                            )
+
+                    # EVOLUTION → evolution handler (no alert)
+                    if _evolution_drifts:
+                        _handle_evolution(_evolution_drifts, stream_name, schema_dir, _tc)
+
+                    # NOISE → suppress (debug log only)
+                    if _noise_count:
+                        logger.debug(
+                            "[%s] %s — %d noise signal(s) suppressed",
+                            now_str, stream_name, _noise_count,
+                        )
+
+                    # DRIFT → existing alert path (tier-based flap suppression)
+                    _critical = [r for r in _drift_reports if r.highest_tier == DriftTier.TIER_3]
+                    _non_critical = [r for r in _drift_reports if r.highest_tier < DriftTier.TIER_3]
+
+                    # Tier-3: always alert immediately
+                    for report in _critical:
+                        _consec_drift_count = 0  # critical resets flap counter
                         _print_drift_report(report, drift_output_dir, webhook_url)
 
+                    # Tier-1/2: only alert after K consecutive drift cycles
+                    if _non_critical:
+                        _consec_drift_count += 1
+                        if _consec_drift_count >= _consec_threshold:
+                            for report in _non_critical:
+                                _print_drift_report(report, drift_output_dir, webhook_url)
+                        else:
+                            _total_drifts = sum(len(r.drifts) for r in _non_critical)
+                            print(
+                                f"[{now_str}] ○ {stream_name} — {_total_drifts} signal(s) observed "
+                                f"(cycle {_consec_drift_count}/{_consec_threshold} — suppressing until sustained)"
+                            )
+
+                    # If all signals were evolution/noise (nothing left for DRIFT alert),
+                    # and no critical drift fired, treat as clean for the flap counter.
+                    if not _critical and not _non_critical:
+                        _consec_drift_count = 0
+
+                _save_watch_state_kws()
                 _save_checkpoint(window, checkpoint_path)
-                # Update UI poll state after every productive cycle
                 _write_poll_state(schema_dir, len(sample), len(window), len(batch))
 
     except KeyboardInterrupt:

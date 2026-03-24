@@ -987,7 +987,7 @@ with st.sidebar:
     _auto = st.toggle(
         "Auto-refresh (10s)",
         value=st.session_state.get("auto_refresh", False),
-        help="Fleet view refreshes every 10 seconds. Ideal for live demos.",
+        help="Dashboard refreshes every 10 seconds. Ideal for live demos.",
         key="auto_refresh_toggle",
     )
     st.session_state["auto_refresh"] = _auto
@@ -3185,6 +3185,6 @@ else:
 # AUTO-REFRESH  — only on fleet view, only when toggle is on
 # ══════════════════════════════════════════════════════════════════════════════
 
-if st.session_state.get("auto_refresh", False) and st.session_state.view == "fleet":
+if st.session_state.get("auto_refresh", False):
     _time_mod.sleep(10)
     st.rerun()

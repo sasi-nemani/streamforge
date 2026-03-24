@@ -5,6 +5,8 @@ All tests are written before the fix (RED phase).
 Bugs covered:
   P1-1  IoT counter never increments (_type key missing in _iot_event)
   P1-2  Warm-up grace period: first N cycles should not fire drift alerts
+  P2-1  MIN_EVENTS_FOR_LLM_INFERENCE configurable via env var
+  P2-2  cluster_routing_regression_floor suppresses sub-threshold partial regressions
   P2-3  new_cluster threshold is configurable (env var)
   P2-4  ticket_number should NOT be classified as passport PII
 """
@@ -121,6 +123,160 @@ def test_detect_drift_multi_schema_returns_no_reports_on_warmup():
     )
     assert warmup_reports == [], (
         f"Expected no reports during warmup, got {warmup_reports}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# P2-1 — MIN_EVENTS_FOR_LLM_INFERENCE configurable via env var
+# ---------------------------------------------------------------------------
+
+def test_min_events_for_llm_default_is_50():
+    """Default MIN_EVENTS_FOR_LLM_INFERENCE should be 50."""
+    from streamforge import inference
+    threshold = inference._min_events_for_llm()
+    assert threshold == 50, (
+        f"Default _min_events_for_llm() should be 50, got {threshold}"
+    )
+
+
+def test_min_events_for_llm_reads_env_var(monkeypatch: pytest.MonkeyPatch):
+    """STREAMFORGE_MIN_EVENTS_FOR_LLM env var must override the default."""
+    monkeypatch.setenv("STREAMFORGE_MIN_EVENTS_FOR_LLM", "30")
+    from streamforge import inference
+    threshold = inference._min_events_for_llm()
+    assert threshold == 30, (
+        f"Expected 30 from env var, got {threshold}"
+    )
+
+
+def test_min_events_for_llm_env_var_invalid_falls_back_to_default(monkeypatch: pytest.MonkeyPatch):
+    """Non-numeric STREAMFORGE_MIN_EVENTS_FOR_LLM must silently fall back to 50."""
+    monkeypatch.setenv("STREAMFORGE_MIN_EVENTS_FOR_LLM", "not_a_number")
+    from streamforge import inference
+    threshold = inference._min_events_for_llm()
+    assert threshold == 50, (
+        f"Expected fallback to 50 on invalid env var, got {threshold}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# P2-2 — cluster_routing_regression_floor suppresses sub-threshold regressions
+# ---------------------------------------------------------------------------
+
+def _make_profile_with_sample_rates(rates: list[float]) -> dict:
+    """Profile dict where each cluster has a known sample_rate."""
+    sub = []
+    for i, rate in enumerate(rates):
+        cid = f"type_{i}"
+        sub.append({
+            "cluster_id": cid,
+            "event_count": 200,
+            "sample_rate": rate,
+            "fields": [
+                {"path": "id", "field_type": "string", "required": True, "nullable": False,
+                 "presence_rate": 1.0, "sample_values": [], "confidence": 0.9,
+                 "pii_categories": [], "name": "id"},
+                {"path": "event_type", "field_type": "string", "required": True, "nullable": False,
+                 "presence_rate": 1.0, "sample_values": [cid], "confidence": 0.9,
+                 "pii_categories": [], "name": "event_type",
+                 "enum_values": [cid]},
+            ],
+            "inference_confidence": 0.85,
+        })
+    return {
+        "stream_name": "test.stream",
+        "routing_field": "event_type",
+        "sub_schemas": sub,
+    }
+
+
+def test_routing_regression_floor_default_is_0_20():
+    """Default routing_regression_floor should be 0.20 (20%)."""
+    from streamforge import drift_detector
+    floor = drift_detector._routing_regression_floor()
+    assert floor == pytest.approx(0.20), (
+        f"Default _routing_regression_floor() should be 0.20, got {floor}"
+    )
+
+
+def test_routing_regression_floor_reads_env_var(monkeypatch: pytest.MonkeyPatch):
+    """STREAMFORGE_ROUTING_REGRESSION_FLOOR env var must override the default."""
+    monkeypatch.setenv("STREAMFORGE_ROUTING_REGRESSION_FLOOR", "0.10")
+    from streamforge import drift_detector
+    floor = drift_detector._routing_regression_floor()
+    assert floor == pytest.approx(0.10), (
+        f"Expected 0.10 from env var, got {floor}"
+    )
+
+
+def test_partial_routing_regression_suppressed_below_floor(monkeypatch: pytest.MonkeyPatch):
+    """
+    When a cluster drops by less than the floor (20%), no routing_regression drift fires.
+    Cluster type_0 has baseline sample_rate=0.50; we deliver 45% (only 10% drop).
+    Floor=0.20 → 10% drop should be suppressed.
+    """
+    monkeypatch.setenv("STREAMFORGE_ROUTING_REGRESSION_FLOOR", "0.20")
+    from streamforge.drift_detector import detect_drift_multi_schema
+
+    # Single cluster with 50% baseline share
+    profile = _make_profile_with_sample_rates([0.50])
+
+    # Sample: 90 type_0 events + 10 other (that would normally be unknown)
+    # Observed rate for type_0 = 90/100 = 0.90 → actually higher... let me adjust
+    # baseline=0.50, observed=0.45 → drop=0.05 which is 10% relative drop
+    sample = (
+        [{"event_type": "type_0", "id": str(i)} for i in range(45)]
+        + [{"event_type": "type_0", "id": str(i)} for i in range(45)]  # total=90
+        + [{"event_type": "unknown_x", "id": str(i)} for i in range(10)]
+    )
+    # Observed type_0 rate = 90/100 = 0.90 (way above baseline=0.50)
+    # Actually we want observed < baseline. Let's make baseline=0.90, observed=0.81 (10% relative)
+    profile["sub_schemas"][0]["sample_rate"] = 0.90
+    sample2 = (
+        [{"event_type": "type_0", "id": str(i)} for i in range(81)]
+        + [{"event_type": "unknown_x", "id": str(i)} for i in range(19)]
+    )
+
+    reports = detect_drift_multi_schema(profile, sample2, "test.stream")
+    routing_regression_types = [
+        d.drift_type
+        for r in reports
+        for d in r.drifts
+        if d.drift_type == "cluster_routing_regression"
+    ]
+    assert "cluster_routing_regression" not in routing_regression_types, (
+        f"Routing regression should be suppressed when drop ({(0.90-0.81):.2f}) "
+        f"< floor (0.20), got: {routing_regression_types}"
+    )
+
+
+def test_partial_routing_regression_fires_at_or_above_floor(monkeypatch: pytest.MonkeyPatch):
+    """
+    When a cluster drops by >= the floor (20%), routing_regression drift fires.
+    Cluster type_0 has baseline sample_rate=0.80; we deliver 55% (31% relative drop > 20% floor).
+    """
+    monkeypatch.setenv("STREAMFORGE_ROUTING_REGRESSION_FLOOR", "0.20")
+    from streamforge.drift_detector import detect_drift_multi_schema
+
+    # Single cluster with 80% baseline share
+    profile = _make_profile_with_sample_rates([0.80])
+
+    # Deliver 55 type_0 + 45 unknown → observed rate=0.55, drop=(0.80-0.55)/0.80=31% > 20%
+    sample = (
+        [{"event_type": "type_0", "id": str(i)} for i in range(55)]
+        + [{"event_type": "unknown_x", "id": str(i)} for i in range(45)]
+    )
+
+    reports = detect_drift_multi_schema(profile, sample, "test.stream")
+    routing_regression_types = [
+        d.drift_type
+        for r in reports
+        for d in r.drifts
+        if d.drift_type == "cluster_routing_regression"
+    ]
+    assert "cluster_routing_regression" in routing_regression_types, (
+        f"Routing regression should fire when relative drop (31%) >= floor (20%), "
+        f"but got drifts: {routing_regression_types}"
     )
 
 

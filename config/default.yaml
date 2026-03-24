@@ -40,6 +40,27 @@ init:
   # How many events to sample when building the initial schema
   sample_size: 2000
 
+# ── Stability state-machine ────────────────────────────────────────────────────
+# Controls the LEARNING → STABILIZING → STABLE progression in watch mode.
+# Override per-topic in config/topics/<topic>.yaml under a stability: key.
+stability:
+  # Phase 1 LEARNING: observe this many cycles before raising any Tier-1/2 alerts.
+  # Tier-3 (data integrity risk) always fires immediately.
+  warmup_cycles: 10
+
+  # Phase 2 STABILIZING: require this many consecutive clean cycles to reach STABLE.
+  stability_cycles: 3
+
+  # Phase 3 STABLE: suppress flapping — require this many consecutive drift cycles
+  # before alerting (Tier-3 always fires immediately regardless).
+  consecutive_drift_threshold: 2
+
+  # Fraction of events that must form a new cluster before it is flagged.
+  new_cluster_threshold: 0.12
+
+  # true = new clusters are treated as schema evolution (Tier-1), not drift (Tier-2).
+  new_cluster_is_evolution: false
+
 # ── Drift detection thresholds ─────────────────────────────────────────────────
 drift:
   # Fraction of events with a type change before it's flagged (0.05 = 5%)
@@ -137,6 +158,15 @@ vcs:
   # GitLab-specific (or set env vars)
   gitlab_url: "https://gitlab.com"
   gitlab_repo: ""       # "group/project" — set via GITLAB_REPO
+
+# ── Dead Letter Queue (DLQ) ─────────────────────────────────────────────────────
+# When enabled, routes Tier-3 DRIFT events to a DLQ Kafka topic.
+# Never blocks processing. Only activated per-topic when dlq.enabled=true.
+dlq:
+  enabled: false
+  topic_suffix: ".dlq"
+  include_payload: true
+  min_tier: 3
 
 # ── Schema Registry integration ────────────────────────────────────────────────
 # Push inferred schemas to a centralised schema registry on 'init' and 'accept'.

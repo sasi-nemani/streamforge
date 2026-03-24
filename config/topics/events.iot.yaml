@@ -12,6 +12,15 @@ watch:
     tier_2: alert
     tier_3: block
 
+stability:
+  # IoT has 6 sensor sub-types with different schemas — new sub-types are
+  # schema evolution (Tier-1), not breaking drift. Without this, stabilization
+  # never completes because each window rotation introduces a new sensor cluster.
+  new_cluster_is_evolution: true
+  stability_cycles: 3
+  warmup_cycles: 10
+  consecutive_drift_threshold: 2
+
 drift:
   # IoT data is messier — wider tolerances
   type_change_threshold: 0.10

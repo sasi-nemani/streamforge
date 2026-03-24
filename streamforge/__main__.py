@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import UTC
 from pathlib import Path
 
@@ -64,9 +65,13 @@ def _resolve_api_key(api_key: str | None) -> str:
                 break
     if not key:
         console.print(
-            "[red]Error:[/red] No API key found. Set GROQ_API_KEY (or OPENAI_API_KEY / LLM_API_KEY) "
-            "or pass --api-key.\n"
-            "  Get a free Groq key at: https://console.groq.com"
+            "[red]No LLM API key found.[/red]\n\n"
+            "  Set GROQ_API_KEY in demo/.env  (recommended):\n"
+            "    echo 'GROQ_API_KEY=gsk_...' >> demo/.env\n\n"
+            "  Or export directly:\n"
+            "    export GROQ_API_KEY=gsk_...\n\n"
+            "  Get a free key at: https://console.groq.com\n"
+            "  Or set OPENAI_API_KEY / LLM_API_KEY for other providers."
         )
         raise typer.Exit(1)
     return key
@@ -138,6 +143,12 @@ def init(
     _topic_for_cfg = stream_path[len("kafka://"):] if is_kafka else _stream_name(stream_path)
     tc = load_topic_config(_topic_for_cfg, env)
 
+    # Scaffold a topic config file if one doesn't already exist
+    from .topic_config import scaffold_topic_config
+    _scaffolded = scaffold_topic_config(_topic_for_cfg)
+    if _scaffolded:
+        console.print(f"[dim]Created topic config: {_scaffolded}[/dim]")
+
     # Apply config defaults for flags that weren't explicitly set
     effective_sample_size = sample_size if sample_size > 0 else tc.init_sample_size
     effective_model    = model    if model    else tc.inference_model
@@ -177,11 +188,16 @@ def init(
             console.print("[red]--brokers required for kafka:// URIs (or set KAFKA_BOOTSTRAP_SERVERS)[/red]")
             raise typer.Exit(1)
 
+        # Use a timestamp-based group ID so every init attempt reads from
+        # 'earliest' without being blocked by a previous run's committed
+        # offsets. Schema inference needs the full event distribution, not
+        # just the tip of the stream.
+        _init_group = f"streamforge-init-{topic}-{int(time.time())}"
         kafka_cfg = KafkaConfig(
             bootstrap_servers=broker_list,
             security_protocol=tc.kafka_security_protocol,
             auto_offset_reset="earliest",
-            consumer_group=f"streamforge-init-{topic}",
+            consumer_group=_init_group,
         )
 
         console.print(f"[bold]StreamForge[/bold] — profiling [cyan]{topic}[/cyan] (Kafka)")
@@ -353,6 +369,13 @@ def init(
     policy = StreamPolicy(stream=stream_name, sample_size=effective_sample_size)
     policy_path = write_policy(policy, output_dir)
     console.print(f"✓ Written: [green]{policy_path}[/green]")
+
+    # Human-readable success summary
+    if sub_schemas:
+        from .output_formatter import format_init_success
+        primary_confidence = sub_schemas[0].inference_confidence
+        primary_field_count = len(sub_schemas[0].fields)
+        console.print(format_init_success(stream_name, primary_field_count, primary_confidence))
 
     # VCS: commit new schema files if enabled
     from .vcs import SchemaCommitContext, get_vcs_backend
@@ -552,9 +575,10 @@ def kafka_ping(
         asyncio.run(_ping())
     except KafkaConnectorError as e:
         console.print(f"[red]Kafka not available:[/red] {e}")
+        console.print("  Hint: Is Kafka running? Try: docker ps | grep kafka")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(f"[red]Connection failed:[/red] {e}")
+        console.print(f"[red]Connection failed:[/red] {e} (timed out after {timeout}s)")
         raise typer.Exit(1)
 
 
@@ -667,12 +691,21 @@ def discover(
 
     console.print(t)
     with_schema = sum(1 for r in results if r["has_schema"])
+    without_schema = len(results) - with_schema
     console.print(
         f"\n[dim]{len(results)} topics | "
         f"[green]{with_schema} with schema[/green] | "
-        f"[yellow]{len(results) - with_schema} without schema[/yellow][/dim]"
+        f"[yellow]{without_schema} without schema[/yellow][/dim]"
     )
-    if len(results) - with_schema > 0:
+
+    # Summary panel
+    from .output_formatter import format_discover_panel
+    monitored_topics = [r["topic"] for r in results if r["has_schema"]]
+    unmonitored_topics = [r["topic"] for r in results if not r["has_schema"]]
+    summary_text = format_discover_panel(effective_brokers[0], monitored_topics, unmonitored_topics)
+    console.print(Panel(summary_text, expand=False))
+
+    if without_schema > 0:
         console.print(
             "[dim]Run 'streamforge init kafka://<topic> --brokers ...' to initialise a topic.[/dim]"
         )
@@ -1906,7 +1939,10 @@ def demo(
         _run_one_cycle(1)
         console.print(
             "Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard.\n"
-            "Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode."
+            "Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode.\n\n"
+            "[bold]Try it on your real Kafka:[/bold]\n"
+            "  [cyan]streamforge init kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]\n"
+            "  [cyan]streamforge watch kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]"
         )
 
 
@@ -2272,6 +2308,128 @@ def _apply_baseline_proposals(
     write_schema(schema, output_dir)
     console.print(f"\n[green]Applied {applied} proposal(s) to {schema_path}[/green]")
     console.print(f"[dim]Original backed up to {bak_path}[/dim]")
+
+
+@app.command(name="incident-report")
+def incident_report(
+    stream_path: str = typer.Argument(..., help="Stream path (e.g. kafka://events.payments or folder)"),
+    since: str = typer.Option("30d", "--since", help="Time window: 7d, 30d, 90d, or ISO date"),
+    min_tier: int = typer.Option(2, "--min-tier", help="Minimum drift tier to include (1, 2, or 3)"),
+    drift_reports_dir: str = typer.Option("drift_reports", "--drift-reports-dir", help="Directory containing drift reports"),
+) -> None:
+    """Generate a structured incident report from past drift detections.
+
+    Shows breaking schema changes caught before production, suitable
+    for sharing with engineering managers or design partner contacts.
+    """
+    import re
+    from datetime import datetime, timezone, timedelta
+    from pathlib import Path as _Path
+
+    # Resolve stream name: strip kafka:// prefix if present
+    if stream_path.startswith("kafka://"):
+        stream_name = stream_path[len("kafka://"):]
+    else:
+        stream_name = _stream_name(stream_path)
+
+    slug = re.sub(r"[^a-zA-Z0-9_\-]", "_", stream_name)
+
+    reports_dir = _Path(drift_reports_dir) / slug
+
+    # Parse --since into a cutoff datetime
+    now = datetime.now(timezone.utc)
+    if since.endswith("d"):
+        try:
+            cutoff = now - timedelta(days=int(since[:-1]))
+        except ValueError:
+            cutoff = now - timedelta(days=30)
+    elif since.endswith("h"):
+        try:
+            cutoff = now - timedelta(hours=int(since[:-1]))
+        except ValueError:
+            cutoff = now - timedelta(hours=24)
+    else:
+        try:
+            cutoff = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except ValueError:
+            cutoff = now - timedelta(days=30)
+
+    # Collect matching drift reports
+    incidents: list[dict] = []
+    if reports_dir.exists():
+        for md_file in sorted(reports_dir.glob("*.md")):
+            content = md_file.read_text()
+            detected_match = re.search(r"\*\*Detected:\*\*\s+(.+)", content)
+            if not detected_match:
+                continue
+            try:
+                detected_at = datetime.fromisoformat(
+                    detected_match.group(1).strip().replace("Z", "+00:00")
+                )
+            except ValueError:
+                continue
+            if detected_at < cutoff:
+                continue
+            tier_match = re.search(r"Tier (\d)", content)
+            tier = int(tier_match.group(1)) if tier_match else 1
+            if tier < min_tier:
+                continue
+            incidents.append({
+                "detected_at": detected_at,
+                "tier": tier,
+                "content": content,
+                "file": md_file,
+            })
+
+    if not incidents:
+        console.print(
+            f"\n[green]✓[/green] [bold]{stream_name}[/bold] — "
+            f"0 incidents in the last {since}"
+        )
+        console.print(
+            f"  [dim]No drift above Tier {min_tier} detected. Schema is stable.[/dim]\n"
+        )
+        return
+
+    # Header
+    console.print(f"\n[bold]StreamForge Incident Report — {stream_name}[/bold]")
+    console.print(
+        f"[dim]Period: last {since} | Min tier: {min_tier} | "
+        f"{len(incidents)} incident(s)[/dim]"
+    )
+    console.print()
+
+    for i, incident in enumerate(incidents, 1):
+        tier = incident["tier"]
+        tier_color = "red" if tier == 3 else "yellow" if tier == 2 else "blue"
+        console.print(
+            f"[{tier_color}]Incident {i} — Tier {tier}[/{tier_color}]  "
+            f"{incident['detected_at'].strftime('%Y-%m-%d %H:%M UTC')}"
+        )
+
+        field_matches = re.findall(r"### `([^`]+)`", incident["content"])
+        drift_type_matches = re.findall(
+            r"\*\*Drift type\*\*.*?`([^`]+)`", incident["content"]
+        )
+
+        for j, field in enumerate(field_matches):
+            drift_type = drift_type_matches[j] if j < len(drift_type_matches) else "unknown"
+            console.print(
+                f"  [dim]→[/dim] [bold]{field}[/bold]: {drift_type.replace('_', ' ')}"
+            )
+
+        console.print(f"  [dim]Full report: {incident['file']}[/dim]")
+        console.print()
+
+    console.print("[dim]━━━[/dim]")
+    console.print(
+        f"[bold]{len(incidents)} schema incident(s) caught[/bold] before production "
+        f"in the last {since}."
+    )
+    console.print(
+        f"[dim]Generated by StreamForge — "
+        f"streamforge incident-report kafka://{stream_name}[/dim]\n"
+    )
 
 
 if __name__ == "__main__":

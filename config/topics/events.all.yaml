@@ -1,0 +1,25 @@
+# StreamForge — Topic Config: events.all
+# =========================================
+# Multi-type stream: payment + booking + iot_sensor + wikipedia_edit
+#
+# This is a heterogeneous stream — structural diversity is expected.
+# Thresholds are tuned accordingly.
+
+watch:
+  interval_seconds: 30
+  sample_size: 400
+  window_capacity: 3000
+  alert_tier: 2
+
+stability:
+  warmup_cycles: 10
+  stability_cycles: 3
+  consecutive_drift_threshold: 2
+  # Wiki edits genuinely form new clusters — raise threshold to avoid false positives
+  new_cluster_threshold: 0.30
+  # New clusters in this stream are schema evolution, not unexpected drift
+  new_cluster_is_evolution: true
+
+drift:
+  type_change_threshold: 0.05
+  presence_drop_threshold: 0.15

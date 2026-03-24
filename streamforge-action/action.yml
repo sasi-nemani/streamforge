@@ -1,0 +1,41 @@
+name: 'StreamForge Schema Drift Gate'
+description: 'Block breaking data pipeline changes in CI — like a type checker, for Kafka schemas'
+author: 'StreamForge'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  brokers:
+    description: 'Kafka bootstrap servers. Falls back to KAFKA_BOOTSTRAP_SERVERS env var.'
+    required: false
+    default: ''
+  topic:
+    description: 'Kafka topic to check. If empty, auto-discovers from schemas/ directory.'
+    required: false
+    default: ''
+  schema-dir:
+    description: 'Directory containing schema.yaml files'
+    required: false
+    default: 'schemas'
+  api-key:
+    description: 'LLM API key (Groq/OpenAI). Falls back to GROQ_API_KEY env var.'
+    required: false
+    default: ''
+  min-tier:
+    description: 'Minimum drift tier that fails the check (1, 2, or 3)'
+    required: false
+    default: '3'
+
+outputs:
+  drift-detected:
+    description: 'true if drift was detected'
+  highest-tier:
+    description: 'Highest drift tier detected (1, 2, 3, or none)'
+  report-path:
+    description: 'Path to the drift report markdown file'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  entrypoint: '/entrypoint.sh'
