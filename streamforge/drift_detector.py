@@ -357,6 +357,14 @@ def detect_drift(
 
     # 1. Check each baseline field
     for path, baseline_field in baseline_by_path.items():
+        # Skip object-type parent fields — they're structural containers, not real data
+        # fields. The sampler flattens nested objects to leaf paths (user → user.email,
+        # user.user_id, etc.) so parent object paths never appear in presence_rates.
+        # Their children are checked individually below, making this redundant and
+        # a source of false-positive "field_removed" Tier 3 alerts.
+        if baseline_field.field_type == FieldType.OBJECT:
+            continue
+
         new_presence = new_presence_rates.get(path, 0.0)
         new_values = new_field_values.get(path, [])
 

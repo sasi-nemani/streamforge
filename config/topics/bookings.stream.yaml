@@ -1,0 +1,22 @@
+# StreamForge — Topic Config: bookings.stream
+# ===========================================
+# Override any default.yaml values here. Uncomment blocks to activate.
+#
+# Resolution order: this file > config/<env>.yaml > config/default.yaml
+
+# watch:
+#   interval_seconds: 30
+#   sample_size: 200
+#   window_capacity: 2000
+#   alert_tier: 2
+
+# stability:
+#   warmup_cycles: 10        # Phase 1: observe this many cycles before alerting
+#   stability_cycles: 3      # Phase 2: consecutive clean cycles needed for STABLE
+#   consecutive_drift_threshold: 2  # Phase 3: flap suppression
+#   new_cluster_threshold: 0.12     # fraction of events that form a new cluster
+#   new_cluster_is_evolution: false # true = auto-accept new clusters as evolution
+
+# drift:
+#   type_change_threshold: 0.05
+#   presence_drop_threshold: 0.15

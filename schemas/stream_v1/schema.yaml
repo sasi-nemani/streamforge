@@ -28,6 +28,13 @@ fields:
   presence_rate: 1.0
   confidence: 0.99
   notes: Type of event (e.g. payment.processed)
+- path: timestamp
+  type: timestamp_epoch_ms
+  required: true
+  nullable: false
+  presence_rate: 1.0
+  confidence: 0.99
+  notes: Unix epoch milliseconds when the event occurred
 - path: transaction_id
   type: string
   required: true
@@ -36,7 +43,7 @@ fields:
   confidence: 0.99
   notes: Unique identifier for the transaction
 - path: amount
-  type: float
+  type: mixed
   required: true
   nullable: false
   presence_rate: 1.0
