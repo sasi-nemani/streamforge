@@ -1,5 +1,5 @@
 name: 'StreamForge Schema Drift Gate'
-description: 'Block breaking data pipeline changes in CI — like a type checker, for Kafka schemas'
+description: 'Block breaking Kafka schema changes in CI — like a type checker, for event streams'
 author: 'StreamForge'
 branding:
   icon: 'shield'
@@ -7,35 +7,113 @@ branding:
 
 inputs:
   brokers:
-    description: 'Kafka bootstrap servers. Falls back to KAFKA_BOOTSTRAP_SERVERS env var.'
-    required: false
-    default: ''
+    description: 'Kafka bootstrap servers (e.g. ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }})'
+    required: true
   topic:
-    description: 'Kafka topic to check. If empty, auto-discovers from schemas/ directory.'
+    description: 'Kafka topic to check (e.g. events.payments). Auto-discovers from schemas/ if omitted.'
     required: false
     default: ''
   schema-dir:
-    description: 'Directory containing schema.yaml files'
+    description: 'Directory containing committed schema.yaml files'
     required: false
     default: 'schemas'
   api-key:
-    description: 'LLM API key (Groq/OpenAI). Falls back to GROQ_API_KEY env var.'
+    description: 'Groq or OpenAI API key. Only needed when no schema exists yet (first init).'
     required: false
     default: ''
   min-tier:
-    description: 'Minimum drift tier that fails the check (1, 2, or 3)'
+    description: 'Drift tier that fails the check: 1 (any drift), 2 (breaking), 3 (critical only)'
     required: false
     default: '3'
+  version:
+    description: 'StreamForge CLI version to install (pip version tag or git ref)'
+    required: false
+    default: 'main'
 
 outputs:
   drift-detected:
-    description: 'true if drift was detected'
+    description: "'true' if drift was detected above min-tier"
+    value: ${{ steps.gate.outputs.drift-detected }}
   highest-tier:
-    description: 'Highest drift tier detected (1, 2, 3, or none)'
+    description: 'Highest drift tier found (1, 2, 3, or none)'
+    value: ${{ steps.gate.outputs.highest-tier }}
   report-path:
-    description: 'Path to the drift report markdown file'
+    description: 'Path to the markdown drift report (only present when drift detected)'
+    value: ${{ steps.gate.outputs.report-path }}
 
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  entrypoint: '/entrypoint.sh'
+  using: 'composite'
+  steps:
+    - name: Install StreamForge CLI
+      shell: bash
+      run: |
+        pip install --quiet \
+          "git+https://github.com/nskq4b6gmv-rgb/streamforge-mvp.git@${{ inputs.version }}"
+
+    - name: Run schema drift gate
+      id: gate
+      shell: bash
+      env:
+        KAFKA_BOOTSTRAP_SERVERS: ${{ inputs.brokers }}
+        GROQ_API_KEY: ${{ inputs.api-key }}
+      run: |
+        SCHEMA_DIR="${{ inputs.schema-dir }}"
+        MIN_TIER="${{ inputs.min-tier }}"
+        TOPIC="${{ inputs.topic }}"
+        BROKERS="${{ inputs.brokers }}"
+
+        # Auto-discover topics from schema dir if no topic specified
+        if [ -z "$TOPIC" ]; then
+          TOPICS=$(find "${SCHEMA_DIR}" -name "schema.yaml" 2>/dev/null \
+            | xargs -I{} dirname {} | xargs -I{} basename {} | tr '\n' ' ')
+          if [ -z "$TOPICS" ]; then
+            echo "::warning::No schemas found in ${SCHEMA_DIR}/. Run 'streamforge init kafka://your-topic' first."
+            echo "drift-detected=false" >> "$GITHUB_OUTPUT"
+            echo "highest-tier=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+        else
+          TOPICS="$TOPIC"
+        fi
+
+        OVERALL_EXIT=0
+        HIGHEST_TIER=0
+
+        for T in $TOPICS; do
+          SCHEMA_PATH="${SCHEMA_DIR}/${T}/schema.yaml"
+          [ ! -f "$SCHEMA_PATH" ] && SCHEMA_PATH="${SCHEMA_DIR}/$(echo $T | tr '.' '/')/schema.yaml"
+          if [ ! -f "$SCHEMA_PATH" ]; then
+            echo "::warning::No schema for '${T}' — run 'streamforge init kafka://${T}'"
+            continue
+          fi
+
+          echo "::group::StreamForge — checking ${T}"
+          set +e
+          streamforge plan "kafka://${T}" \
+            --brokers "${BROKERS}" \
+            --schema "${SCHEMA_PATH}" \
+            --output "${SCHEMA_DIR}" \
+            2>&1 | tee /tmp/sf_plan_${T//./_}.txt
+          PLAN_EXIT="${PIPESTATUS[0]}"
+          set -e
+          echo "::endgroup::"
+
+          REPORT=$(find drift_reports -name "*.md" -newer "${SCHEMA_PATH}" 2>/dev/null | head -1)
+          [ -n "$REPORT" ] && echo "report-path=${REPORT}" >> "$GITHUB_OUTPUT"
+
+          if [ "${PLAN_EXIT}" -ne 0 ]; then
+            OVERALL_EXIT=1
+            echo "::error::Breaking schema change on ${T} — merge blocked (Tier ${MIN_TIER}+ drift)"
+          fi
+        done
+
+        if [ "$OVERALL_EXIT" -eq 0 ]; then
+          echo "drift-detected=false" >> "$GITHUB_OUTPUT"
+          echo "highest-tier=none" >> "$GITHUB_OUTPUT"
+          echo "::notice::✓ All schema checks passed"
+        else
+          echo "drift-detected=true" >> "$GITHUB_OUTPUT"
+          echo "highest-tier=${MIN_TIER}" >> "$GITHUB_OUTPUT"
+        fi
+
+        exit "$OVERALL_EXIT"
