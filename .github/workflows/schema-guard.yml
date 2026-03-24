@@ -91,9 +91,7 @@ jobs:
       # ── 3. Install StreamForge ─────────────────────────────────────────────
       - name: Install StreamForge CLI
         run: |
-          pip install --quiet streamforge-cli
-          # If running from source (e.g., in the streamforge-mvp repo itself):
-          # pip install --quiet -e .
+          pip install --quiet -e .
 
       # ── 4. Parse matrix entry ──────────────────────────────────────────────
       - name: Parse stream configuration
