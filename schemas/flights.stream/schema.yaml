@@ -1,23 +1,23 @@
 # StreamForge Schema — flights.stream
 # Version: 1.0.0
-# Inferred: 2026-03-24T13:49:00.389963+00:00
+# Inferred: 2026-03-24T13:49:53.183684+00:00
 # Events sampled: 300
-# Overall confidence: 60%
+# Overall confidence: 85%
 #
 # This file is the source of truth for stream: flights.stream
 # Edit this file to declare corrections. Run 'streamforge watch' to detect future drift.
 
 stream: flights.stream
 version: 1.0.0
-inferred_at: '2026-03-24T13:49:00.389963+00:00'
-inference_confidence: 0.6
+inferred_at: '2026-03-24T13:49:53.183684+00:00'
+inference_confidence: 0.85
 inference_model: llama-3.3-70b-versatile
 event_count_sampled: 300
 event_types:
 - flight.gate_changed
+- flight.landed
 - flight.delayed
 - flight.status_changed
-- flight.landed
 - flight.departed
 fields:
 - path: event_id
@@ -26,102 +26,102 @@ fields:
   nullable: false
   presence_rate: 1.0
   confidence: 0.99
-  notes: Statistically inferred (LLM fallback)
+  notes: Unique identifier for the event
 - path: event_type
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Type of event (e.g. flight.gate_changed)
 - path: flight_number
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Flight number
 - path: origin
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Origin airport
 - path: destination
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Destination airport
 - path: scheduled_departure
   type: timestamp_iso8601
   required: true
   nullable: false
   presence_rate: 1.0
   confidence: 0.99
-  notes: Statistically inferred (LLM fallback)
+  notes: Scheduled departure time in Unix epoch ms
 - path: actual_departure
   type: timestamp_iso8601
   required: true
   nullable: false
   presence_rate: 1.0
   confidence: 0.99
-  notes: Statistically inferred (LLM fallback)
+  notes: Actual departure time in Unix epoch ms
 - path: delay_minutes
-  type: mixed
+  type: integer
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Delay in minutes
 - path: status
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Status of the flight (e.g. ON_TIME, BOARDING, CANCELLED)
 - path: gate
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Gate number
 - path: aircraft_type
   type: string
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Type of aircraft
 - path: passenger_count
   type: integer
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Number of passengers
 - path: timestamp
   type: mixed
   required: true
   nullable: false
   presence_rate: 1.0
-  confidence: 0.7
-  notes: Statistically inferred (LLM fallback)
-- path: crew_captain
-  type: string
-  required: false
-  nullable: false
-  presence_rate: 0.1714
-  confidence: 0.5343
-  notes: Statistically inferred (LLM fallback)
+  confidence: 0.9
+  notes: Timestamp in Unix epoch ms, ISO8601 string, or RFC2822 string
 - path: severity
   type: string
-  required: false
+  required: true
   nullable: false
-  presence_rate: 0.3714
-  confidence: 0.5743
-  notes: Statistically inferred (LLM fallback)
+  presence_rate: 0.2857
+  confidence: 0.9
+  notes: Severity of the event (e.g. WARNING, INFO, CRITICAL)
+- path: crew_captain
+  type: string
+  required: true
+  nullable: false
+  presence_rate: 0.1571
+  confidence: 0.9
+  notes: Name of the crew captain
