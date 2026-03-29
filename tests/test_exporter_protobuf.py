@@ -169,8 +169,8 @@ SNAPSHOT_PAYMENTS = (
     '    double amount = 1;\n'
     '    google.protobuf.Timestamp created_at = 2;\n'
     '    string currency = 3;\n'
-    '    string id = 4;  // Payment UUID\n'
-    '    string email = 5;  // optional | PII:email | Customer email\n'
+    '    string email = 4;  // optional | PII:email | Customer email\n'
+    '    string id = 5;  // Payment UUID\n'
     '}'
 )
 
@@ -189,11 +189,11 @@ SNAPSHOT_ALL_TYPES = (
     'message SensorData {\n'
     '    bool active = 1;\n'
     '    int64 count = 2;\n'
-    '    double reading = 3;\n'
-    '    google.protobuf.Timestamp recorded_at = 4;\n'
-    '    string sensor_id = 5;\n'
-    '    bytes metadata = 6;  // optional\n'
-    '    bytes raw = 7;  // optional\n'
+    '    bytes metadata = 3;  // optional\n'
+    '    bytes raw = 4;  // optional\n'
+    '    double reading = 5;\n'
+    '    google.protobuf.Timestamp recorded_at = 6;\n'
+    '    string sensor_id = 7;\n'
     '    repeated string tags = 8;  // optional\n'
     '    bytes value = 9;  // optional\n'
     '}'
@@ -384,15 +384,17 @@ class TestProtobufTypeMapping:
 
 
 class TestProtobufFieldOrdering:
-    def test_required_fields_get_lower_field_numbers_than_optional(self):
-        """Required fields are sorted first; optional fields follow."""
+    def test_field_numbers_are_purely_alphabetical(self):
+        """Field numbers are assigned alphabetically by path — not by required status.
+        This guarantees wire-format stability when a field's required status changes."""
         out = schema_to_proto(_payments_schema())
         lines = [l for l in out.splitlines() if "=" in l and ";" in l]
-        # email is optional; it should have a higher number than amount/currency/created_at/id
+        # email comes before id alphabetically, so email gets a lower number
         email_line = next(l for l in lines if "email" in l)
         email_num = int(email_line.split("=")[1].split(";")[0].strip())
-        # all required fields should have numbers ≤ (total_required count)
-        assert email_num == 5  # 4 required + 1 optional
+        id_line = next(l for l in lines if " id " in l)
+        id_num = int(id_line.split("=")[1].split(";")[0].strip())
+        assert email_num < id_num  # alphabetical: email before id
 
     def test_required_fields_sorted_alphabetically_by_path(self):
         """Within required: sorted alphabetically by path for stable field numbers."""
@@ -402,26 +404,39 @@ class TestProtobufFieldOrdering:
         # Alphabetical order: amount(1), created_at(2), id(3)
         assert field_names == ["amount", "created_at", "id"]
 
-    def test_optional_fields_appear_after_required_in_output(self):
-        out = schema_to_proto(_payments_schema())
-        required_ids = []
-        optional_ids = []
-        for line in out.splitlines():
-            # Field lines are indented: "    <type> <name> = <n>;"
-            stripped = line.strip()
-            if not stripped or not stripped[0].isalpha():
-                continue
-            if "=" not in stripped or not any(
-                stripped.startswith(t) for t in ("string", "double", "int64", "bool",
-                                                  "google", "bytes", "repeated")
-            ):
-                continue
-            num = int(stripped.split("=")[1].split(";")[0].strip())
-            if "// optional" in line or "// PII" in line:
-                optional_ids.append(num)
-            else:
-                required_ids.append(num)
-        assert all(r < o for r in required_ids for o in optional_ids)
+    def test_field_numbers_stable_across_required_change(self):
+        """Changing a field's required status must not change any field's number."""
+        schema1 = _payments_schema()
+        out1 = schema_to_proto(schema1)
+        # Flip email from optional to required
+        schema2 = _payments_schema()
+        for f in schema2.fields:
+            if f.name == "email":
+                f.required = True
+        out2 = schema_to_proto(schema2)
+        # Extract field->number mappings
+        def _field_nums(out):
+            nums = {}
+            for line in out.splitlines():
+                stripped = line.strip()
+                if "=" not in stripped or ";" not in stripped:
+                    continue
+                # Only field lines inside message body (indented)
+                if not line.startswith("    "):
+                    continue
+                parts = stripped.split()
+                name = parts[-3]  # "<type> <name> = <n>;"
+                num_str = stripped.split("=")[1].split(";")[0].strip()
+                if num_str.isdigit():
+                    nums[name] = int(num_str)
+            return nums
+        nums1 = _field_nums(out1)
+        nums2 = _field_nums(out2)
+        # Every field must keep the same number
+        for field_name in nums1:
+            assert nums1[field_name] == nums2[field_name], (
+                f"Field '{field_name}' changed number: {nums1[field_name]} -> {nums2[field_name]}"
+            )
 
 
 class TestProtobufFieldNumbers:

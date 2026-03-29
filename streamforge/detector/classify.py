@@ -160,7 +160,7 @@ def classify_drift_tier(drift: FieldDrift) -> DriftTier:
         # Type widening → Tier 2
         if (prev_t, obs_t) in TYPE_WIDENING:
             return DriftTier.TIER_2
-        # New PII detected → Tier 3
+        # Any other incompatible type change (narrowing, unrelated) → Tier 3
         return DriftTier.TIER_3
 
     if dt == "new_pii":
