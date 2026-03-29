@@ -79,20 +79,296 @@ class FieldTypeObservation:
         )
 
 
-# Common field patterns seeded on first use — provides hits even on cold start.
+# ── Pre-seeded field patterns ─────────────────────────────────────────────────
+# Seeded on first use so that the registry resolves common fields WITHOUT any
+# LLM call.  Each entry ships with observation_count = 3 (the default threshold),
+# so these are immediately active — no "warm-up" runs required.
+#
+# Categories:
+#   Identifiers, Timestamps, PII, Kafka/event metadata, Money/commerce,
+#   Status/enum, Geo, Network, Nested common (user.*, metadata.*, address.*)
+#
+# Naming convention: we seed both the bare name (e.g. "email") and common
+# nested variants (e.g. "user.email", "contact_email") because the registry
+# matches on exact field_path.
+#
+# To add a new seed: append a dict with field_path, field_type, confidence,
+# and optionally pii (list of PIICategory value strings) and notes.
+
+def _s(path: str, ftype: str, conf: float = 0.90, **kw) -> dict:
+    """Shorthand for seed entry."""
+    d: dict = {"field_path": path, "field_type": ftype, "confidence": conf}
+    d.update(kw)
+    return d
+
 _SEED_OBSERVATIONS: list[dict] = [
-    {"field_path": "event_id", "field_type": "uuid", "confidence": 0.95},
-    {"field_path": "event_type", "field_type": "string", "confidence": 0.95},
-    {"field_path": "timestamp", "field_type": "timestamp_epoch_ms", "confidence": 0.85},
-    {"field_path": "created_at", "field_type": "timestamp_iso8601", "confidence": 0.85},
-    {"field_path": "updated_at", "field_type": "timestamp_iso8601", "confidence": 0.85},
-    {"field_path": "user.email", "field_type": "email", "confidence": 0.95},
-    {"field_path": "user.user_id", "field_type": "string", "confidence": 0.90},
-    {"field_path": "user.name", "field_type": "string", "confidence": 0.90},
-    {"field_path": "amount", "field_type": "float", "confidence": 0.85},
-    {"field_path": "currency", "field_type": "string", "confidence": 0.90},
-    {"field_path": "status", "field_type": "string", "confidence": 0.85},
-    {"field_path": "id", "field_type": "uuid", "confidence": 0.90},
+    # ── Identifiers ───────────────────────────────────────────────────────
+    _s("id",                        "uuid",   0.90, notes="Primary key / UUID"),
+    _s("uuid",                      "uuid",   0.95),
+    _s("event_id",                  "uuid",   0.95, notes="Event envelope UUID"),
+    _s("message_id",                "uuid",   0.90),
+    _s("request_id",                "uuid",   0.90),
+    _s("trace_id",                  "string", 0.90, notes="Distributed tracing ID"),
+    _s("span_id",                   "string", 0.90),
+    _s("correlation_id",            "uuid",   0.90),
+    _s("transaction_id",            "string", 0.90),
+    _s("order_id",                  "string", 0.90),
+    _s("session_id",                "string", 0.90),
+    _s("user_id",                   "string", 0.90),
+    _s("account_id",                "string", 0.90),
+    _s("customer_id",               "string", 0.90),
+    _s("merchant_id",               "string", 0.90),
+    _s("device_id",                 "string", 0.90),
+    _s("booking_reference",         "string", 0.90),
+
+    # ── Timestamps — every common name × format ──────────────────────────
+    # epoch_ms (13-digit integer)
+    _s("timestamp",                 "timestamp_epoch_ms", 0.90, notes="Unix epoch milliseconds"),
+    _s("ts",                        "timestamp_epoch_ms", 0.85),
+    _s("event_time",                "timestamp_epoch_ms", 0.85),
+    _s("event_timestamp",           "timestamp_epoch_ms", 0.85),
+    _s("ingestion_time",            "timestamp_epoch_ms", 0.85),
+    _s("publish_time",              "timestamp_epoch_ms", 0.85),
+    # ISO 8601 (string: 2026-03-29T12:00:00Z)
+    _s("created_at",                "timestamp_iso8601", 0.90),
+    _s("updated_at",                "timestamp_iso8601", 0.90),
+    _s("deleted_at",                "timestamp_iso8601", 0.85),
+    _s("modified_at",               "timestamp_iso8601", 0.85),
+    _s("occurred_at",               "timestamp_iso8601", 0.85),
+    _s("processed_at",              "timestamp_iso8601", 0.85),
+    _s("received_at",               "timestamp_iso8601", 0.85),
+    _s("sent_at",                   "timestamp_iso8601", 0.85),
+    _s("expires_at",                "timestamp_iso8601", 0.85),
+    _s("started_at",                "timestamp_iso8601", 0.85),
+    _s("completed_at",              "timestamp_iso8601", 0.85),
+    _s("scheduled_departure",       "timestamp_iso8601", 0.85),
+    _s("actual_departure",          "timestamp_iso8601", 0.85),
+    _s("scheduled_arrival",         "timestamp_iso8601", 0.85),
+    _s("actual_arrival",            "timestamp_iso8601", 0.85),
+    # Date only
+    _s("date",                      "date", 0.85),
+    _s("event_date",                "date", 0.85),
+
+    # ── PII fields ───────────────────────────────────────────────────────
+    # Email
+    _s("email",                     "email", 0.95, pii=["email"]),
+    _s("user_email",                "email", 0.95, pii=["email"]),
+    _s("user.email",                "email", 0.95, pii=["email"]),
+    _s("contact_email",             "email", 0.95, pii=["email"]),
+    _s("customer_email",            "email", 0.95, pii=["email"]),
+    _s("account_email",             "email", 0.95, pii=["email"]),
+    _s("billing_email",             "email", 0.95, pii=["email"]),
+    # Phone
+    _s("phone",                     "phone", 0.90, pii=["phone"]),
+    _s("phone_number",              "phone", 0.90, pii=["phone"]),
+    _s("contact_phone",             "string", 0.90, pii=["phone"]),
+    _s("mobile",                    "phone", 0.90, pii=["phone"]),
+    _s("mobile_number",             "phone", 0.90, pii=["phone"]),
+    # Name
+    _s("name",                      "string", 0.85, pii=["name"]),
+    _s("full_name",                 "string", 0.90, pii=["name"]),
+    _s("first_name",                "string", 0.90, pii=["name"]),
+    _s("last_name",                 "string", 0.90, pii=["name"]),
+    _s("user.name",                 "string", 0.90, pii=["name"]),
+    _s("user_name",                 "string", 0.85, pii=["name"]),
+    _s("customer_name",             "string", 0.90, pii=["name"]),
+    _s("passengers[].first_name",   "string", 0.90, pii=["name"]),
+    _s("passengers[].last_name",    "string", 0.90, pii=["name"]),
+    _s("passengers[].title",        "string", 0.85),
+    # Passport / national ID
+    _s("passport_number",           "string", 0.90, pii=["passport"]),
+    _s("passengers[].passport_number", "string", 0.90, pii=["passport"]),
+    _s("ssn",                       "string", 0.95, pii=["national_id"]),
+    _s("social_security_number",    "string", 0.95, pii=["national_id"]),
+    _s("national_id",               "string", 0.90, pii=["national_id"]),
+    _s("aadhaar",                   "string", 0.90, pii=["national_id"]),
+    _s("loyalty_number",            "string", 0.85, pii=["loyalty_number"]),
+    # Card
+    _s("card_number",               "string", 0.95, pii=["card_number"]),
+    _s("card_last_four",            "string", 0.90, pii=["card_number"]),
+    _s("pan",                       "string", 0.85, pii=["card_number"]),
+    # Date of birth
+    _s("date_of_birth",             "date",   0.90, pii=["date_of_birth"]),
+    _s("dob",                       "date",   0.90, pii=["date_of_birth"]),
+    _s("birth_date",                "date",   0.90, pii=["date_of_birth"]),
+    _s("passengers[].date_of_birth", "string", 0.90, pii=["date_of_birth"]),
+    # Address
+    _s("address",                   "string", 0.85, pii=["address"]),
+    _s("street_address",            "string", 0.85, pii=["address"]),
+    _s("address.line1",             "string", 0.85, pii=["address"]),
+    _s("address.line2",             "string", 0.80, pii=["address"]),
+    _s("address.city",              "string", 0.85),
+    _s("address.state",             "string", 0.85),
+    _s("address.zip",               "string", 0.85),
+    _s("address.postal_code",       "string", 0.85),
+    _s("address.country",           "string", 0.85),
+    # IP (quasi-PII)
+    _s("ip_address",                "string", 0.90, pii=["ip_address"]),
+    _s("ip",                        "string", 0.85, pii=["ip_address"]),
+    _s("client_ip",                 "string", 0.90, pii=["ip_address"]),
+    _s("source_ip",                 "string", 0.90, pii=["ip_address"]),
+    _s("metadata.ip_address",       "string", 0.90, pii=["ip_address"]),
+
+    # ── Kafka / event envelope metadata ──────────────────────────────────
+    _s("event_type",                "string", 0.95, notes="Event type discriminator"),
+    _s("type",                      "string", 0.85),
+    _s("schema_version",            "string", 0.90),
+    _s("version",                   "string", 0.85),
+    _s("source",                    "string", 0.85, notes="Event source / producer ID"),
+    _s("specversion",               "string", 0.90, notes="CloudEvents spec version"),
+    _s("datacontenttype",           "string", 0.90, notes="CloudEvents content type"),
+    _s("subject",                   "string", 0.85),
+    _s("kafka_topic",               "string", 0.90),
+    _s("kafka_partition",           "integer", 0.90),
+    _s("kafka_offset",              "integer", 0.90),
+    _s("kafka_key",                 "string", 0.85),
+    _s("kafka_timestamp",           "timestamp_epoch_ms", 0.85),
+    _s("partition",                 "integer", 0.85),
+    _s("offset",                    "integer", 0.85),
+    _s("key",                       "string", 0.80),
+    _s("headers",                   "object", 0.80),
+    _s("metadata",                  "object", 0.80),
+    _s("metadata.source",           "string", 0.85),
+    _s("metadata.version",          "string", 0.85),
+    _s("metadata.region",           "string", 0.85),
+    _s("metadata.user_agent",       "string", 0.85),
+    _s("metadata.trace_id",         "string", 0.85),
+    _s("metadata.correlation_id",   "string", 0.85),
+
+    # ── Money / commerce ─────────────────────────────────────────────────
+    _s("amount",                    "float", 0.90),
+    _s("total_amount",              "float", 0.90),
+    _s("subtotal",                  "float", 0.85),
+    _s("tax",                       "float", 0.85),
+    _s("tax_amount",                "float", 0.85),
+    _s("discount",                  "float", 0.85),
+    _s("price",                     "float", 0.90),
+    _s("unit_price",                "float", 0.85),
+    _s("total_price",               "float", 0.90),
+    _s("currency",                  "string", 0.95, notes="ISO 4217 currency code"),
+    _s("currency_code",             "string", 0.90),
+    _s("payment_method",            "string", 0.90),
+    _s("payment_status",            "string", 0.85),
+    _s("amount_minor_units",        "integer", 0.85, notes="Amount in minor units (cents/pence)"),
+
+    # ── Status / enum fields ─────────────────────────────────────────────
+    _s("status",                    "string", 0.90),
+    _s("state",                     "string", 0.85),
+    _s("category",                  "string", 0.85),
+    _s("priority",                  "string", 0.85),
+    _s("severity",                  "string", 0.85),
+    _s("level",                     "string", 0.85),
+    _s("action",                    "string", 0.85),
+    _s("result",                    "string", 0.85),
+    _s("outcome",                   "string", 0.85),
+    _s("reason",                    "string", 0.85),
+    _s("error_code",                "string", 0.85),
+    _s("error_message",             "string", 0.80),
+
+    # ── Boolean flags ────────────────────────────────────────────────────
+    _s("active",                    "boolean", 0.90),
+    _s("enabled",                   "boolean", 0.90),
+    _s("deleted",                   "boolean", 0.85),
+    _s("is_test",                   "boolean", 0.90),
+    _s("is_internal",               "boolean", 0.85),
+    _s("verified",                  "boolean", 0.85),
+    _s("anomaly",                   "boolean", 0.85),
+
+    # ── Geo / location ───────────────────────────────────────────────────
+    _s("latitude",                  "float", 0.90),
+    _s("longitude",                 "float", 0.90),
+    _s("lat",                       "float", 0.85),
+    _s("lng",                       "float", 0.85),
+    _s("lon",                       "float", 0.85),
+    _s("country",                   "string", 0.90),
+    _s("country_code",              "string", 0.90),
+    _s("region",                    "string", 0.85),
+    _s("city",                      "string", 0.85),
+    _s("zip_code",                  "string", 0.85),
+    _s("postal_code",               "string", 0.85),
+    _s("timezone",                  "string", 0.85),
+    _s("location",                  "string", 0.80),
+
+    # ── Network / web ────────────────────────────────────────────────────
+    _s("url",                       "string", 0.90),
+    _s("uri",                       "string", 0.85),
+    _s("endpoint",                  "string", 0.85),
+    _s("path",                      "string", 0.80),
+    _s("method",                    "string", 0.85, notes="HTTP method"),
+    _s("status_code",               "integer", 0.90),
+    _s("response_time_ms",          "integer", 0.85),
+    _s("latency_ms",                "integer", 0.85),
+    _s("duration_ms",               "integer", 0.85),
+    _s("user_agent",                "string", 0.85),
+    _s("referer",                   "string", 0.80),
+    _s("hostname",                  "string", 0.85),
+    _s("host",                      "string", 0.85),
+    _s("port",                      "integer", 0.85),
+
+    # ── IoT / sensor ─────────────────────────────────────────────────────
+    _s("sensor_id",                 "string", 0.90),
+    _s("sensor_type",               "string", 0.90),
+    _s("reading",                   "float",  0.85),
+    _s("reading.value",             "float",  0.85),
+    _s("reading.unit",              "string", 0.85),
+    _s("value",                     "float",  0.80),
+    _s("unit",                      "string", 0.85),
+    _s("battery_level",             "integer", 0.85),
+    _s("signal_strength",           "integer", 0.85),
+    _s("firmware_version",          "string", 0.85),
+    _s("alert_level",               "string", 0.85),
+    _s("alert_message",             "string", 0.80),
+
+    # ── Flights / travel ─────────────────────────────────────────────────
+    _s("flight_number",             "string", 0.90),
+    _s("airline",                   "string", 0.85),
+    _s("origin",                    "string", 0.85),
+    _s("destination",               "string", 0.85),
+    _s("gate",                      "string", 0.85),
+    _s("terminal",                  "string", 0.85),
+    _s("cabin_class",               "string", 0.85),
+    _s("aircraft_type",             "string", 0.85),
+    _s("passenger_count",           "integer", 0.85),
+    _s("delay_minutes",             "integer", 0.85),
+    _s("flights",                   "array",  0.85, notes="Array of flight codes"),
+    _s("passengers",                "array",  0.85, notes="Array of passenger records"),
+
+    # ── Arrays / nested common ───────────────────────────────────────────
+    _s("tags",                      "array",  0.85),
+    _s("labels",                    "array",  0.85),
+    _s("items",                     "array",  0.85),
+    _s("data",                      "object", 0.80),
+    _s("payload",                   "object", 0.80),
+    _s("context",                   "object", 0.80),
+    _s("attributes",                "object", 0.80),
+    _s("properties",                "object", 0.80),
+    _s("user",                      "object", 0.85),
+    _s("user.user_id",              "string", 0.90),
+
+    # ── Counters / metrics ───────────────────────────────────────────────
+    _s("count",                     "integer", 0.85),
+    _s("total",                     "integer", 0.85),
+    _s("quantity",                  "integer", 0.85),
+    _s("retry_count",               "integer", 0.85),
+    _s("attempt",                   "integer", 0.85),
+    _s("size",                      "integer", 0.85),
+    _s("length",                    "integer", 0.85),
+    _s("weight",                    "float",  0.85),
+    _s("score",                     "float",  0.85),
+    _s("percentage",                "float",  0.85),
+    _s("rate",                      "float",  0.85),
+
+    # ── Text / content ───────────────────────────────────────────────────
+    _s("description",               "string", 0.85),
+    _s("title",                     "string", 0.85),
+    _s("message",                   "string", 0.85),
+    _s("comment",                   "string", 0.80),
+    _s("note",                      "string", 0.80),
+    _s("notes",                     "string", 0.80),
+    _s("body",                      "string", 0.80),
+    _s("content",                   "string", 0.80),
+    _s("summary",                   "string", 0.80),
+    _s("label",                     "string", 0.85),
 ]
 
 
@@ -293,8 +569,10 @@ class FieldTypeRegistry:
                     confidence=s["confidence"],
                     last_seen=now,
                     stream_names=["_seed"],
-                    observation_count=1,  # seed counts as 1 — needs 2 more real observations
+                    observation_count=3,  # meets min_observations threshold immediately
                     sample_values=[],
+                    pii_categories=s.get("pii", []),
+                    notes=s.get("notes"),
                 )
             logger.info("Field registry seeded with %d common patterns", len(_SEED_OBSERVATIONS))
 
