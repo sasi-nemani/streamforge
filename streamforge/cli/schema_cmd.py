@@ -25,6 +25,8 @@ def plan(
     ),
 ):
     """One-shot drift check. Like 'terraform plan' — shows drift without persisting."""
+    import time as _time
+
     from ..drift_detector import detect_drift
     from ..models import DriftReport, DriftTier
     from ..policy import load_policy
@@ -118,11 +120,12 @@ def plan(
 
     tier_colors = {DriftTier.TIER_1: "yellow", DriftTier.TIER_2: "orange3", DriftTier.TIER_3: "red"}
 
-    def _print_drifts(drift_report: "DriftReport") -> None:
+    def _print_drifts(drift_report: "DriftReport", detection_ms: float = 0) -> None:
+        timing = f"  [dim]({detection_ms:.0f}ms)[/dim]" if detection_ms > 0 else ""
         console.print(
             Panel(
                 f"[bold]⚠ DRIFT DETECTED[/bold] — {len(drift_report.drifts)} issue(s) found\n"
-                f"Highest severity: Tier {drift_report.highest_tier.value}",
+                f"Highest severity: Tier {drift_report.highest_tier.value}{timing}",
                 expand=False,
             )
         )
@@ -150,24 +153,27 @@ def plan(
 
             console.print(f"  {tier_label} [cyan]{d.field_path}[/cyan]{cid_note} — {detail}")
 
+    _detect_t0 = _time.monotonic()
     if multi_schema:
         console.print(f"[dim]Multi-schema mode — {len(profile['sub_schemas'])} clusters from profile.yaml[/dim]")
         reports = detect_drift_multi_schema(profile, sample, stream_name)
+        _detect_ms = (_time.monotonic() - _detect_t0) * 1000
         if not reports:
             console.print(Panel("[green]✓ No drift detected — all clusters clean.[/green]", expand=False))
             return
         all_highest = max(r.highest_tier for r in reports)
         for drift_report in reports:
-            _print_drifts(drift_report)
+            _print_drifts(drift_report, _detect_ms)
             report_path = write_drift_report(drift_report, "drift_reports")
             console.print(f"\nReport saved: [green]{report_path}[/green]")
         highest = all_highest.value
     else:
         drift_report = detect_drift(baseline, sample, stream_name)
+        _detect_ms = (_time.monotonic() - _detect_t0) * 1000
         if drift_report is None:
             console.print(Panel("[green]✓ No drift detected — schema is clean.[/green]", expand=False))
             return
-        _print_drifts(drift_report)
+        _print_drifts(drift_report, _detect_ms)
         report_path = write_drift_report(drift_report, "drift_reports")
         console.print(f"\nReport saved: [green]{report_path}[/green]")
         highest = drift_report.highest_tier.value
@@ -189,6 +195,7 @@ def profile(
 ):
     """Profile a stream: show field stats, types, presence rates — no LLM call."""
     import re as _re
+    import time as _time
 
     from ..profiler import discover_clusters, get_detection_method
     from ..sampler import get_all_field_paths, streaming_resilient_sample_from_folder
@@ -197,10 +204,12 @@ def profile(
     console.print(f"[bold]StreamForge Profile[/bold] — [cyan]{stream_name}[/cyan]\n")
 
     # Streaming resilient load + sample — O(sample_size) memory
+    _t0 = _time.monotonic()
     clean_sample, partial_sample, _total, parse_stats = streaming_resilient_sample_from_folder(
         stream_path, sample_size,
     )
     sample = clean_sample + partial_sample
+    _elapsed_ms = (_time.monotonic() - _t0) * 1000
     if not sample:
         console.print(f"[red]No events found in {stream_path}[/red]")
         raise typer.Exit(1)
@@ -211,9 +220,11 @@ def profile(
     parse_color = "green" if parse_rate >= 0.95 else "yellow" if parse_rate >= 0.80 else "red"
     console.print(
         Panel(
-            f"[bold]{len(sample)}[/bold] events from [bold]{parse_stats['total_lines']}[/bold] lines  •  "
+            f"[bold]{len(sample)}[/bold] events from [bold]{parse_stats['total_lines']}[/bold] lines  "
+            f"in [green]{_elapsed_ms:.0f}ms[/green]  •  "
             f"Parse rate [{parse_color}]{parse_rate:.1%}[/{parse_color}]  •  "
-            f"[dim]{parse_stats['parsed_partial']} partial  •  {parse_stats['skipped']} skipped[/dim]",
+            f"[dim]{parse_stats['parsed_partial']} partial  •  {parse_stats['skipped']} skipped[/dim]  •  "
+            f"[dim]0 API calls[/dim]",
             title="Ingest Quality",
             expand=False,
         )
