@@ -570,10 +570,14 @@ def statistical_inference(field_stats: dict, presence_rates: dict) -> list[Field
                     t = "null"
                 type_counts[t] = type_counts.get(t, 0) + 1
 
-            majority = max(type_counts, key=lambda k: type_counts[k])
-            if len(type_counts) > 1:
+            # Strip null before deciding mixed — a nullable string is STRING, not MIXED
+            non_null_types = {k: v for k, v in type_counts.items() if k != "null"}
+            if not non_null_types:
+                ft = FieldType.NULL
+            elif len(non_null_types) > 1:
                 ft = FieldType.MIXED
             else:
+                majority = max(non_null_types, key=lambda k: non_null_types[k])
                 ft = FieldType(majority) if majority in FieldType._value2member_map_ else FieldType.STRING
 
         presence = presence_rates.get(path, 0.0)

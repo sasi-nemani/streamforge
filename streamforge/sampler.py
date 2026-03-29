@@ -304,6 +304,9 @@ def get_all_field_paths(events: list[dict]) -> tuple[dict[str, list[Any]], dict[
     field_counts: dict[str, int] = {}
     total = len(events)
 
+    if total == 0:
+        return {}, {}
+
     for event in events:
         flat = flatten_nested(event)
         for path, value in flat.items():
