@@ -2,12 +2,14 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
 from datetime import UTC, datetime
+from pathlib import Path
+
 import httpx
 import yaml
 from openai import OpenAI
 
+from .field_registry import FieldTypeRegistry, RegistryConfig
 from .models import FieldSchema, FieldType, InferredSchema, PIICategory, SubSchema
 from .pii_detector import detect_pii
 
@@ -633,17 +635,23 @@ def _call_llm(
 
             llm_fields = []
             for f in raw_fields:
-                path = f["path"]
+                path = f.get("path", "")
+                if not path:
+                    continue
                 presence = presence_rates.get(path, 0.0)
                 raw_values = field_stats.get(path, [])
                 pii = detect_pii(path, raw_values[:20])
                 enum_values = f.get("enum_values") or None
                 if enum_values:
                     enum_values = [str(v) for v in enum_values]
+                try:
+                    ft = FieldType(f.get("field_type", "string"))
+                except ValueError:
+                    ft = FieldType.STRING
                 llm_fields.append(FieldSchema(
                     name=path.split(".")[-1],
                     path=path,
-                    field_type=FieldType(f["field_type"]),
+                    field_type=ft,
                     nullable=f.get("nullable", False),
                     required=f.get("required", presence >= 0.8),
                     presence_rate=presence,
@@ -764,23 +772,62 @@ def infer_schema(
       4. OpenRouter — json-mode (if OPENROUTER_API_KEY is set)
       5. Statistical inference — last resort, no LLM needed
     """
-    compressed_stats = _compress_field_stats(field_stats)
-    prompt = build_inference_prompt(compressed_stats, presence_rates, sample_events)
+    # ── 0. Field Type RAG Registry lookup ─────────────────────────────────────
+    registry_config = RegistryConfig()
+    registry_enabled = os.environ.get("STREAMFORGE_REGISTRY_ENABLED", "1") != "0"
+    registry: FieldTypeRegistry | None = None
+    cached_fields: list[FieldSchema] = []
+    remaining_stats = field_stats
+    remaining_rates = presence_rates
+
+    if registry_enabled:
+        try:
+            registry = FieldTypeRegistry.load()
+            cached, unknown_paths = registry.lookup_batch(
+                list(field_stats.keys()), config=registry_config,
+            )
+            if cached:
+                logger.info(
+                    "Registry hit: %d/%d fields resolved from cache (skipping LLM for those)",
+                    len(cached), len(field_stats),
+                )
+                for path, obs in cached.items():
+                    rate = presence_rates.get(path, 1.0)
+                    cached_fields.append(registry.to_field_schema(obs, presence_rate=rate))
+
+                # Only send unknown fields to LLM
+                remaining_stats = {p: field_stats[p] for p in unknown_paths if p in field_stats}
+                remaining_rates = {p: presence_rates[p] for p in unknown_paths if p in presence_rates}
+            else:
+                logger.info("Registry: no cached hits — all %d fields go to LLM", len(field_stats))
+        except Exception as e:
+            logger.warning("Registry lookup failed: %s — proceeding without cache", e)
+
+    compressed_stats = _compress_field_stats(remaining_stats)
+    prompt = build_inference_prompt(compressed_stats, remaining_rates, sample_events)
 
     llm_fields: list | None = None
     overall_confidence: float = 0.0
     event_type_values: list[str] = []
+
+    # Skip LLM entirely if registry resolved ALL fields
+    if remaining_stats:
+        pass  # proceed to LLM cascade below
+    elif cached_fields:
+        logger.info("Registry resolved ALL %d fields — skipping LLM entirely", len(cached_fields))
+        llm_fields = []
+        overall_confidence = 0.90
 
     # ── 1. Local Ollama ────────────────────────────────────────────────────────
     if _is_ollama_available():
         logger.info("Ollama available — attempting local inference (model: %s)", OLLAMA_MODEL)
         ollama_client = OpenAI(api_key="ollama", base_url=OLLAMA_BASE_URL)
         llm_fields, overall_confidence, event_type_values = _call_llm_json_mode(
-            ollama_client, OLLAMA_MODEL, prompt, field_stats, presence_rates,
+            ollama_client, OLLAMA_MODEL, prompt, remaining_stats, remaining_rates,
             max_retries=2, timeout_s=OLLAMA_TIMEOUT_S,
         )
         # Coverage check before accepting local result
-        llm_fields = _check_field_coverage(llm_fields, field_stats)
+        llm_fields = _check_field_coverage(llm_fields, remaining_stats)
         if llm_fields is not None and overall_confidence >= LOCAL_CONFIDENCE_THRESHOLD:
             logger.info(
                 "Local inference accepted (confidence=%.2f >= %.2f)",
@@ -802,10 +849,10 @@ def infer_schema(
         logger.info("Trying primary remote provider (model: %s, url: %s)", model, base_url)
         client = OpenAI(api_key=api_key, base_url=base_url)
         llm_fields, overall_confidence, event_type_values = _call_llm(
-            client, model, prompt, field_stats, presence_rates, max_retries,
+            client, model, prompt, remaining_stats, remaining_rates, max_retries,
         )
         # Coverage check: if Groq returns far fewer fields than observed, escalate
-        llm_fields = _check_field_coverage(llm_fields, field_stats)
+        llm_fields = _check_field_coverage(llm_fields, remaining_stats)
 
     # ── 3. OpenAI fallback ─────────────────────────────────────────────────────
     if llm_fields is None:
@@ -817,9 +864,9 @@ def infer_schema(
             )
             oa_client = OpenAI(api_key=openai_key, base_url=OPENAI_BASE_URL)
             llm_fields, overall_confidence, event_type_values = _call_llm(
-                oa_client, openai_model, prompt, field_stats, presence_rates, max_retries,
+                oa_client, openai_model, prompt, remaining_stats, remaining_rates, max_retries,
             )
-            llm_fields = _check_field_coverage(llm_fields, field_stats)
+            llm_fields = _check_field_coverage(llm_fields, remaining_stats)
             if llm_fields is not None:
                 model = openai_model
 
@@ -836,10 +883,10 @@ def infer_schema(
                     or_model,
                 )
                 llm_fields, overall_confidence, event_type_values = _call_llm_json_mode(
-                    or_client, or_model, prompt, field_stats, presence_rates, max_retries,
+                    or_client, or_model, prompt, remaining_stats, remaining_rates, max_retries,
                 )
                 # Coverage check before accepting OpenRouter result
-                llm_fields = _check_field_coverage(llm_fields, field_stats)
+                llm_fields = _check_field_coverage(llm_fields, remaining_stats)
                 if llm_fields is not None:
                     model = or_model
                     break
@@ -847,7 +894,7 @@ def infer_schema(
     # ── 5. Statistical fallback ────────────────────────────────────────────────
     if llm_fields is None:
         logger.warning("All LLM attempts failed, falling back to statistical inference")
-        llm_fields = statistical_inference(field_stats, presence_rates)
+        llm_fields = statistical_inference(remaining_stats, remaining_rates)
         overall_confidence = 0.6
         model = f"{model}(statistical-fallback)"
 
@@ -870,13 +917,38 @@ def infer_schema(
     # output.  Uses streamforge/schema_hints.yaml as the rule source.
     llm_fields = _apply_schema_hints(llm_fields, field_stats, _SCHEMA_HINTS)
 
+    # ── 8. Merge cached (registry) fields with LLM fields ───────────────────
+    all_fields = cached_fields + llm_fields
+    # Deduplicate by path — LLM result wins over registry if both present
+    seen_paths: set[str] = set()
+    deduped: list[FieldSchema] = []
+    for f in reversed(all_fields):  # reversed so LLM fields (later) win
+        if f.path not in seen_paths:
+            seen_paths.add(f.path)
+            deduped.append(f)
+    deduped.reverse()
+
+    # ── 9. Record all resolved fields back to registry ────────────────────────
+    if registry is not None and registry_enabled:
+        try:
+            registry.record_from_schema(deduped, stream_name)
+            registry.save()
+            stats = registry.stats()
+            logger.info(
+                "Registry updated: %d entries, hit_rate=%.0f%% (%d hits / %d lookups)",
+                stats["total_entries"], stats["hit_rate"] * 100,
+                stats["lookup_hits"], stats["lookup_hits"] + stats["lookup_misses"],
+            )
+        except Exception as e:
+            logger.warning("Failed to save field registry: %s", e)
+
     now = datetime.now(UTC).isoformat()
     return InferredSchema(
         stream_name=stream_name,
         version="1.0.0",
         inferred_at=now,
         event_count_sampled=len(sample_events),
-        fields=llm_fields,
+        fields=deduped,
         top_level_event_types=event_type_values if event_type_values else None,
         inference_model=model,
         inference_confidence=overall_confidence,

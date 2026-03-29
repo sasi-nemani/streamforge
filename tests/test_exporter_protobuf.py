@@ -394,9 +394,8 @@ class TestProtobufFieldOrdering:
         # all required fields should have numbers ≤ (total_required count)
         assert email_num == 5  # 4 required + 1 optional
 
-    def test_required_fields_sorted_by_path_then_presence_rate(self):
-        """Within required: sorted by (-presence_rate, path); all have rate 1.0 here
-        so sorted purely alphabetically by path."""
+    def test_required_fields_sorted_alphabetically_by_path(self):
+        """Within required: sorted alphabetically by path for stable field numbers."""
         out = schema_to_proto(_minimal_schema())
         lines = [l.strip() for l in out.splitlines() if l.strip().startswith(("string", "double", "google", "bool", "int64", "repeated", "bytes"))]
         field_names = [l.split()[-3] for l in lines]  # e.g. "id", "amount", "created_at"
@@ -539,3 +538,79 @@ class TestToPascalCase:
 
     def test_single_word(self):
         assert _to_pascal_case("events") == "Events"
+
+
+class TestFieldNumberStability:
+    def test_field_numbers_stable_across_presence_changes(self):
+        """Field numbers must not change when presence_rate changes between versions."""
+        # Version 1: specific presence rates
+        schema_v1 = InferredSchema(
+            stream_name="orders",
+            version="1.0.0",
+            inferred_at="2026-03-21T00:00:00Z",
+            event_count_sampled=100,
+            inference_model="claude-sonnet-4-6",
+            inference_confidence=0.90,
+            fields=[
+                FieldSchema(name="amount", path="amount", field_type=FieldType.FLOAT,
+                            required=True, presence_rate=0.99),
+                FieldSchema(name="currency", path="currency", field_type=FieldType.STRING,
+                            required=True, presence_rate=0.95),
+                FieldSchema(name="order_id", path="order_id", field_type=FieldType.UUID,
+                            required=True, presence_rate=1.0),
+            ],
+        )
+
+        # Version 2: same fields, different presence rates (order would change under old sort)
+        schema_v2 = InferredSchema(
+            stream_name="orders",
+            version="2.0.0",
+            inferred_at="2026-03-25T00:00:00Z",
+            event_count_sampled=200,
+            inference_model="claude-sonnet-4-6",
+            inference_confidence=0.92,
+            fields=[
+                FieldSchema(name="amount", path="amount", field_type=FieldType.FLOAT,
+                            required=True, presence_rate=0.80),
+                FieldSchema(name="currency", path="currency", field_type=FieldType.STRING,
+                            required=True, presence_rate=1.0),
+                FieldSchema(name="order_id", path="order_id", field_type=FieldType.UUID,
+                            required=True, presence_rate=0.85),
+            ],
+        )
+
+        proto_v1 = schema_to_proto(schema_v1)
+        proto_v2 = schema_to_proto(schema_v2)
+
+        def extract_field_numbers(proto_text: str) -> dict[str, int]:
+            numbers = {}
+            inside_message = False
+            for line in proto_text.splitlines():
+                if line.startswith("message "):
+                    inside_message = True
+                    continue
+                if line == "}":
+                    inside_message = False
+                    continue
+                if not inside_message:
+                    continue
+                stripped = line.strip()
+                if "=" in stripped and stripped.endswith(";"):
+                    parts = stripped.split()
+                    for i, part in enumerate(parts):
+                        if part == "=":
+                            field_name = parts[i - 1]
+                            num_str = parts[i + 1].rstrip(";")
+                            num = int(num_str)
+                            numbers[field_name] = num
+                            break
+            return numbers
+
+        v1_numbers = extract_field_numbers(proto_v1)
+        v2_numbers = extract_field_numbers(proto_v2)
+
+        assert v1_numbers == v2_numbers, (
+            f"Field numbers changed between versions!\n"
+            f"  v1: {v1_numbers}\n"
+            f"  v2: {v2_numbers}"
+        )

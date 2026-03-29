@@ -55,7 +55,7 @@ def test_incident_report_since_filter(tmp_path, monkeypatch):
     """--since flag filters out old reports."""
     monkeypatch.chdir(tmp_path)
     old_ts = "2026-01-01T00:00:00Z"
-    recent_ts = "2026-03-22T09:15:00Z"
+    recent_ts = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
     _make_drift_report_md(tmp_path, "events.payments", 3, "amount", "field_removed", old_ts)
     _make_drift_report_md(tmp_path, "events.payments", 2, "created_at", "type_changed", recent_ts)
     runner = CliRunner()

@@ -20,6 +20,16 @@ from streamforge.inference import (
 from streamforge.models import FieldType
 
 
+@pytest.fixture(autouse=True)
+def _disable_field_registry(monkeypatch):
+    """Disable the field type registry for all cascade tests.
+
+    These tests mock OpenAI to verify LLM cascade behavior — the registry
+    would short-circuit the cascade by resolving fields from cache.
+    """
+    monkeypatch.setenv("STREAMFORGE_REGISTRY_ENABLED", "0")
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 FIELD_STATS = {"event_id": ["abc123", "def456"], "amount": [100, 200]}
@@ -273,3 +283,129 @@ def test_ollama_exception_escalates_to_groq():
 
     assert mock_openai_cls.call_count == 2
     assert len(result.fields) > 0
+
+
+# ── C1/L3 fix: registry sends only unknown fields to LLM ──────────────────
+
+
+def test_registry_sends_only_unknown_fields_to_llm(monkeypatch, tmp_path):
+    """When registry resolves some fields, LLM only receives the unknowns.
+
+    Regression test for C1: before the fix, the full field_stats was passed
+    to _call_llm and _check_field_coverage, causing LLM output to fail the
+    coverage check (e.g. LLM returns 1 field but coverage expects 2).
+    """
+    monkeypatch.setenv("STREAMFORGE_REGISTRY_ENABLED", "1")
+
+    # Pre-populate registry: event_id is known (3+ observations = cache hit)
+    from streamforge.field_registry import FieldTypeRegistry
+    registry_path = tmp_path / "field_registry.json"
+    reg = FieldTypeRegistry()
+    for i in range(4):
+        reg.record("event_id", "uuid", 0.95, f"stream_{i}", ["abc", "def"])
+    reg.save(registry_path)
+
+    # Patch the default registry path so infer_schema loads our test registry
+    monkeypatch.setattr("streamforge.field_registry.DEFAULT_REGISTRY_PATH", registry_path)
+
+    # Field stats: 2 fields total. Registry knows event_id, NOT amount.
+    field_stats = {"event_id": ["abc123", "def456"], "amount": [100, 200, 300]}
+    presence_rates = {"event_id": 1.0, "amount": 0.95}
+    sample_events = [{"event_id": "abc123", "amount": 100}]
+
+    # LLM returns ONLY the unknown field (amount) — this is correct behavior.
+    # Before the fix, coverage check would reject this as "1 field out of 2 expected".
+    amount_only_response = _make_tool_response(
+        confidence=0.90,
+        fields=[
+            {"path": "amount", "field_type": "float", "nullable": False,
+             "required": True, "confidence": 0.90, "notes": "payment amount"},
+        ],
+    )
+
+    with patch("streamforge.inference._is_ollama_available", return_value=False), \
+         patch("streamforge.inference.OpenAI") as mock_openai_cls:
+
+        groq_client = MagicMock()
+        mock_openai_cls.return_value = groq_client
+        groq_client.chat.completions.create.return_value = amount_only_response
+
+        result = infer_schema(
+            stream_name="test_c1_fix",
+            field_stats=field_stats,
+            sample_events=sample_events,
+            presence_rates=presence_rates,
+            api_key="groq-key",
+        )
+
+    # Both fields should be in the final schema
+    field_paths = {f.path for f in result.fields}
+    assert "event_id" in field_paths, "Registry-resolved field missing from result"
+    assert "amount" in field_paths, "LLM-inferred field missing from result"
+
+    # event_id should come from registry (has [registry] note)
+    event_id_field = [f for f in result.fields if f.path == "event_id"][0]
+    assert "[registry]" in (event_id_field.notes or ""), "event_id should be from registry"
+
+    # amount should come from LLM (not registry)
+    amount_field = [f for f in result.fields if f.path == "amount"][0]
+    assert amount_field.notes == "payment amount"
+
+    # LLM should NOT have been asked about event_id
+    # (it only returned amount, and that was accepted — no escalation)
+    assert "statistical-fallback" not in result.inference_model, \
+        "Should not have fallen through to statistical fallback"
+
+
+# ── Ship-blocker #1: tool-call path must not crash on bad LLM output ───────
+
+
+def test_tool_call_survives_invalid_field_type():
+    """Tool-call path must handle invalid field_type without wasting retries.
+
+    Before fix: FieldType("timestamp") raises ValueError, caught by outer
+    except, triggers retry with identical response → all retries wasted.
+    After fix: invalid type falls back to STRING, field is kept, no retry.
+    """
+    # One good field + one field with invalid type + one field with missing path
+    fields_with_bad_data = [
+        {"path": "event_id", "field_type": "string", "nullable": False,
+         "required": True, "confidence": 0.95, "notes": "ok"},
+        {"path": "timestamp", "field_type": "INVALID_TYPE", "nullable": False,
+         "required": True, "confidence": 0.80, "notes": "bad type"},
+        {"field_type": "string", "nullable": False,
+         "required": True, "confidence": 0.80, "notes": "missing path"},
+    ]
+
+    response = _make_tool_response(confidence=0.88, fields=fields_with_bad_data)
+
+    with patch("streamforge.inference._is_ollama_available", return_value=False), \
+         patch("streamforge.inference.OpenAI") as mock_openai_cls:
+
+        groq_client = MagicMock()
+        mock_openai_cls.return_value = groq_client
+        groq_client.chat.completions.create.return_value = response
+
+        result = infer_schema(
+            stream_name="test",
+            field_stats=FIELD_STATS,
+            sample_events=SAMPLE_EVENTS,
+            presence_rates=PRESENCE_RATES,
+            api_key="groq-key",
+        )
+
+    # Should succeed on first try — no retry needed
+    assert groq_client.chat.completions.create.call_count == 1
+
+    # event_id is present (valid)
+    paths = {f.path for f in result.fields}
+    assert "event_id" in paths
+
+    # timestamp was kept with fallback type STRING (not crashed, not dropped)
+    ts_fields = [f for f in result.fields if f.path == "timestamp"]
+    if ts_fields:
+        from streamforge.models import FieldType
+        assert ts_fields[0].field_type == FieldType.STRING
+
+    # field with missing path was skipped (not crashed)
+    assert "statistical-fallback" not in result.inference_model

@@ -1,7 +1,7 @@
 import pytest
 
 from streamforge.models import PIICategory
-from streamforge.pii_detector import detect_pii
+from streamforge.pii_detector import PIIDetection, detect_pii, detect_pii_scored
 
 
 def test_detects_email_by_value():
@@ -47,3 +47,94 @@ def test_no_false_positive_on_generic_field():
 def test_detects_loyalty_number_by_name():
     result = detect_pii("frequent_flyer_number", ["FF12345"])
     assert PIICategory.LOYALTY_NUMBER in result
+
+
+# --- Confidence scoring tests ---
+
+
+def test_detect_pii_scored_returns_confidence():
+    """detect_pii_scored returns PIIDetection with confidence and source."""
+    result = detect_pii_scored("user.email", ["alice@example.com"])
+    assert len(result) > 0
+    email_det = [d for d in result if d.category == PIICategory.EMAIL][0]
+    assert email_det.confidence == 0.95  # both name_hint and pattern
+    assert email_det.source == "both"
+
+
+def test_detect_pii_scored_name_only():
+    """Name hint only gives 0.6 confidence."""
+    result = detect_pii_scored("user.email", ["not-an-email"])
+    email_det = [d for d in result if d.category == PIICategory.EMAIL][0]
+    assert email_det.confidence == 0.6
+    assert email_det.source == "name_hint"
+
+
+def test_detect_pii_scored_pattern_only():
+    """Pattern match only gives 0.7 confidence."""
+    result = detect_pii_scored("some_field", ["alice@example.com"])
+    email_det = [d for d in result if d.category == PIICategory.EMAIL][0]
+    assert email_det.confidence == 0.7
+    assert email_det.source == "pattern"
+
+
+# --- Phone detection improvements ---
+
+
+def test_phone_rejects_plain_digits():
+    """Plain digit sequences without formatting should NOT be flagged as phone."""
+    result = detect_pii("some_number", ["1234567890", "9876543210"])
+    assert PIICategory.PHONE not in result
+
+
+def test_phone_accepts_international_format():
+    """International format with + prefix IS flagged."""
+    result = detect_pii("contact", ["+1-555-123-4567"])
+    assert PIICategory.PHONE in result
+
+
+def test_phone_accepts_parenthesized():
+    """US format with parenthesized area code IS flagged."""
+    result = detect_pii("contact", ["(555) 123-4567"])
+    assert PIICategory.PHONE in result
+
+
+def test_phone_accepts_grouped():
+    """Dash-separated groups IS flagged."""
+    result = detect_pii("contact", ["555-123-4567"])
+    assert PIICategory.PHONE in result
+
+
+# --- DOB improvements ---
+
+
+def test_dob_requires_field_name_hint():
+    """ISO date string alone without DOB field name should NOT be flagged."""
+    result = detect_pii("created_at", ["2024-01-15", "2024-06-20"])
+    assert PIICategory.DATE_OF_BIRTH not in result
+
+
+def test_dob_detected_with_field_name():
+    """ISO date WITH DOB field name IS flagged."""
+    result = detect_pii("date_of_birth", ["1990-05-15"])
+    assert PIICategory.DATE_OF_BIRTH in result
+
+
+# --- SSN and AADHAAR detection ---
+
+
+def test_ssn_detected():
+    """SSN pattern with matching field name IS flagged."""
+    result = detect_pii("user.ssn", ["123-45-6789"])
+    assert PIICategory.NATIONAL_ID in result
+
+
+def test_ssn_pattern_only():
+    """SSN pattern without field hint still detects via pattern."""
+    result = detect_pii("some_id", ["123-45-6789"])
+    assert PIICategory.NATIONAL_ID in result
+
+
+def test_aadhaar_detected():
+    """AADHAAR pattern with matching field name IS flagged."""
+    result = detect_pii("aadhaar_number", ["1234 5678 9012"])
+    assert PIICategory.NATIONAL_ID in result

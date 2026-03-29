@@ -47,9 +47,9 @@ class DLQRouter:
     def _publish(self, events: list[dict], violation_type: str, producer_id: str | None) -> int:
         # Lazy import kafka-python — only if DLQ is enabled
         try:
-            from kafka import KafkaProducer
             import json
-            import time
+
+            from kafka import KafkaProducer
         except ImportError:
             logger.warning("kafka-python not installed — DLQ disabled")
             return 0

@@ -18,7 +18,8 @@ Type mapping:
   MIXED   → bytes  (opaque fallback for truly polymorphic fields)
   NULL    → bytes  (opaque fallback)
 
-Field numbers are assigned in definition order (required fields first, then optional).
+Field numbers are assigned in definition order (required fields first, then optional;
+within each group, sorted alphabetically by path for wire-format stability).
 
 Reference: https://developers.google.com/protocol-buffers/docs/proto3
 """
@@ -67,14 +68,16 @@ def schema_to_proto(schema: InferredSchema) -> str:
     # Derive a valid proto message name (PascalCase, no dots)
     msg_name = _to_pascal_case(schema.stream_name)
 
-    # Build field definitions: required fields first (by presence_rate desc), then optional
+    # Build field definitions: required fields first, then optional.
+    # Within each group, sort alphabetically by path to guarantee stable
+    # field numbers across schema versions (presence_rate may change).
     required_fields = sorted(
         [f for f in schema.fields if f.required],
-        key=lambda f: (-f.presence_rate, f.path),
+        key=lambda f: f.path,
     )
     optional_fields = sorted(
         [f for f in schema.fields if not f.required],
-        key=lambda f: (-f.presence_rate, f.path),
+        key=lambda f: f.path,
     )
     ordered = required_fields + optional_fields
 

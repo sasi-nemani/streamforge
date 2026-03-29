@@ -1,27 +1,45 @@
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from .models import PIICategory
+
+
+@dataclass(frozen=True)
+class PIIDetection:
+    category: PIICategory
+    confidence: float  # 0.0-1.0
+    source: str  # "name_hint", "pattern", "both"
+
 
 EMAIL_PATTERN = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
 CARD_PATTERN = re.compile(r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b')
 PASSPORT_PATTERN = re.compile(r'\b[A-Z]{1,2}\d{7,9}\b')
 IP_PATTERN = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
 DOB_PATTERN = re.compile(r'\b\d{4}-\d{2}-\d{2}\b')
-# Strip formatting chars — what remains must be all digits for a real phone number.
-# Excludes UUIDs (hex letters), IP addresses (dots kept → not all-digit), etc.
-# Note: dots intentionally NOT stripped — "192.168.1.1" must not become "19216811".
-_PHONE_STRIP = re.compile(r'[\s\-\+\(\)]+')
+SSN_PATTERN = re.compile(r'\b\d{3}-\d{2}-\d{4}\b')
+AADHAAR_PATTERN = re.compile(r'\b\d{4}\s\d{4}\s\d{4}\b')
+
+# Phone patterns: require explicit formatting (+ prefix, parenthesized area code,
+# or dash/space-separated groups). Plain digit sequences are rejected.
+PHONE_INTL_PATTERN = re.compile(r'\+\d{1,3}[\s-]?\d{3,14}')
+PHONE_US_PATTERN = re.compile(r'\(\d{3}\)\s?\d{3}[\s-]?\d{4}')
+PHONE_GROUPED_PATTERN = re.compile(r'\b\d{3}[\s-]\d{3}[\s-]\d{4}\b')
 
 
 def _looks_like_phone(val: str) -> bool:
-    # Must have at least one phone formatting character (+, space, dash, parens)
-    # to distinguish from numeric IDs. Bare digit strings like "35234567890" are
-    # ambiguous — we don't flag them unless the field name says phone.
-    if not _PHONE_STRIP.search(val):
-        return False
-    stripped = _PHONE_STRIP.sub('', val)
-    return stripped.isdigit() and 7 <= len(stripped) <= 15
+    """Check if a string value looks like a formatted phone number.
+
+    Requires explicit formatting characters: + prefix, parenthesized area code,
+    or dash/space-separated digit groups. Plain digit sequences like "1234567890"
+    are NOT matched.
+    """
+    return bool(
+        PHONE_INTL_PATTERN.search(val)
+        or PHONE_US_PATTERN.search(val)
+        or PHONE_GROUPED_PATTERN.search(val)
+    )
+
 
 PII_NAME_HINTS: dict[PIICategory, list[str]] = {
     PIICategory.EMAIL: ["email", "e_mail", "mail"],
@@ -30,9 +48,25 @@ PII_NAME_HINTS: dict[PIICategory, list[str]] = {
     PIICategory.PASSPORT: ["passport", "document_number"],
     PIICategory.CARD_NUMBER: ["card", "pan", "card_last_four", "card_number"],
     PIICategory.IP_ADDRESS: ["ip_address", "ip", "client_ip"],
-    PIICategory.DATE_OF_BIRTH: ["dob", "date_of_birth", "birth_date", "birthdate"],
+    PIICategory.DATE_OF_BIRTH: ["dob", "date_of_birth", "birth_date", "birthdate", "born", "birthday"],
     PIICategory.LOYALTY_NUMBER: ["loyalty", "frequent_flyer", "rewards"],
+    PIICategory.NATIONAL_ID: ["ssn", "social_security", "social_security_number", "aadhaar", "aadhar"],
 }
+
+# Mapping from PIICategory to pattern-check functions. Each returns True if the
+# value matches the pattern for that category.
+_PATTERN_CHECKS: dict[PIICategory, Any] = {
+    PIICategory.EMAIL: lambda val: bool(EMAIL_PATTERN.search(val)),
+    PIICategory.PHONE: _looks_like_phone,
+    PIICategory.CARD_NUMBER: lambda val: bool(CARD_PATTERN.search(val)),
+    PIICategory.PASSPORT: lambda val: bool(PASSPORT_PATTERN.search(val)),
+    PIICategory.IP_ADDRESS: lambda val: bool(IP_PATTERN.search(val)),
+    PIICategory.NATIONAL_ID: lambda val: bool(SSN_PATTERN.search(val) or AADHAAR_PATTERN.search(val)),
+}
+
+# DOB requires field name hint -- pattern alone is not sufficient since
+# \d{4}-\d{2}-\d{2} matches all ISO dates.
+_DOB_FIELD_HINTS = {"dob", "birth", "born", "birthday", "birthdate", "date_of_birth"}
 
 
 def _path_segments(path: str) -> list[str]:
@@ -40,44 +74,72 @@ def _path_segments(path: str) -> list[str]:
     return [s for s in re.split(r'[.\[\]]+', path.lower()) if s]
 
 
-def detect_pii(field_path: str, sample_values: list[Any]) -> list[PIICategory]:
-    """Returns list of PII categories detected for this field."""
-    detected: set[PIICategory] = set()
-    segments = _path_segments(field_path)
-
-    # Field name heuristics — match against individual path segments.
-    # Short hints (≤4 chars, e.g. "ip"): exact segment match only.
-    # Longer hints (e.g. "frequent_flyer"): substring of any segment is fine.
-    # This prevents "ip" matching "subscriptions_url" while allowing
-    # "frequent_flyer" to match "frequent_flyer_number".
+def _check_name_hints(segments: list[str]) -> set[PIICategory]:
+    """Check field path segments against name hints, return matched categories."""
+    matched: set[PIICategory] = set()
     for category, hints in PII_NAME_HINTS.items():
         for hint in hints:
             if len(hint) <= 4:
-                matched = hint in segments
+                if hint in segments:
+                    matched.add(category)
+                    break
             else:
-                matched = any(hint in seg for seg in segments)
-            if matched:
-                detected.add(category)
-                break
+                if any(hint in seg for seg in segments):
+                    matched.add(category)
+                    break
+    return matched
 
-    # Pattern matching on sample values — only run on actual strings, not coerced numbers
+
+def _check_patterns(str_values: list[str], segments: list[str]) -> set[PIICategory]:
+    """Run pattern matching on sample values, return matched categories."""
+    matched: set[PIICategory] = set()
+    for val in str_values:
+        for category, check_fn in _PATTERN_CHECKS.items():
+            if category not in matched and check_fn(val):
+                matched.add(category)
+
+        # DOB: only flag if field name also suggests date-of-birth
+        if PIICategory.DATE_OF_BIRTH not in matched and DOB_PATTERN.search(val):
+            if any(h in seg for seg in segments for h in _DOB_FIELD_HINTS):
+                matched.add(PIICategory.DATE_OF_BIRTH)
+
+    return matched
+
+
+def detect_pii_scored(field_path: str, sample_values: list[Any]) -> list[PIIDetection]:
+    """Returns list of PIIDetection with category, confidence, and source.
+
+    Confidence scoring:
+    - name_hint only: 0.6
+    - pattern match only: 0.7
+    - both name_hint AND pattern: 0.95
+    """
+    segments = _path_segments(field_path)
     str_values = [v for v in sample_values if isinstance(v, str)][:20]
 
-    for val in str_values:
-        if PIICategory.EMAIL not in detected and EMAIL_PATTERN.search(val):
-            detected.add(PIICategory.EMAIL)
-        if PIICategory.PHONE not in detected and _looks_like_phone(val):
-            detected.add(PIICategory.PHONE)
-        if PIICategory.CARD_NUMBER not in detected and CARD_PATTERN.search(val):
-            detected.add(PIICategory.CARD_NUMBER)
-        if PIICategory.PASSPORT not in detected and PASSPORT_PATTERN.search(val):
-            detected.add(PIICategory.PASSPORT)
-        if PIICategory.IP_ADDRESS not in detected and IP_PATTERN.search(val):
-            detected.add(PIICategory.IP_ADDRESS)
-        if PIICategory.DATE_OF_BIRTH not in detected and DOB_PATTERN.search(val):
-            # Only flag as DOB if field name also suggests it
-            dob_hints = ["dob", "birth", "born"]
-            if any(h in seg for seg in segments for h in dob_hints):
-                detected.add(PIICategory.DATE_OF_BIRTH)
+    name_matches = _check_name_hints(segments)
+    pattern_matches = _check_patterns(str_values, segments)
 
-    return list(detected)
+    all_categories = name_matches | pattern_matches
+    detections: list[PIIDetection] = []
+
+    for category in sorted(all_categories, key=lambda c: c.value):
+        has_name = category in name_matches
+        has_pattern = category in pattern_matches
+
+        if has_name and has_pattern:
+            detections.append(PIIDetection(category=category, confidence=0.95, source="both"))
+        elif has_name:
+            detections.append(PIIDetection(category=category, confidence=0.6, source="name_hint"))
+        else:
+            detections.append(PIIDetection(category=category, confidence=0.7, source="pattern"))
+
+    return detections
+
+
+def detect_pii(field_path: str, sample_values: list[Any]) -> list[PIICategory]:
+    """Returns list of PII categories detected for this field.
+
+    Backward-compatible wrapper around detect_pii_scored().
+    """
+    return [d.category for d in detect_pii_scored(field_path, sample_values)]

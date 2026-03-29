@@ -7,12 +7,11 @@ Loaded on startup to survive restarts without false drift alerts.
 from __future__ import annotations
 
 import json
-import re
 import logging
+import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +38,8 @@ class WatchState:
     warmup_done: bool = False
     stability_clean_count: int = 0    # consecutive clean cycles in STABILIZING
     consecutive_drifts: int = 0       # consecutive drift cycles (flap suppression)
-    last_drift_at: Optional[str] = None   # ISO8601 timestamp of last drift
-    stable_since: Optional[str] = None   # ISO8601 timestamp when STABLE entered
+    last_drift_at: str | None = None   # ISO8601 timestamp of last drift
+    stable_since: str | None = None   # ISO8601 timestamp when STABLE entered
 
     # --- persistence ---
 
@@ -58,11 +57,13 @@ class WatchState:
             "last_drift_at": self.last_drift_at,
             "stable_since": self.stable_since,
         }
-        path.write_text(json.dumps(data, indent=2))
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.replace(path)  # atomic on POSIX
         logger.debug("WatchState saved: %s", path)
 
     @classmethod
-    def load(cls, topic: str, state_dir: Path = _STATE_DIR) -> "WatchState":
+    def load(cls, topic: str, state_dir: Path = _STATE_DIR) -> WatchState:
         path = state_dir / f"{_slug(topic)}.json"
 
         if path.exists():
@@ -78,7 +79,7 @@ class WatchState:
         return cls(topic=topic)
 
     @classmethod
-    def migrate_legacy(cls, topic: str, legacy_path: Path, state_dir: Path = _STATE_DIR) -> Optional["WatchState"]:
+    def migrate_legacy(cls, topic: str, legacy_path: Path, state_dir: Path = _STATE_DIR) -> WatchState | None:
         """If a legacy .watch_state.json exists, migrate it to the new location."""
         if not legacy_path.exists():
             return None
@@ -98,7 +99,7 @@ class WatchState:
     def mark_drift(self) -> None:
         self.consecutive_drifts += 1
         self.stability_clean_count = 0
-        self.last_drift_at = datetime.now(timezone.utc).isoformat()
+        self.last_drift_at = datetime.now(UTC).isoformat()
 
     def mark_clean(self, stability_cycles_required: int = 3) -> bool:
         """Returns True if state just transitioned to STABLE."""
@@ -107,7 +108,7 @@ class WatchState:
             self.stability_clean_count += 1
             if self.stability_clean_count >= stability_cycles_required:
                 self.phase = "STABLE"
-                self.stable_since = datetime.now(timezone.utc).isoformat()
+                self.stable_since = datetime.now(UTC).isoformat()
                 return True
         return False
 

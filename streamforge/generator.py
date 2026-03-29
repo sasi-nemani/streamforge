@@ -34,6 +34,8 @@ def _random_value(
     enum_values: list[str] | None = None,
     field_path: str = "",
     nullable: bool = False,
+    *,
+    ref_time: datetime | None = None,
 ) -> Any:
     """
     Generate a realistic synthetic value for the given field type.
@@ -105,20 +107,24 @@ def _random_value(
         return f"+1{area}{rest}"
 
     if field_type == FieldType.TIMESTAMP_EPOCH_MS:
-        now_ms = int(datetime.now(UTC).timestamp() * 1000)
+        _now = ref_time or datetime.now(UTC)
+        now_ms = int(_now.timestamp() * 1000)
         jitter_ms = random.randint(-7 * 86_400_000, 0)  # up to 7 days before now
         return now_ms + jitter_ms
 
     if field_type == FieldType.TIMESTAMP_ISO8601:
-        dt = datetime.now(UTC) + timedelta(seconds=random.randint(-604_800, 0))
+        _now = ref_time or datetime.now(UTC)
+        dt = _now + timedelta(seconds=random.randint(-604_800, 0))
         return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     if field_type == FieldType.TIMESTAMP_RFC2822:
-        dt = datetime.now(UTC) + timedelta(seconds=random.randint(-604_800, 0))
+        _now = ref_time or datetime.now(UTC)
+        dt = _now + timedelta(seconds=random.randint(-604_800, 0))
         return dt.strftime("%a, %d %b %Y %H:%M:%S +0000")
 
     if field_type == FieldType.DATE:
-        dt = datetime.now(UTC) + timedelta(days=random.randint(-365, 0))
+        _now = ref_time or datetime.now(UTC)
+        dt = _now + timedelta(days=random.randint(-365, 0))
         return dt.strftime("%Y-%m-%d")
 
     if field_type == FieldType.ARRAY:
@@ -211,6 +217,9 @@ def generate_events(
     if seed is not None:
         random.seed(seed)
 
+    # Pin reference time when seeded so timestamps are reproducible
+    _ref_time = datetime(2026, 1, 1, tzinfo=UTC) if seed is not None else None
+
     # Pre-sort: object-type parent fields last so leaf values win on path conflicts
     leaf_fields = [f for f in schema.fields if f.field_type != FieldType.OBJECT]
     # Sort by path depth so parents are set before children (although _set_nested handles this)
@@ -236,6 +245,7 @@ def generate_events(
                 enum_values=field.enum_values,
                 field_path=field.path,
                 nullable=field.nullable,
+                ref_time=_ref_time,
             )
             _set_nested(event, field.path, value)
 

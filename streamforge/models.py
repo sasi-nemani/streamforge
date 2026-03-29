@@ -1,7 +1,8 @@
+import math
 from enum import Enum, StrEnum
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class DriftClass(StrEnum):
@@ -60,6 +61,18 @@ class FieldSchema(BaseModel):
     confidence: float = 1.0
     notes: str | None = None
 
+    @field_validator("presence_rate", "confidence", mode="before")
+    @classmethod
+    def _clamp_unit_float(cls, v: Any) -> float:
+        if v is None:
+            return 0.0
+        if isinstance(v, (int, float)) and (math.isnan(v) or math.isinf(v)):
+            return 0.0
+        try:
+            return max(0.0, min(1.0, float(v)))
+        except (TypeError, ValueError):
+            return 0.0
+
 
 class InferredSchema(BaseModel):
     stream_name: str
@@ -70,6 +83,18 @@ class InferredSchema(BaseModel):
     top_level_event_types: list[str] | None = None
     inference_model: str
     inference_confidence: float
+
+    @field_validator("inference_confidence", mode="before")
+    @classmethod
+    def _clamp_unit_float(cls, v: Any) -> float:
+        if v is None:
+            return 0.0
+        if isinstance(v, (int, float)) and (math.isnan(v) or math.isinf(v)):
+            return 0.0
+        try:
+            return max(0.0, min(1.0, float(v)))
+        except (TypeError, ValueError):
+            return 0.0
 
 
 class FieldDrift(BaseModel):

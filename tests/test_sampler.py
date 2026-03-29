@@ -11,6 +11,8 @@ from streamforge.sampler import (
     load_events_from_folder,
     reservoir_sample,
     split_by_quality,
+    streaming_reservoir_sample_from_folder,
+    streaming_resilient_sample_from_folder,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -132,3 +134,53 @@ def test_split_by_quality_empty():
     clean, partial = split_by_quality([])
     assert clean == []
     assert partial == []
+
+
+# ── P1 regression: streaming reservoir sampler ──────────────────────────────
+
+
+def test_streaming_reservoir_sample_bounds_memory(tmp_path):
+    """P1 regression: streaming sampler holds at most n events in memory."""
+    # Write 1000 events to folder
+    ndjson = tmp_path / "events.ndjson"
+    lines = [json.dumps({"id": i}) for i in range(1000)]
+    ndjson.write_text("\n".join(lines))
+
+    # Sample 50 — should return exactly 50, never load all 1000
+    sample, total = streaming_reservoir_sample_from_folder(str(tmp_path), n=50)
+    assert len(sample) == 50
+    assert total == 1000
+
+
+def test_streaming_reservoir_sample_small_file(tmp_path):
+    """When file has fewer events than n, all are returned."""
+    ndjson = tmp_path / "events.ndjson"
+    lines = [json.dumps({"id": i}) for i in range(10)]
+    ndjson.write_text("\n".join(lines))
+
+    sample, total = streaming_reservoir_sample_from_folder(str(tmp_path), n=500)
+    assert len(sample) == 10
+    assert total == 10
+
+
+def test_streaming_reservoir_sample_empty_folder(tmp_path):
+    """Empty folder returns empty sample."""
+    sample, total = streaming_reservoir_sample_from_folder(str(tmp_path), n=50)
+    assert sample == []
+    assert total == 0
+
+
+def test_streaming_resilient_separates_clean_and_partial(tmp_path):
+    """Streaming resilient sampler separates clean and partial events."""
+    ndjson = tmp_path / "events.ndjson"
+    lines = [
+        '{"id": 1, "name": "clean"}',
+        'NOT_JSON but has "id": 2',  # will be partial extracted
+        '{"id": 3, "name": "also_clean"}',
+    ]
+    ndjson.write_text("\n".join(lines))
+
+    clean, partial, total, stats = streaming_resilient_sample_from_folder(str(tmp_path), n=100)
+    assert len(clean) == 2
+    assert stats["parsed_clean"] == 2
+    assert total == len(clean) + len(partial)

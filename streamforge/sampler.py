@@ -163,6 +163,118 @@ def reservoir_sample(events: list[dict], n: int = 500) -> list[dict]:
     return reservoir
 
 
+def _iter_events_from_folder(folder_path: str):
+    """Yield (event_dict,) from all NDJSON/JSON files in folder. No buffering."""
+    folder = Path(folder_path)
+    files = sorted(
+        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
+    )
+    for file_path in files:
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                        if isinstance(event, dict):
+                            yield event
+                    except json.JSONDecodeError:
+                        pass
+        except OSError:
+            pass
+
+
+def streaming_reservoir_sample_from_folder(
+    folder_path: str,
+    n: int = 500,
+) -> tuple[list[dict], int]:
+    """Load and sample in one pass — O(n) memory instead of O(total).
+
+    Returns (sampled_events, total_event_count).
+    Uses Algorithm R: maintain a reservoir of size n, replacing elements
+    with decreasing probability as more events stream in.
+    """
+    reservoir: list[dict] = []
+    count = 0
+    for event in _iter_events_from_folder(folder_path):
+        count += 1
+        if count <= n:
+            reservoir.append(event)
+        else:
+            j = random.randint(0, count - 1)
+            if j < n:
+                reservoir[j] = event
+
+    logger.info(
+        "Streaming sample: %d events selected from %d total (folder: %s)",
+        len(reservoir), count, folder_path,
+    )
+    return reservoir, count
+
+
+def streaming_resilient_sample_from_folder(
+    folder_path: str,
+    n: int = 500,
+) -> tuple[list[dict], list[dict], int, dict]:
+    """Streaming resilient load + sample — O(n) memory.
+
+    Returns (clean_sample, partial_sample, total_count, parse_stats).
+    Clean and partial events are sampled independently into separate reservoirs.
+    """
+    folder = Path(folder_path)
+    files = sorted(
+        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
+    )
+
+    clean_reservoir: list[dict] = []
+    partial_reservoir: list[dict] = []
+    clean_count = 0
+    partial_count = 0
+    stats = {"total_lines": 0, "parsed_clean": 0, "parsed_partial": 0, "skipped": 0}
+
+    for file_path in files:
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                for line in f:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    stats["total_lines"] += 1
+                    obj, confidence = parse_resilient(stripped)
+                    if confidence == 1.0:
+                        stats["parsed_clean"] += 1
+                        clean_count += 1
+                        if clean_count <= n:
+                            clean_reservoir.append(obj)
+                        else:
+                            j = random.randint(0, clean_count - 1)
+                            if j < n:
+                                clean_reservoir[j] = obj
+                    elif confidence >= 0.5:
+                        stats["parsed_partial"] += 1
+                        obj["_partial_extract"] = True
+                        partial_count += 1
+                        if partial_count <= n:
+                            partial_reservoir.append(obj)
+                        else:
+                            j = random.randint(0, partial_count - 1)
+                            if j < n:
+                                partial_reservoir[j] = obj
+                    else:
+                        stats["skipped"] += 1
+        except OSError as e:
+            logger.warning("Could not read file %s: %s", file_path, e)
+
+    logger.info(
+        "Streaming resilient sample: %d clean + %d partial from %d lines (%d files)",
+        len(clean_reservoir), len(partial_reservoir), stats["total_lines"], len(files),
+    )
+    total = clean_count + partial_count
+    return clean_reservoir, partial_reservoir, total, stats
+
+
 def flatten_nested(obj: dict, prefix: str = "", sep: str = ".") -> dict:
     """Flatten nested dicts to dot-notation. Arrays: flatten first element, mark as array."""
     result = {}

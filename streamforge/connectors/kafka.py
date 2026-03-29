@@ -249,9 +249,9 @@ class KafkaConnector(StreamConnector):
             if msg.error():
                 err = msg.error()
                 if err.code() == KafkaError._PARTITION_EOF:
-                    # End of partition — normal condition when reading historical data
+                    # End of one partition — other partitions may still have data
                     logger.debug("Reached end of partition %s", msg.partition())
-                    break
+                    continue
                 logger.error("Kafka error: %s", err)
                 break
 

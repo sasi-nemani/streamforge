@@ -351,3 +351,155 @@ def test_passport_number_still_detected():
 
     categories = detect_pii("passport_number", ["A1234567", "B9876543"])
     assert PIICategory.PASSPORT in categories
+
+
+def test_load_schema_survives_invalid_pii_category(tmp_path):
+    """H1 regression: invalid PII category in schema.yaml must not crash load_schema."""
+    import yaml
+    from streamforge.schema_writer import load_schema
+    from streamforge.models import PIICategory
+
+    schema_path = tmp_path / "schema.yaml"
+    doc = {
+        "stream": "test_stream",
+        "version": "1.0.0",
+        "inferred_at": "2026-01-01T00:00:00Z",
+        "event_count_sampled": 100,
+        "inference_model": "test",
+        "inference_confidence": 0.9,
+        "fields": [
+            {
+                "path": "user.email",
+                "type": "email",
+                "pii": ["email", "INVALID_CATEGORY", "phone"],
+            },
+            {
+                "path": "amount",
+                "type": "float",
+                "pii": [],
+            },
+        ],
+    }
+    schema_path.write_text(yaml.dump(doc))
+
+    # Must not crash — invalid category is skipped
+    schema = load_schema(str(schema_path))
+    email_field = [f for f in schema.fields if f.path == "user.email"][0]
+
+    # Valid categories are preserved as proper enums
+    assert PIICategory.EMAIL in email_field.pii_categories
+    assert PIICategory.PHONE in email_field.pii_categories
+
+    # Invalid category is dropped (not 3 items, only 2)
+    assert len(email_field.pii_categories) == 2
+
+    # All items are proper PIICategory enums, not raw strings
+    for p in email_field.pii_categories:
+        assert isinstance(p, PIICategory)
+
+
+def test_field_schema_clamps_nan_to_zero():
+    """H5 regression: NaN in presence_rate or confidence must not propagate."""
+    import math
+    from streamforge.models import FieldSchema, FieldType
+
+    f = FieldSchema(
+        name="x", path="x", field_type=FieldType.STRING,
+        presence_rate=float("nan"), confidence=float("nan"),
+    )
+    assert f.presence_rate == 0.0
+    assert f.confidence == 0.0
+    assert not math.isnan(f.presence_rate)
+    assert not math.isnan(f.confidence)
+
+
+def test_field_schema_clamps_inf_to_zero():
+    """H5 regression: inf values must not propagate."""
+    from streamforge.models import FieldSchema, FieldType
+
+    f = FieldSchema(
+        name="x", path="x", field_type=FieldType.STRING,
+        presence_rate=float("inf"), confidence=float("-inf"),
+    )
+    assert f.presence_rate == 0.0
+    assert f.confidence == 0.0
+
+
+def test_field_schema_clamps_out_of_range():
+    """H5 regression: values outside [0, 1] must be clamped."""
+    from streamforge.models import FieldSchema, FieldType
+
+    f = FieldSchema(
+        name="x", path="x", field_type=FieldType.STRING,
+        presence_rate=-0.5, confidence=1.5,
+    )
+    assert f.presence_rate == 0.0
+    assert f.confidence == 1.0
+
+
+def test_inferred_schema_clamps_confidence():
+    """H5 regression: InferredSchema.inference_confidence is bounded."""
+    import math
+    from streamforge.models import FieldSchema, FieldType, InferredSchema
+
+    schema = InferredSchema(
+        stream_name="test", inferred_at="now", event_count_sampled=10,
+        fields=[], inference_model="test", inference_confidence=float("nan"),
+    )
+    assert schema.inference_confidence == 0.0
+    assert not math.isnan(schema.inference_confidence)
+
+
+def test_load_schema_survives_invalid_field_type(tmp_path):
+    """H6 regression: invalid field type in schema.yaml must not crash load_schema."""
+    import yaml
+    from streamforge.schema_writer import load_schema
+
+    schema_path = tmp_path / "schema.yaml"
+    doc = {
+        "stream": "test_stream",
+        "version": "1.0.0",
+        "inferred_at": "2026-01-01T00:00:00Z",
+        "event_count_sampled": 100,
+        "inference_model": "test",
+        "inference_confidence": 0.9,
+        "fields": [
+            {"path": "good_field", "type": "string"},
+            {"path": "bad_field", "type": "INVALID_TYPE"},  # typo
+            {"path": "another_good", "type": "integer"},
+        ],
+    }
+    schema_path.write_text(yaml.dump(doc))
+
+    schema = load_schema(str(schema_path))
+    # Bad field is skipped, good fields are loaded
+    paths = [f.path for f in schema.fields]
+    assert "good_field" in paths
+    assert "another_good" in paths
+    assert "bad_field" not in paths
+    assert len(schema.fields) == 2
+
+
+def test_load_schema_survives_missing_path_key(tmp_path):
+    """H6 regression: field missing 'path' key must not crash load_schema."""
+    import yaml
+    from streamforge.schema_writer import load_schema
+
+    schema_path = tmp_path / "schema.yaml"
+    doc = {
+        "stream": "test_stream",
+        "version": "1.0.0",
+        "inferred_at": "2026-01-01T00:00:00Z",
+        "event_count_sampled": 100,
+        "inference_model": "test",
+        "inference_confidence": 0.9,
+        "fields": [
+            {"path": "good_field", "type": "string"},
+            {"type": "string"},  # missing path key
+        ],
+    }
+    schema_path.write_text(yaml.dump(doc))
+
+    schema = load_schema(str(schema_path))
+    assert len(schema.fields) == 1
+    assert schema.fields[0].path == "good_field"

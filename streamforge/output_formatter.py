@@ -6,6 +6,8 @@ All formatting logic lives here — keep __main__.py clean.
 """
 
 # Maps drift_type values to plain English descriptions
+from datetime import UTC
+
 DRIFT_TYPE_MESSAGES = {
     "field_removed": "field was removed",
     "field_added": "new field appeared",
@@ -82,8 +84,8 @@ def _humanize_type(field_type: str) -> str:
 
 def format_watch_tick(stream_name: str, events_sampled: int, is_clean: bool) -> str:
     """Format a watch loop tick line."""
-    from datetime import datetime, timezone
-    ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    from datetime import datetime
+    ts = datetime.now(UTC).strftime("%H:%M:%S")
     if is_clean:
         return f"[{ts}] ✓ {stream_name} — {events_sampled} events checked — no breaking changes"
     else:
@@ -92,8 +94,8 @@ def format_watch_tick(stream_name: str, events_sampled: int, is_clean: bool) -> 
 
 def format_drift_alert(stream_name: str, drifts: list, tier: int) -> str:
     """Format a drift detection alert for console output."""
-    from datetime import datetime, timezone
-    ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    from datetime import datetime
+    ts = datetime.now(UTC).strftime("%H:%M:%S")
     tier_label = DRIFT_TIER_LABELS.get(tier, (None, f"Tier {tier}"))[1]
     lines = [f"[{ts}] 🔴 {stream_name} — {tier_label}"]
     for d in drifts[:3]:  # show at most 3 drift items inline
@@ -115,7 +117,7 @@ def format_discover_panel(broker: str, monitored: list, unmonitored: list) -> st
     lines = [
         "",
         f"  {len(unmonitored)} of your {total} Kafka topics have NO schema contract.",
-        f"  Any producer change could silently break downstream consumers.",
+        "  Any producer change could silently break downstream consumers.",
         "",
         f"  ✓ Monitored ({len(monitored)}):    {monitored_str}",
         f"  ○ Unmonitored ({len(unmonitored)}):  {unmonitored_str}",

@@ -12,6 +12,7 @@ from .models import (
     FieldSchema,
     FieldType,
     InferredSchema,
+    PIICategory,
     StreamProfile,
 )
 
@@ -156,9 +157,12 @@ def write_schema(schema: InferredSchema, output_dir: str) -> str:
     )
 
     schema_path = out / "schema.yaml"
-    with open(schema_path, "w", encoding="utf-8") as f:
+    tmp_path = schema_path.with_suffix(".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
         f.write(header)
         yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        f.flush()
+    tmp_path.replace(schema_path)  # atomic on POSIX
 
     logger.info("Written schema: %s", schema_path)
     return str(schema_path)
@@ -402,18 +406,28 @@ def load_schema(schema_path: str) -> InferredSchema:
 
     fields = []
     for fd in doc.get("fields", []):
-        fields.append(FieldSchema(
-            name=fd["path"].split(".")[-1],
-            path=fd["path"],
-            field_type=FieldType(fd["type"]),
-            nullable=fd.get("nullable", False),
-            required=fd.get("required", True),
-            presence_rate=fd.get("presence_rate", 1.0),
-            enum_values=fd.get("enum_values"),
-            pii_categories=fd.get("pii", []),
-            confidence=fd.get("confidence", 1.0),
-            notes=fd.get("notes"),
-        ))
+        try:
+            # Validate PII categories — skip invalid values instead of crashing
+            pii_validated = []
+            for p in fd.get("pii", []):
+                try:
+                    pii_validated.append(PIICategory(p))
+                except ValueError:
+                    logger.warning("Unknown PII category '%s' in field '%s' — skipping", p, fd.get("path", "?"))
+            fields.append(FieldSchema(
+                name=fd["path"].split(".")[-1],
+                path=fd["path"],
+                field_type=FieldType(fd["type"]),
+                nullable=fd.get("nullable", False),
+                required=fd.get("required", True),
+                presence_rate=fd.get("presence_rate", 1.0),
+                enum_values=fd.get("enum_values"),
+                pii_categories=pii_validated,
+                confidence=fd.get("confidence", 1.0),
+                notes=fd.get("notes"),
+            ))
+        except (KeyError, ValueError) as e:
+            logger.warning("Skipping malformed field in schema.yaml: %s (field data: %s)", e, fd)
 
     return InferredSchema(
         stream_name=doc["stream"],
@@ -466,13 +480,16 @@ def save_drift_state(schema_dir: Path, state: DriftState) -> None:
     doc = {
         "stream_name": state.stream_name,
         "updated_at": state.updated_at,
-        "incidents": [inc.model_dump() for inc in state.incidents],
+        "incidents": [inc.model_dump(mode="json") for inc in state.incidents],
     }
     p = schema_dir / _DRIFT_STATE_FILE
-    with open(p, "w", encoding="utf-8") as f:
+    tmp = p.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
         f.write("# StreamForge Drift State — managed automatically by 'streamforge watch'\n")
         f.write("# Use 'streamforge accept' or 'streamforge suppress' to action incidents.\n\n")
         yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        f.flush()
+    tmp.replace(p)  # atomic on POSIX
     logger.debug("Saved drift state: %s", p)
 
 
