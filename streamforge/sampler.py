@@ -64,14 +64,14 @@ def load_events_resilient(folder_path: str) -> tuple[list[dict], dict]:
     """
     folder = Path(folder_path)
     files = sorted(
-        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
+        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file() and not f.name.startswith("._")]
     )
     events: list[dict] = []
     stats = {"total_lines": 0, "parsed_clean": 0, "parsed_partial": 0, "skipped": 0}
 
     for file_path in files:
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 for line in f:
                     stripped = line.strip()
                     if not stripped:
@@ -117,7 +117,7 @@ def load_events_from_folder(folder_path: str) -> list[dict]:
     """Load all .ndjson and .json files from folder (recursive), sorted by filename."""
     folder = Path(folder_path)
     files = sorted(
-        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
+        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file() and not f.name.startswith("._")]
     )
 
     events = []
@@ -126,7 +126,7 @@ def load_events_from_folder(folder_path: str) -> list[dict]:
     for file_path in files:
         file_events = 0
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
                     if not line:
@@ -167,11 +167,11 @@ def _iter_events_from_folder(folder_path: str):
     """Yield (event_dict,) from all NDJSON/JSON files in folder. No buffering."""
     folder = Path(folder_path)
     files = sorted(
-        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
+        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file() and not f.name.startswith("._")]
     )
     for file_path in files:
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -225,7 +225,9 @@ def streaming_resilient_sample_from_folder(
     """
     folder = Path(folder_path)
     files = sorted(
-        [f for f in folder.rglob("*") if f.suffix in (".ndjson", ".json") and f.is_file()]
+        f for f in folder.rglob("*")
+        if f.suffix in (".ndjson", ".json") and f.is_file()
+        and not f.name.startswith("._")  # skip macOS resource forks
     )
 
     clean_reservoir: list[dict] = []
@@ -236,7 +238,7 @@ def streaming_resilient_sample_from_folder(
 
     for file_path in files:
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 for line in f:
                     stripped = line.strip()
                     if not stripped:

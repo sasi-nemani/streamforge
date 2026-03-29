@@ -55,6 +55,7 @@ def _load_new_events(
     files = sorted(
         f for f in folder.rglob("*")
         if f.suffix in (".ndjson", ".json") and f.is_file()
+        and not f.name.startswith("._")
     )
     new_events: list[dict] = []
 
