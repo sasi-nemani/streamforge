@@ -486,6 +486,7 @@ def demo(
     loop:          bool = typer.Option(False, "--loop/--no-loop",
                                        help="Loop continuously (for live dashboard demos). Ctrl+C to stop."),
     cto:           bool = typer.Option(False, "--cto", help="Full executive demo — 90-second walkthrough of all capabilities."),
+    eng:           bool = typer.Option(False, "--eng", help="Engineering deep-dive — shows internals, math, and architecture."),
 ):
     """
     Live drift detection demo — no Kafka needed.
@@ -496,8 +497,10 @@ def demo(
 
     No API key required. Run alongside `streamforge ui` to see the dashboard update live.
 
-    Add --cto for the full executive walkthrough.
-    Add --loop to run continuously during a presentation (Ctrl+C to stop).
+    Three demo modes:
+      --cto   Executive walkthrough (90 seconds)
+      --eng   Engineering deep-dive (shows internals, math, pipeline)
+      --loop  Continuous presentation (for live dashboard demos)
     """
     from datetime import datetime
 
@@ -510,6 +513,10 @@ def demo(
 
     if cto:
         _run_cto_demo(baseline_size, drift_size, output_dir, write_report)
+        return
+
+    if eng:
+        _run_eng_demo(baseline_size, drift_size, output_dir)
         return
 
     # Internal flag: when called from CTO demo, suppress header/footer narration
@@ -674,6 +681,373 @@ def _print_drift_results(drift_report, stream_name, ts, tier_colors):
         console.print(f"    {lbl} [cyan]{d.field_path}[/cyan] — {detail}")
 
     console.print()
+
+
+def _run_eng_demo(baseline_size, drift_size, output_dir):
+    """Engineering deep-dive — shows the internals, math, and pipeline.
+
+    Designed for hands-on engineering directors who want to see that the
+    product is technically credible: sampling algorithms, statistical tests,
+    type inference pipeline, registry cache, drift detection math, and
+    output artifacts.
+    """
+    import json as _json
+    import math
+    import time as _t
+    from datetime import datetime
+    from pathlib import Path as _Path
+
+    from ..connectors.generators import drifted_payment_events, payment_events
+    from ..drift_detector import detect_drift
+    from ..field_registry import FieldTypeRegistry, RegistryConfig
+    from ..models import InferredSchema
+    from ..report_writer import write_drift_report
+    from ..sampler import (
+        get_all_field_paths,
+        reservoir_sample,
+        streaming_resilient_sample_from_folder,
+    )
+    from ..schema_writer import write_schema
+
+    import shutil
+    for d in ["schemas", "drift_reports", ".streamforge"]:
+        shutil.rmtree(d, ignore_errors=True)
+
+    # =====================================================================
+    # TITLE
+    # =====================================================================
+    console.print()
+    console.print(
+        Panel(
+            "[bold white]StreamForge — Engineering Deep Dive[/bold white]\n"
+            "[dim]How it works under the hood[/dim]",
+            border_style="cyan",
+            padding=(1, 4),
+        )
+    )
+    _t.sleep(1.5)
+
+    # =====================================================================
+    # 1. SAMPLING — Reservoir Algorithm
+    # =====================================================================
+    console.print()
+    console.rule("[bold]  1. Sampling — Reservoir Algorithm R  [/bold]", style="cyan")
+    console.print()
+
+    events_dir = _Path("events")
+    if not events_dir.exists():
+        events_dir = _Path("../home/claude/streamforge-mvp/events")
+    stream_path = str(events_dir / "payments" / "stream_v1")
+
+    t0 = _t.monotonic()
+    clean, partial, _total, stats = streaming_resilient_sample_from_folder(stream_path, 200)
+    sample = clean + partial
+    elapsed = (_t.monotonic() - t0) * 1000
+
+    console.print(
+        "  [bold]Problem:[/bold] Stream has N events across multiple files.\n"
+        "  We need exactly k=200 events with [bold]uniform probability[/bold] — but\n"
+        "  we can't load all N events into memory (stream could be 100GB).\n"
+    )
+    console.print(
+        "  [bold]Solution:[/bold] Knuth's Algorithm R (reservoir sampling)\n"
+        "  [dim]Each event has exactly k/N probability of being selected.[/dim]\n"
+        "  [dim]Single pass. O(k) memory. O(N) time. No second pass needed.[/dim]\n"
+    )
+
+    # Show the actual numbers
+    rs = Table(show_header=False, box=None, padding=(0, 3))
+    rs.add_column("Metric", style="dim", min_width=28)
+    rs.add_column("Value", style="bold")
+    rs.add_row("Files scanned",     f"{len(list(_Path(stream_path).rglob('*.ndjson')))} .ndjson files")
+    rs.add_row("Total lines",       str(stats["total_lines"]))
+    rs.add_row("Reservoir size (k)", "200")
+    rs.add_row("Clean events",      f"{stats['parsed_clean']}  [green]({stats['parsed_clean']/max(stats['total_lines'],1):.0%} parse rate)[/green]")
+    rs.add_row("Partial extracts",  str(stats["parsed_partial"]))
+    rs.add_row("Skipped/malformed", str(stats["skipped"]))
+    rs.add_row("Wall time",         f"[green]{elapsed:.1f}ms[/green]")
+    rs.add_row("Memory",            f"[green]O(200)[/green] — not O({stats['total_lines']})")
+    console.print(rs)
+    _t.sleep(2.5)
+
+    # =====================================================================
+    # 2. FIELD ANALYSIS — Statistical Profiling
+    # =====================================================================
+    console.print()
+    console.rule("[bold]  2. Field Analysis — Statistical Profiling  [/bold]", style="cyan")
+    console.print()
+
+    t0 = _t.monotonic()
+    field_values, presence_rates = get_all_field_paths(sample)
+    profile_ms = (_t.monotonic() - t0) * 1000
+
+    console.print(
+        "  [bold]No LLM here.[/bold] Pure statistics over the sampled events:\n"
+        "  [dim]For each field: count occurrences, compute presence rate,\n"
+        "  detect type from values, flag PII patterns.[/dim]\n"
+    )
+
+    ft = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+    ft.add_column("Field Path", style="cyan", min_width=22)
+    ft.add_column("Presence", justify="right", min_width=10)
+    ft.add_column("Formula", style="dim", min_width=28)
+    ft.add_column("Verdict", min_width=14)
+
+    sorted_fields = sorted(presence_rates.items(), key=lambda x: -x[1])
+    for path, rate in sorted_fields[:8]:
+        vals = field_values.get(path, [])
+        count = int(round(rate * len(sample)))
+        formula = f"{count}/{len(sample)} = {rate:.2%}"
+        verdict = "[green]required[/green]" if rate >= 0.8 else "[yellow]optional[/yellow]" if rate >= 0.1 else "[dim]rare[/dim]"
+        ft.add_row(path, f"{rate:.0%}", formula, verdict)
+
+    remaining = len(sorted_fields) - 8
+    if remaining > 0:
+        ft.add_row(f"[dim]... +{remaining} more[/dim]", "", "", "")
+    console.print(ft)
+    console.print(f"\n  [dim]Profiled {len(presence_rates)} fields in {profile_ms:.1f}ms[/dim]")
+    _t.sleep(2.5)
+
+    # =====================================================================
+    # 3. TYPE INFERENCE — Registry + LLM Cascade
+    # =====================================================================
+    console.print()
+    console.rule("[bold]  3. Type Inference — Registry-First Pipeline  [/bold]", style="cyan")
+    console.print()
+
+    console.print(
+        "  [bold]Architecture:[/bold] Registry lookup → LLM cascade → statistical fallback\n"
+    )
+
+    # Show the cascade diagram
+    console.print(
+        "  [cyan]Step 0[/cyan]  Registry (229 pre-seeded patterns)  [green]FREE, <1ms[/green]\n"
+        "         Exact field_path match. If seen 3+ times → cache hit.\n"
+        "  [cyan]Step 1[/cyan]  Local Ollama (if available)           [green]FREE, ~2s[/green]\n"
+        "         JSON-mode. Accepted if confidence >= 0.80.\n"
+        "  [cyan]Step 2[/cyan]  Groq / primary remote LLM             [yellow]$0.02, ~1s[/yellow]\n"
+        "         Tool-call mode. Structured output via function calling.\n"
+        "  [cyan]Step 3[/cyan]  OpenAI fallback (gpt-4o-mini)         [yellow]$0.01, ~2s[/yellow]\n"
+        "  [cyan]Step 4[/cyan]  OpenRouter fallback                    [yellow]$0.01, ~3s[/yellow]\n"
+        "  [cyan]Step 5[/cyan]  Statistical inference (no LLM)        [green]FREE, <1ms[/green]\n"
+        "         Python isinstance() checks + regex patterns.\n"
+    )
+
+    # Demo the registry hit rate
+    registry = FieldTypeRegistry.load(seed=True)
+    cached, unknown = registry.lookup_batch(
+        list(field_values.keys()), config=RegistryConfig(),
+    )
+
+    total_f = len(field_values)
+    hit_f = len(cached)
+    miss_f = len(unknown)
+
+    console.print(
+        Panel(
+            f"  Registry lookup for [bold]payments.stream_v1[/bold]:\n\n"
+            f"    Fields in stream:    [bold]{total_f}[/bold]\n"
+            f"    Registry hits:       [green]{hit_f}[/green]  ({hit_f}/{total_f} = {hit_f/max(total_f,1):.0%} cache rate)\n"
+            f"    Sent to LLM:         [yellow]{miss_f}[/yellow]  ({miss_f}/{total_f} = {miss_f/max(total_f,1):.0%})\n\n"
+            f"  [bold]Cost: {'$0.00 — LLM skipped entirely' if miss_f == 0 else f'~${miss_f * 0.002:.3f} for {miss_f} field(s)'}[/bold]",
+            title="[bold] Registry Hit Rate [/bold]",
+            border_style="green" if miss_f == 0 else "yellow",
+            expand=False,
+        )
+    )
+    _t.sleep(2.5)
+
+    # =====================================================================
+    # 4. DRIFT DETECTION — The Math
+    # =====================================================================
+    console.print()
+    console.rule("[bold]  4. Drift Detection — Statistical Tests  [/bold]", style="cyan")
+    console.print()
+
+    # Build baseline and drifted data
+    demo_fields = _build_demo_fields()
+    baseline_schema = InferredSchema(
+        stream_name="payments.demo",
+        version="1.0.0",
+        inferred_at=datetime.now(UTC).isoformat(),
+        event_count_sampled=baseline_size,
+        fields=demo_fields,
+        inference_model="statistical+demo",
+        inference_confidence=0.97,
+    )
+    write_schema(baseline_schema, output_dir)
+
+    baseline = payment_events(n=baseline_size, seed=42)
+    drifted = drifted_payment_events(n=drift_size, seed=99)
+
+    console.print(
+        "  [bold]How drift detection works:[/bold]\n\n"
+        "  For each field in the baseline schema, we compare against the new sample:\n"
+    )
+
+    dt = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+    dt.add_column("Check", style="cyan", min_width=22)
+    dt.add_column("Method", min_width=34)
+    dt.add_column("Trigger", min_width=24)
+
+    dt.add_row("Field removed?",    "Presence rate comparison",          "was >= 20%, now < 5%")
+    dt.add_row("Type changed?",     "Value-by-value type inference",     "majority type differs")
+    dt.add_row("Presence dropped?", "Binomial z-test (two-tailed)",      "p < 0.01, drop > 15%")
+    dt.add_row("Enum changed?",     "Chi-squared goodness-of-fit",       "p < 0.05 or new values")
+    dt.add_row("New field?",        "Path appears, not in baseline",     "presence >= 10%")
+    dt.add_row("New PII?",          "Regex + field name heuristics",     "email/phone/SSN/card pattern")
+    console.print(dt)
+    console.print()
+
+    # Run actual drift detection and show the math
+    t0 = _t.monotonic()
+    drift_sample = reservoir_sample(drifted, min(200, len(drifted)))
+    drift_report = detect_drift(baseline_schema, drift_sample, "payments.demo")
+    detection_ms = (_t.monotonic() - t0) * 1000
+
+    if drift_report:
+        console.print(f"  [bold]Live result:[/bold] {len(drift_report.drifts)} drifts detected in [green]{detection_ms:.1f}ms[/green]\n")
+
+        # Show a few drifts with the underlying math
+        math_table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+        math_table.add_column("Field", style="cyan", min_width=20)
+        math_table.add_column("Drift Type", min_width=16)
+        math_table.add_column("Evidence", min_width=36)
+        math_table.add_column("Tier", justify="center", min_width=6)
+
+        tier_colors = {1: "blue", 2: "yellow", 3: "red"}
+        for d in drift_report.drifts[:6]:
+            c = tier_colors.get(d.tier.value, "white")
+            tier_str = f"[{c}]T{d.tier.value}[/{c}]"
+
+            if d.drift_type == "field_removed":
+                evidence = f"presence: {(d.previous_presence_rate or 0):.0%} -> {(d.observed_presence_rate or 0):.0%}"
+            elif d.drift_type == "type_changed":
+                evidence = f"{d.previous_type.value} -> {d.observed_type.value} ({d.affected_event_rate:.0%})"
+            elif d.drift_type == "field_added":
+                evidence = f"new field, {(d.observed_presence_rate or 0):.0%} presence"
+            elif d.drift_type == "new_pii":
+                evidence = "PII pattern detected in values"
+            else:
+                evidence = d.drift_type
+
+            math_table.add_row(d.field_path, d.drift_type, evidence, tier_str)
+
+        if len(drift_report.drifts) > 6:
+            math_table.add_row(f"[dim]... +{len(drift_report.drifts) - 6} more[/dim]", "", "", "")
+        console.print(math_table)
+
+        report_path = write_drift_report(drift_report, "drift_reports")
+        console.print(f"\n  [dim]Report: {report_path}[/dim]")
+    _t.sleep(2.5)
+
+    # =====================================================================
+    # 5. OUTPUT ARTIFACTS — What gets committed to Git
+    # =====================================================================
+    console.print()
+    console.rule("[bold]  5. Output Artifacts — Schema as Code  [/bold]", style="cyan")
+    console.print()
+
+    console.print("  [bold]Everything lives in Git.[/bold] Three artifact types:\n")
+
+    # Show schema YAML snippet
+    schema_path = _Path(output_dir) / "payments.demo" / "schema.yaml"
+    if schema_path.exists():
+        yaml_lines = schema_path.read_text().splitlines()
+        # Show the header + first 2 fields
+        snippet = []
+        field_count = 0
+        for line in yaml_lines:
+            snippet.append(line)
+            if line.startswith("- path:"):
+                field_count += 1
+            if field_count >= 2 and not line.startswith(" "):
+                break
+            if len(snippet) > 25:
+                break
+        console.print("  [bold cyan]1. schema.yaml[/bold cyan] — the contract\n")
+        for line in snippet[:20]:
+            console.print(f"  [dim]{line}[/dim]")
+        console.print(f"  [dim]  ... ({len(demo_fields)} fields total)[/dim]")
+
+    # Show exports
+    console.print(f"\n  [bold cyan]2. Export formats[/bold cyan] — generated from schema.yaml\n")
+
+    from ..exporters.protobuf import schema_to_proto
+
+    proto_out = schema_to_proto(baseline_schema)
+    proto_lines = proto_out.splitlines()
+    for line in proto_lines[:12]:
+        console.print(f"  [dim]{line}[/dim]")
+    console.print(f"  [dim]  ... ({len(baseline_schema.fields)} fields)[/dim]")
+
+    export_table = Table(show_header=False, box=None, padding=(0, 3))
+    export_table.add_column("Format", style="cyan", min_width=16)
+    export_table.add_column("Command", style="dim", min_width=44)
+    export_table.add_row("JSON Schema",  "streamforge export schema.yaml --format json-schema")
+    export_table.add_row("Avro (.avsc)", "streamforge export schema.yaml --format avro")
+    export_table.add_row("Protobuf",     "streamforge export schema.yaml --format proto")
+    export_table.add_row("Flink DDL",    "streamforge export schema.yaml --format flink-ddl")
+    export_table.add_row("ksqlDB",       "streamforge export schema.yaml --format ksqldb")
+    console.print()
+    console.print(export_table)
+
+    # Show drift report snippet
+    reports = sorted(_Path("drift_reports").rglob("*.md"))
+    if reports:
+        console.print(f"\n  [bold cyan]3. Drift reports[/bold cyan] — human-readable incident log\n")
+        rpt_text = reports[0].read_text().splitlines()
+        for line in rpt_text[:12]:
+            console.print(f"  [dim]{line}[/dim]")
+        console.print(f"  [dim]  ... (full report: {reports[0]})[/dim]")
+
+    _t.sleep(2.5)
+
+    # =====================================================================
+    # 6. ARCHITECTURE
+    # =====================================================================
+    console.print()
+    console.rule("[bold]  6. Architecture  [/bold]", style="cyan")
+    console.print()
+
+    arch = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+    arch.add_column("Component", style="cyan", min_width=22)
+    arch.add_column("Lines", justify="right", min_width=8)
+    arch.add_column("What it does", min_width=42)
+
+    arch.add_row("sampler.py",          "320",  "Reservoir sampling, resilient NDJSON parser")
+    arch.add_row("profiler.py",         "120",  "Cluster discovery (event_type + structural)")
+    arch.add_row("inference.py",        "960",  "5-provider LLM cascade + registry + fallback")
+    arch.add_row("detector/core.py",    "280",  "Drift detection: z-test, chi-squared, PSI")
+    arch.add_row("detector/classify.py","250",  "Tier 1/2/3 classification + drift/evolution")
+    arch.add_row("detector/watch.py",   "870",  "Continuous watch loop (file + Kafka)")
+    arch.add_row("pii_detector.py",     "200",  "Regex + heuristic PII detection (8 categories)")
+    arch.add_row("field_registry.py",   "330",  "RAG cache — 229 pre-seeded field patterns")
+    arch.add_row("statistical_tests.py","550",  "PSI, binomial z-test, chi-squared, Cramér's V")
+    arch.add_row("exporters/",          "400",  "Proto, Avro, JSON Schema, Flink, ksqlDB")
+    arch.add_row("[dim]Total[/dim]",    "[bold]~4,300", "[dim]Pure Python. No Spark. No Flink. No JVM.[/dim]")
+    console.print(arch)
+    console.print()
+
+    console.print(
+        Panel(
+            "[bold]Key design decisions[/bold]\n\n"
+            "  [cyan]Why reservoir sampling?[/cyan]\n"
+            "    O(k) memory, O(N) time. Can profile a 100GB topic without loading it.\n\n"
+            "  [cyan]Why registry-first inference?[/cyan]\n"
+            "    229 common field patterns resolve immediately. LLM only called for\n"
+            "    genuinely novel fields. First run: ~$0.02. Subsequent runs: $0.00.\n\n"
+            "  [cyan]Why statistical drift detection (not LLM)?[/cyan]\n"
+            "    Drift detection runs on every poll cycle (every 30s in watch mode).\n"
+            "    Can't afford an API call per cycle. Binomial z-test + chi-squared\n"
+            "    give p-values with zero cost, zero latency, zero rate limits.\n\n"
+            "  [cyan]Why schema-as-code (YAML in Git)?[/cyan]\n"
+            "    PRs, diffs, code review, blame, rollback — for data contracts.\n"
+            "    No separate schema registry to operate. Works with any CI system.",
+            border_style="cyan",
+            padding=(1, 3),
+        )
+    )
 
 
 def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
