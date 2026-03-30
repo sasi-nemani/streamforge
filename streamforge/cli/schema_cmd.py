@@ -355,13 +355,14 @@ def profile(
             for p, r in mixed[:10]:
                 console.print(f"  [red]•[/red] [cyan]{p}[/cyan] ({r:.0%})")
 
-    # Per-cluster field tables
-    display_clusters = real_clusters if n_clusters > 1 else {stream_name: sample}
-    for cid, cluster_events in display_clusters.items():
-        clean_evts = [{k: v for k, v in e.items() if not k.startswith("_")} for e in cluster_events]
-        field_values, presence_rates = get_all_field_paths(clean_evts)
-        console.print()
-        _render_cluster_fields(field_values, presence_rates, cid)
+    # Per-cluster field tables (skip when top=0 for compact fleet view)
+    if top > 0:
+        display_clusters = real_clusters if n_clusters > 1 else {stream_name: sample}
+        for cid, cluster_events in display_clusters.items():
+            clean_evts = [{k: v for k, v in e.items() if not k.startswith("_")} for e in cluster_events]
+            field_values, presence_rates = get_all_field_paths(clean_evts)
+            console.print()
+            _render_cluster_fields(field_values, presence_rates, cid)
 
 
 def validate(

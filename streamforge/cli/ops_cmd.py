@@ -512,20 +512,24 @@ def demo(
         _run_cto_demo(baseline_size, drift_size, output_dir, write_report)
         return
 
+    # Internal flag: when called from CTO demo, suppress header/footer narration
+    _from_cto = getattr(demo, "_from_cto", False)
+
     STREAM_NAME = "payments.demo"
     tier_colors = {1: "yellow", 2: "orange3", 3: "red"}
 
-    console.rule("[bold]StreamForge Live Demo[/bold]")
-    console.print(
-        "\n[bold]Scenario:[/bold] A payments microservice just deployed at 2:17am.\n"
-        "A developer renamed [cyan]amount[/cyan] to [cyan]amount_minor_units[/cyan] "
-        "(dollars → integer cents), changed the timestamp format, and accidentally\n"
-        "started logging [red]card_last_four[/red] — a PII field not in the baseline schema.\n"
-        "\nStreamForge catches it before any consumer breaks.\n"
-    )
+    if not _from_cto:
+        console.rule("[bold]StreamForge Live Demo[/bold]")
+        console.print(
+            "\n[bold]Scenario:[/bold] A payments microservice just deployed at 2:17am.\n"
+            "A developer renamed [cyan]amount[/cyan] to [cyan]amount_minor_units[/cyan] "
+            "(dollars → integer cents), changed the timestamp format, and accidentally\n"
+            "started logging [red]card_last_four[/red] — a PII field not in the baseline schema.\n"
+            "\nStreamForge catches it before any consumer breaks.\n"
+        )
     if loop:
         console.print("[dim]Running in loop mode (Ctrl+C to stop). Open 'streamforge ui' in another terminal.[/dim]\n")
-    time.sleep(1)
+    time.sleep(0.5 if _from_cto else 1)
 
     # -- Build baseline schema once -- reused across loop iterations
     demo_fields = _build_demo_fields()
@@ -606,13 +610,14 @@ def demo(
             console.print("\n[dim]Demo stopped.[/dim]")
     else:
         _run_one_cycle(1)
-        console.print(
-            "Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard.\n"
-            "Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode.\n\n"
-            "[bold]Try it on your real Kafka:[/bold]\n"
-            "  [cyan]streamforge init kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]\n"
-            "  [cyan]streamforge watch kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]"
-        )
+        if not _from_cto:
+            console.print(
+                "Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard.\n"
+                "Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode.\n\n"
+                "[bold]Try it on your real Kafka:[/bold]\n"
+                "  [cyan]streamforge init kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]\n"
+                "  [cyan]streamforge watch kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]"
+            )
 
 
 def _build_demo_fields():
@@ -761,7 +766,8 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
         if not _Path(spath).exists():
             continue
         try:
-            _profile_cmd(stream_path=spath, sample_size=50, top=5, show_values=False)
+            # top=0 shows header panels only (no field tables) for compact fleet view
+            _profile_cmd(stream_path=spath, sample_size=100, top=0, show_values=False)
         except (SystemExit, ClickExit):
             pass
         console.print()
@@ -800,12 +806,16 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
     )
     _t.sleep(2.0)
 
-    # Call the real demo command (non-cto path)
-    demo(
-        baseline_size=baseline_size, drift_size=drift_size,
-        output_dir=output_dir, write_report=write_report,
-        loop=False, cto=False,
-    )
+    # Call the real demo command (non-cto path, suppress header/footer narration)
+    demo._from_cto = True
+    try:
+        demo(
+            baseline_size=baseline_size, drift_size=drift_size,
+            output_dir=output_dir, write_report=write_report,
+            loop=False, cto=False,
+        )
+    finally:
+        demo._from_cto = False
     _t.sleep(2.0)
 
     # =====================================================================
