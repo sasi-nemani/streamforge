@@ -39,6 +39,11 @@ def init(
         None, "--push-to",
         help="Schema registry URL to push inferred schema (e.g. http://localhost:8081 for Confluent SR)",
     ),
+    quorum_votes: int = typer.Option(
+        0, "--quorum-votes", "-q",
+        help="Number of independent samples for quorum voting (0 = use STREAMFORGE_QUORUM_VOTES env, default 5). "
+             "Higher values increase type confidence. Use 10-20 for critical onboarding.",
+    ),
 ):
     """Infer schema from event stream. Produces profile.yaml, profile_report.md, and schema.yaml.
 
@@ -247,6 +252,7 @@ def init(
             api_key=key,
             model=effective_model,
             base_url=effective_base_url,
+            quorum_votes=quorum_votes if quorum_votes > 0 else None,
         )
         sub_schemas.append(sub)
         pii = [(f.path, f.pii_categories) for f in sub.fields if f.pii_categories]

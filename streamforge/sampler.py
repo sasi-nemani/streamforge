@@ -150,14 +150,23 @@ def load_events_from_folder(folder_path: str) -> list[dict]:
     return events
 
 
-def reservoir_sample(events: list[dict], n: int = 500) -> list[dict]:
-    """Algorithm R reservoir sampling. Returns n events sampled uniformly at random."""
+def reservoir_sample(events: list[dict], n: int = 500, seed: int | None = None) -> list[dict]:
+    """Algorithm R reservoir sampling. Returns n events sampled uniformly at random.
+
+    Args:
+        events: Full event list to sample from.
+        n: Reservoir size (number of events to keep).
+        seed: Optional random seed for reproducible sampling (used by quorum voting
+              to get independent but deterministic samples).
+    """
     if len(events) <= n:
         return list(events)
 
-    reservoir = events[:n]
+    rng = random.Random(seed) if seed is not None else random
+
+    reservoir = list(events[:n])
     for i in range(n, len(events)):
-        j = random.randint(0, i)
+        j = rng.randint(0, i)
         if j < n:
             reservoir[j] = events[i]
     return reservoir
