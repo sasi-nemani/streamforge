@@ -256,3 +256,104 @@ class TestStartupConfigValidation:
                 stream_uri="kafka://events.payments",
                 schemas_dir="/nonexistent/readonly/path",
             )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6. REGISTRY UPDATE AUDIT LOGGING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestRegistryUpdateAudit:
+    """Every registry record() call must emit an audit event."""
+
+    def test_record_emits_audit_update_event(self):
+        """record() must call audit.log_registry_event('update', ...)."""
+        from unittest.mock import MagicMock
+
+        from streamforge import audit
+        from streamforge.field_registry import FieldTypeRegistry
+
+        original_fn = audit.log_registry_event
+        calls = []
+        audit.log_registry_event = lambda *a, **kw: calls.append((a, kw))
+
+        try:
+            registry = FieldTypeRegistry()
+            registry.record(
+                field_path="amount",
+                field_type="float",
+                confidence=0.90,
+                stream_name="events.payments",
+            )
+            update_calls = [c for c in calls if c[0][0] == "update"]
+            assert len(update_calls) == 1, f"Expected 1 update audit call, got {len(update_calls)}"
+            assert update_calls[0][1]["stream"] == "events.payments"
+        finally:
+            audit.log_registry_event = original_fn
+
+    def test_record_audit_includes_observation_count(self):
+        """Audit event must include the new observation_count after the bump."""
+        from unittest.mock import MagicMock
+
+        from streamforge import audit
+        from streamforge.field_registry import FieldTypeRegistry
+
+        original_fn = audit.log_registry_event
+        calls = []
+        audit.log_registry_event = lambda *a, **kw: calls.append((a, kw))
+
+        try:
+            registry = FieldTypeRegistry()
+            # First record: obs=1
+            registry.record("ts", "timestamp_epoch_ms", 0.90, "stream1")
+            # Second record: obs=2
+            registry.record("ts", "timestamp_epoch_ms", 0.90, "stream2")
+
+            update_calls = [c for c in calls if c[0][0] == "update"]
+            assert len(update_calls) == 2
+            # Second call should show observation_count=2
+            assert update_calls[1][1]["observation_count"] == 2
+        finally:
+            audit.log_registry_event = original_fn
+
+    def test_record_audit_includes_field_type(self):
+        """Audit event must include the field type being recorded."""
+        from streamforge import audit
+        from streamforge.field_registry import FieldTypeRegistry
+
+        original_fn = audit.log_registry_event
+        calls = []
+        audit.log_registry_event = lambda *a, **kw: calls.append((a, kw))
+
+        try:
+            registry = FieldTypeRegistry()
+            registry.record("user_email", "email", 0.95, "events.payments")
+            update_calls = [c for c in calls if c[0][0] == "update"]
+            assert update_calls[0][1]["cached_type"] == "email"
+        finally:
+            audit.log_registry_event = original_fn
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 7. KAFKA TOPIC RETENTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestKafkaRetentionConfig:
+    """Kafka topics should have configurable retention to prevent disk fill."""
+
+    def test_default_retention_hours_in_docker_compose(self):
+        """The Kafka docker-compose should set LOG_RETENTION_HOURS."""
+        from pathlib import Path
+        compose_path = Path(__file__).parent.parent / "deploy" / "two-vm.sh"
+        content = compose_path.read_text()
+        assert "KAFKA_LOG_RETENTION_HOURS" in content, (
+            "two-vm.sh must set KAFKA_LOG_RETENTION_HOURS to prevent unbounded growth"
+        )
+
+    def test_default_retention_bytes_in_docker_compose(self):
+        """The Kafka docker-compose should set LOG_RETENTION_BYTES."""
+        from pathlib import Path
+        compose_path = Path(__file__).parent.parent / "deploy" / "two-vm.sh"
+        content = compose_path.read_text()
+        assert "KAFKA_LOG_RETENTION_BYTES" in content, (
+            "two-vm.sh must set KAFKA_LOG_RETENTION_BYTES as a safety cap"
+        )

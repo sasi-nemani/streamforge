@@ -468,12 +468,15 @@ class FieldTypeRegistry:
         now = datetime.now(UTC).isoformat()
         existing = self._observations.get(field_path)
 
+        from . import audit
+
         if existing is not None:
             # Update: increment count, merge stream names, use latest confidence
             streams = list(set(existing.stream_names + [stream_name]))
             new_confidence = confidence
             merged_samples = (sample_values or [])[:5] if sample_values else existing.sample_values[:5]
             merged_pii = list(set(existing.pii_categories + (pii_categories or [])))
+            new_obs_count = existing.observation_count + 1
 
             self._observations[field_path] = FieldTypeObservation(
                 field_path=field_path,
@@ -481,11 +484,18 @@ class FieldTypeRegistry:
                 confidence=new_confidence,
                 last_seen=now,
                 stream_names=streams,
-                observation_count=existing.observation_count + 1,
+                observation_count=new_obs_count,
                 sample_values=merged_samples,
                 pii_categories=merged_pii,
                 nullable=nullable or existing.nullable,
                 notes=notes or existing.notes,
+            )
+
+            audit.log_registry_event(
+                "update", field_path,
+                cached_type=field_type,
+                observation_count=new_obs_count,
+                stream=stream_name,
             )
         else:
             self._observations[field_path] = FieldTypeObservation(
@@ -499,6 +509,13 @@ class FieldTypeRegistry:
                 pii_categories=pii_categories or [],
                 nullable=nullable,
                 notes=notes,
+            )
+
+            audit.log_registry_event(
+                "update", field_path,
+                cached_type=field_type,
+                observation_count=1,
+                stream=stream_name,
             )
 
     def record_from_schema(self, schema_fields: list[FieldSchema], stream_name: str) -> None:
