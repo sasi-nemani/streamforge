@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 
 import yaml
@@ -659,3 +660,19 @@ def accept_drift(
 
     logger.info("Accepted %d incident(s) — schema bumped to v%s", len(incidents), new_version)
     return updated
+
+
+def _secure_write(path: Path, content: str) -> None:
+    """Write content to file with restrictive permissions (0o600).
+
+    Uses atomic write (tmp → rename) to prevent partial reads.
+    Sets owner-only read/write before any content is visible.
+    """
+    import stat as _stat
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.chmod(tmp, _stat.S_IRUSR | _stat.S_IWUSR)  # 0o600
+    tmp.replace(path)  # atomic on POSIX

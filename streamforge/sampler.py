@@ -21,6 +21,11 @@ def parse_resilient(line: str) -> tuple[dict, float]:
     if not line:
         return {}, 0.0
 
+    # Guard: reject oversized lines before regex (prevents ReDoS)
+    _MAX_LINE_BYTES = 65_536  # 64KB
+    if len(line) > _MAX_LINE_BYTES:
+        return {}, 0.0
+
     # 1. Clean JSON
     try:
         obj = json.loads(line)
@@ -75,6 +80,9 @@ def load_events_resilient(folder_path: str) -> tuple[list[dict], dict]:
                 for line in f:
                     stripped = line.strip()
                     if not stripped:
+                        continue
+                    if len(stripped) > 65_536:
+                        stats["skipped"] += 1
                         continue
                     stats["total_lines"] += 1
                     obj, confidence = parse_resilient(stripped)
@@ -252,6 +260,9 @@ def streaming_resilient_sample_from_folder(
                     stripped = line.strip()
                     if not stripped:
                         continue
+                    if len(stripped) > 65_536:
+                        stats["skipped"] += 1
+                        continue
                     stats["total_lines"] += 1
                     obj, confidence = parse_resilient(stripped)
                     if confidence == 1.0:
@@ -286,18 +297,31 @@ def streaming_resilient_sample_from_folder(
     return clean_reservoir, partial_reservoir, total, stats
 
 
-def flatten_nested(obj: dict, prefix: str = "", sep: str = ".") -> dict:
-    """Flatten nested dicts to dot-notation. Arrays: flatten first element, mark as array."""
+_MAX_FLATTEN_DEPTH = 10
+_MAX_FLATTEN_KEYS = 500
+
+
+def flatten_nested(obj: dict, prefix: str = "", sep: str = ".", _depth: int = 0) -> dict:
+    """Flatten nested dicts to dot-notation. Arrays: flatten first element, mark as array.
+
+    Safety bounds:
+      MAX_DEPTH = 10 — prevents stack overflow on pathological nesting
+      MAX_KEYS = 500 — prevents OOM on events with thousands of fields
+    """
+    if _depth > _MAX_FLATTEN_DEPTH:
+        return {}
+
     result = {}
     for key, value in obj.items():
+        if len(result) >= _MAX_FLATTEN_KEYS:
+            break
         full_key = f"{prefix}{sep}{key}" if prefix else key
         if isinstance(value, dict):
-            result.update(flatten_nested(value, full_key, sep))
+            result.update(flatten_nested(value, full_key, sep, _depth + 1))
         elif isinstance(value, list):
-            result[full_key] = value  # keep as list so callers can detect array type
+            result[full_key] = value
             if value and isinstance(value[0], dict):
-                # Flatten first element with [] notation
-                result.update(flatten_nested(value[0], f"{full_key}[]", sep))
+                result.update(flatten_nested(value[0], f"{full_key}[]", sep, _depth + 1))
         else:
             result[full_key] = value
     return result

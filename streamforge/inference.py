@@ -308,6 +308,52 @@ def _is_ollama_available() -> bool:
         return False
 
 
+def _scrub_event_for_prompt(event: dict) -> dict:
+    """Remove PII values from an event before including in an LLM prompt.
+
+    Preserves field structure and non-PII values. PII values are replaced
+    with type-safe placeholders like "[REDACTED:email]".
+    """
+    from .pii_detector import detect_pii
+    from .sampler import flatten_nested
+
+    flat = flatten_nested(event)
+    scrubbed_flat: dict[str, Any] = {}
+    for path, val in flat.items():
+        if val is not None and detect_pii(path, [val]):
+            cats = detect_pii(path, [val])
+            cat_label = cats[0].value if hasattr(cats[0], 'value') else str(cats[0])
+            scrubbed_flat[path] = f"[REDACTED:{cat_label}]"
+        else:
+            scrubbed_flat[path] = val
+
+    # Rebuild nested structure from flat keys
+    result: dict = {}
+    for path, val in scrubbed_flat.items():
+        parts = path.replace("[]", "").split(".")
+        target = result
+        for part in parts[:-1]:
+            if part not in target:
+                target[part] = {}
+            if isinstance(target[part], dict):
+                target = target[part]
+            else:
+                break
+        target[parts[-1]] = val
+
+    # Preserve top-level non-flattened keys that aren't nested
+    for k, v in event.items():
+        if k not in result and not isinstance(v, dict):
+            if detect_pii(k, [v] if v is not None else []):
+                cats = detect_pii(k, [v] if v is not None else [])
+                cat_label = cats[0].value if hasattr(cats[0], 'value') else str(cats[0])
+                result[k] = f"[REDACTED:{cat_label}]"
+            else:
+                result[k] = v
+
+    return result
+
+
 def build_inference_prompt(
     field_stats: dict[str, list],
     presence_rates: dict[str, float],
@@ -320,14 +366,21 @@ def build_inference_prompt(
     stat_lines.append(f"{'Field Path':<50} {'Presence':>8}  Sample Values")
     stat_lines.append("-" * 100)
 
+    from .pii_detector import detect_pii as _detect_pii
+
     stats_budget = MAX_PROMPT_CHARS // 2  # half the budget for field stats
     stats_chars = 0
     for included, path in enumerate(sorted_paths):
         values = field_stats[path]
         rate = presence_rates.get(path, 0.0)
+        # Scrub PII from field stat sample values
+        is_pii = bool(_detect_pii(path, [str(v) for v in values[:3]]))
         seen = []
         for v in values:
-            sv = str(v)[:60] if isinstance(v, str) else v
+            if is_pii:
+                sv = "[REDACTED]"
+            else:
+                sv = str(v)[:60] if isinstance(v, str) else v
             if sv not in seen:
                 seen.append(sv)
             if len(seen) >= 4:
@@ -341,11 +394,11 @@ def build_inference_prompt(
 
     stats_block = "\n".join(stat_lines)
 
-    # Add sample events with remaining budget
+    # Add sample events with remaining budget — PII-scrubbed
     event_lines = ["\n## Sample Events\n"]
     budget = MAX_PROMPT_CHARS - len(stats_block)
     for i, event in enumerate(sample_events):
-        serialised = json.dumps(event, indent=2)
+        serialised = json.dumps(_scrub_event_for_prompt(event), indent=2)
         if len(serialised) > budget:
             break
         event_lines.append(f"Event {i + 1}:\n{serialised}\n")

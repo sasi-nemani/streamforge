@@ -407,6 +407,8 @@ def validate_config(
     kafka_brokers: str = "",
     stream_uri: str = "",
     schemas_dir: str = "schemas",
+    kafka_security_protocol: str = "",
+    env: str = "",
 ) -> None:
     """Validate configuration before entering watch/init loop.
 
@@ -416,10 +418,14 @@ def validate_config(
         kafka_brokers: Kafka bootstrap servers (required for kafka:// URIs)
         stream_uri: Stream URI (kafka://topic or file path)
         schemas_dir: Output directory for schemas (must be writable)
+        kafka_security_protocol: Kafka security protocol (PLAINTEXT rejected in prod)
+        env: Environment name (dev/staging/prod)
 
     Raises:
         ConfigValidationError: If required config is missing or invalid.
     """
+    effective_env = env or os.environ.get("STREAMFORGE_ENV", "")
+
     # Kafka brokers required for kafka:// URIs
     is_kafka = stream_uri.startswith("kafka://")
     if is_kafka and not kafka_brokers.strip():
@@ -443,4 +449,12 @@ def validate_config(
             raise ConfigValidationError(
                 f"Schemas directory '{schemas_dir}' does not exist and parent "
                 f"'{parent}' is not writable."
+            )
+
+    # Kafka security: reject PLAINTEXT in production
+    if is_kafka and kafka_security_protocol.upper() == "PLAINTEXT":
+        if effective_env and effective_env not in ("dev", "development", "local", "test"):
+            raise ConfigValidationError(
+                "PLAINTEXT Kafka is not allowed in production. "
+                "Set KAFKA_SECURITY_PROTOCOL=SASL_SSL or STREAMFORGE_ENV=dev."
             )
