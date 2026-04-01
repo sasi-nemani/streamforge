@@ -94,7 +94,7 @@ def watch_stream(
         "Watching %s every %ds (schema: %s, mode: %s, window: %d, checkpoint: %s)",
         stream_path, poll_interval_seconds, schema_path, mode_note, window_capacity, checkpoint_path,
     )
-    print(
+    logger.info(
         f"[{datetime.now().strftime('%H:%M:%S')}] "
         f"Watching {stream_name} — {mode_note} — "
         f"window={window_capacity} events"
@@ -107,18 +107,18 @@ def watch_stream(
     # Load (or create) persistent watch state — survives restarts
     _wstate = _WatchState.load(stream_name)
     if _wstate.phase == "STABLE":
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
             f"Resumed in STABLE phase (stable since {_wstate.stable_since or 'unknown'})"
         )
     elif _wstate.phase == "STABILIZING":
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
             f"Resumed in STABILIZING phase "
             f"({_wstate.stability_clean_count}/3 clean cycles)"
         )
     else:
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
             f"Phase: LEARNING — {_wstate.warmup_remaining} observation cycle(s) before stabilization check"
         )
@@ -143,7 +143,7 @@ def watch_stream(
     checkpoint_events = _load_checkpoint(checkpoint_path)
     if checkpoint_events:
         window.add(checkpoint_events)
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
             f"Restored {len(checkpoint_events)} events from checkpoint"
         )
@@ -191,7 +191,7 @@ def watch_stream(
             now_str = datetime.now().strftime("%H:%M:%S")
 
             if len(window) < 10:
-                print(f"[{now_str}] \u25cb {stream_name} \u2014 warming up ({len(window)} events in window)")
+                logger.info(f"[{now_str}] o {stream_name} - warming up ({len(window)} events in window)")
                 if _shutdown.wait(poll_interval_seconds):
                     break
                 continue
@@ -216,10 +216,10 @@ def watch_stream(
                 _critical_in_learning = [d for d in all_detected if d.tier == DriftTier.TIER_3]
                 if not _critical_in_learning:
                     _sig_count = len(all_detected)
-                    print(
-                        f"[{now_str}] \u25cb {stream_name} \u2014 LEARNING "
+                    logger.info(
+                        f"[{now_str}] o {stream_name} - LEARNING "
                         f"({_wstate.warmup_remaining} cycle(s) remaining, "
-                        f"{_sig_count} signal(s) observed \u2014 suppressed)"
+                        f"{_sig_count} signal(s) observed - suppressed)"
                     )
                     _wstate.save()
                     if _shutdown.wait(poll_interval_seconds):
@@ -351,16 +351,16 @@ def watch_stream(
                     inc for inc in pruned
                     if inc.status == DriftIncidentStatus.OPEN
                 ])
-                print(
-                    f"[{now_str}] ~ {stream_name} \u2014 "
-                    f"{len(sample)} sampled / {len(window)} in window \u2014 "
-                    f"{ongoing_count} open incident(s) \u2014 run `streamforge status` or `streamforge accept`"
+                logger.info(
+                    f"[{now_str}] ~ {stream_name} - "
+                    f"{len(sample)} sampled / {len(window)} in window - "
+                    f"{ongoing_count} open incident(s) - run `streamforge status` or `streamforge accept`"
                 )
             else:
                 label = "all clusters clean" if multi_schema else "schema clean"
-                print(
-                    f"[{now_str}] \u2713 {stream_name} \u2014 "
-                    f"{len(sample)} sampled / {len(window)} in window \u2014 {label}"
+                logger.info(
+                    f"[{now_str}] \u2713 {stream_name} - "
+                    f"{len(sample)} sampled / {len(window)} in window - {label}"
                 )
 
             active_drift_sigs = current_sigs - non_actionable
@@ -389,7 +389,7 @@ def watch_stream(
         atexit.unregister(_emergency_save)
         signal.signal(signal.SIGTERM, prev_sigterm)
         signal.signal(signal.SIGINT, prev_sigint)
-        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Watch stopped — checkpoint saved.")
+        logger.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] Watch stopped — checkpoint saved.")
 
 
 # ---------------------------------------------------------------------------
@@ -436,9 +436,9 @@ async def _watch_kafka_async(
         if multi_schema else "single-schema"
     )
 
-    print(
+    logger.info(
         f"[{datetime.now().strftime('%H:%M:%S')}] "
-        f"Watching kafka://{topic} \u2014 {mode_note} \u2014 "
+        f"Watching kafka://{topic} - {mode_note} - "
         f"window={window_capacity} events"
     )
 
@@ -519,32 +519,32 @@ async def _watch_kafka_async(
             f"warmup_cycles: {_warmup_total}\n"
             f"stability_cycles: {_stability_needed}\n"
         )
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
-            f"\u2705 {stream_name} \u2014 SYSTEM STABLE \u2014 full drift alerting now active"
+            f"\u2705 {stream_name} - SYSTEM STABLE - full drift alerting now active"
         )
 
     if _phase == "STABLE":
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
             f"Resumed in STABLE phase (stable since {_kws.stable_since or 'unknown'})"
         )
     elif _phase == "STABILIZING":
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
             f"Resumed in STABILIZING phase ({_stability_clean_count}/{_stability_needed} clean cycles)"
         )
     else:
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
-            f"Phase: LEARNING \u2014 {_warmup_remaining} observation cycle(s) before stabilization check"
+            f"Phase: LEARNING - {_warmup_remaining} observation cycle(s) before stabilization check"
         )
 
     # Warm-start: restore rolling window from previous checkpoint
     checkpoint_events = _load_checkpoint(checkpoint_path)
     if checkpoint_events:
         window.add(checkpoint_events)
-        print(
+        logger.info(
             f"[{datetime.now().strftime('%H:%M:%S')}] "
             f"Restored {len(checkpoint_events)} events from checkpoint"
         )
@@ -558,7 +558,7 @@ async def _watch_kafka_async(
 
     try:
         async with KafkaConnector(topic, kafka_cfg) as conn:
-            print(
+            logger.info(
                 f"[{datetime.now().strftime('%H:%M:%S')}] "
                 f"Connected: {conn.source_id}"
             )
@@ -576,7 +576,7 @@ async def _watch_kafka_async(
                 now_str = datetime.now().strftime("%H:%M:%S")
 
                 if len(window) < 10:
-                    print(f"[{now_str}] \u25cb {stream_name} \u2014 warming up ({len(window)} events in window)")
+                    logger.info(f"[{now_str}] o {stream_name} - warming up ({len(window)} events in window)")
                     continue
 
                 sample = window.sample(sample_size)
@@ -593,9 +593,9 @@ async def _watch_kafka_async(
                     _critical = [r for r in _learning_reports if r.highest_tier == DriftTier.TIER_3]
                     if _critical:
                         for report in _critical:
-                            print(
-                                f"[{now_str}] \U0001f534 {stream_name} \u2014 TIER-3 CRITICAL during LEARNING "
-                                f"\u2014 alerting immediately (data integrity risk)"
+                            logger.info(
+                                f"[{now_str}] \U0001f534 {stream_name} - TIER-3 CRITICAL during LEARNING "
+                                f"- alerting immediately (data integrity risk)"
                             )
                             _print_drift_report(report, drift_output_dir, webhook_url)
                     else:
@@ -604,8 +604,8 @@ async def _watch_kafka_async(
                             f", {_non_critical_count} signal(s) observed (suppressed)"
                             if _non_critical_count else ""
                         )
-                        print(
-                            f"[{now_str}] \u25cb {stream_name} \u2014 LEARNING "
+                        logger.info(
+                            f"[{now_str}] o {stream_name} - LEARNING "
                             f"({_warmup_remaining} cycle(s) remaining, "
                             f"{len(window)} in window{_observed_note})"
                         )
@@ -613,8 +613,8 @@ async def _watch_kafka_async(
                     if _warmup_remaining <= 0:
                         _phase = "STABILIZING"
                         _stability_clean_count = 0
-                        print(
-                            f"[{now_str}] {stream_name} \u2014 LEARNING complete \u2192 entering STABILIZING phase "
+                        logger.info(
+                            f"[{now_str}] {stream_name} - LEARNING complete \u2192 entering STABILIZING phase "
                             f"(need {_stability_needed} consecutive clean cycles)"
                         )
 
@@ -635,23 +635,23 @@ async def _watch_kafka_async(
 
                     if _critical:
                         for report in _critical:
-                            print(
-                                f"[{now_str}] \U0001f534 {stream_name} \u2014 TIER-3 CRITICAL during STABILIZING "
-                                f"\u2014 alerting immediately"
+                            logger.info(
+                                f"[{now_str}] \U0001f534 {stream_name} - TIER-3 CRITICAL during STABILIZING "
+                                f"- alerting immediately"
                             )
                             _print_drift_report(report, drift_output_dir, webhook_url)
                         # Reset stability clock on critical drift
                         _stability_clean_count = 0
                     elif _significant:
-                        print(
-                            f"[{now_str}] \u26a1 {stream_name} \u2014 STABILIZING \u2014 Tier-2 drift observed, "
+                        logger.info(
+                            f"[{now_str}] \u26a1 {stream_name} - STABILIZING - Tier-2 drift observed, "
                             f"resetting clean-cycle counter (was {_stability_clean_count}/{_stability_needed})"
                         )
                         _stability_clean_count = 0
                     else:
                         _stability_clean_count += 1
-                        print(
-                            f"[{now_str}] \u25cb {stream_name} \u2014 STABILIZING "
+                        logger.info(
+                            f"[{now_str}] o {stream_name} - STABILIZING "
                             f"({_stability_clean_count}/{_stability_needed} clean cycles, "
                             f"{len(window)} in window)"
                         )
@@ -674,9 +674,9 @@ async def _watch_kafka_async(
 
                 if not reports:
                     _consec_drift_count = 0
-                    print(
-                        f"[{now_str}] \u2713 {stream_name} \u2014 "
-                        f"{len(sample)} sampled / {len(window)} in window \u2014 all clusters clean"
+                    logger.info(
+                        f"[{now_str}] \u2713 {stream_name} - "
+                        f"{len(sample)} sampled / {len(window)} in window - all clusters clean"
                     )
                 else:
                     # Split each report's drifts by drift_class before routing.
@@ -732,9 +732,9 @@ async def _watch_kafka_async(
                                 _print_drift_report(report, drift_output_dir, webhook_url)
                         else:
                             _total_drifts = sum(len(r.drifts) for r in _non_critical)
-                            print(
-                                f"[{now_str}] \u25cb {stream_name} \u2014 {_total_drifts} signal(s) observed "
-                                f"(cycle {_consec_drift_count}/{_consec_threshold} \u2014 suppressing until sustained)"
+                            logger.info(
+                                f"[{now_str}] o {stream_name} - {_total_drifts} signal(s) observed "
+                                f"(cycle {_consec_drift_count}/{_consec_threshold} - suppressing until sustained)"
                             )
 
                     # If all signals were evolution/noise (nothing left for DRIFT alert),
@@ -750,7 +750,7 @@ async def _watch_kafka_async(
         pass
     finally:
         _save_checkpoint(window, checkpoint_path)
-        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Watch stopped — checkpoint saved.")
+        logger.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] Watch stopped — checkpoint saved.")
 
 
 def watch_stream_kafka(
@@ -790,7 +790,7 @@ def watch_stream_kafka(
     import asyncio
     import sys
 
-    # Ensure print() output appears immediately even when stdout is redirected
+    # Ensure logger output appears immediately even when stdout is redirected
     # to a file (e.g. in demo.sh). Python uses block buffering for non-ttys;
     # reconfigure() switches to line-buffered mode for the duration of watch.
     try:

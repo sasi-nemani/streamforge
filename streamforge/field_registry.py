@@ -9,6 +9,7 @@ Persistence: .streamforge/field_registry.json
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -451,7 +452,19 @@ class FieldTypeRegistry:
         nullable: bool = False,
         notes: str | None = None,
     ) -> None:
-        """Record a new observation or update an existing one."""
+        """Record a new observation or update an existing one.
+
+        PII redaction: When pii_categories is non-empty, sample values are
+        replaced with redacted placeholders (e.g. "[REDACTED — pii: email]")
+        before persisting. Disable with STREAMFORGE_REDACT_PII=0 for debugging.
+        """
+        # Redact PII sample values before storing
+        if pii_categories and sample_values:
+            redact = os.environ.get("STREAMFORGE_REDACT_PII", "1") != "0"
+            if redact:
+                cat_label = pii_categories[0] if pii_categories else "pii"
+                sample_values = [f"[REDACTED — pii: {cat_label}]" for _ in sample_values[:5]]
+
         now = datetime.now(UTC).isoformat()
         existing = self._observations.get(field_path)
 

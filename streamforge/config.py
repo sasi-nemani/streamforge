@@ -393,3 +393,54 @@ def get() -> Config:
     if _default is None:
         _default = load()
     return _default
+
+
+# ── Startup validation ──────────────────────────────────────────────────────
+
+
+class ConfigValidationError(Exception):
+    """Raised when required configuration is missing or invalid."""
+    pass
+
+
+def validate_config(
+    kafka_brokers: str = "",
+    stream_uri: str = "",
+    schemas_dir: str = "schemas",
+) -> None:
+    """Validate configuration before entering watch/init loop.
+
+    Fail fast with a clear error rather than failing mid-operation.
+
+    Args:
+        kafka_brokers: Kafka bootstrap servers (required for kafka:// URIs)
+        stream_uri: Stream URI (kafka://topic or file path)
+        schemas_dir: Output directory for schemas (must be writable)
+
+    Raises:
+        ConfigValidationError: If required config is missing or invalid.
+    """
+    # Kafka brokers required for kafka:// URIs
+    is_kafka = stream_uri.startswith("kafka://")
+    if is_kafka and not kafka_brokers.strip():
+        raise ConfigValidationError(
+            "Kafka broker address is required for kafka:// streams. "
+            "Set KAFKA_BOOTSTRAP_SERVERS or pass --brokers."
+        )
+
+    # Schemas directory must be writable (or creatable)
+    schemas_path = Path(schemas_dir)
+    if schemas_path.exists():
+        if not os.access(schemas_path, os.W_OK):
+            raise ConfigValidationError(
+                f"Schemas directory '{schemas_dir}' is not writable. "
+                f"Check permissions or set --output to a writable path."
+            )
+    else:
+        # Check if parent exists and is writable (we'll need to create the dir)
+        parent = schemas_path.parent
+        if not parent.exists() or not os.access(parent, os.W_OK):
+            raise ConfigValidationError(
+                f"Schemas directory '{schemas_dir}' does not exist and parent "
+                f"'{parent}' is not writable."
+            )

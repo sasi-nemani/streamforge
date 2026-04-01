@@ -38,3 +38,4 @@ htmlcov/
 .idea/
 .vscode/
 *.swp
+site.txt

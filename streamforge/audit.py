@@ -50,7 +50,7 @@ def _ensure_configured() -> None:
         return
     _configured = True
 
-    enabled = os.environ.get("STREAMFORGE_AUDIT", "0") == "1"
+    enabled = os.environ.get("STREAMFORGE_AUDIT", "1") != "0"
     if not enabled:
         _audit_logger.setLevel(logging.CRITICAL + 1)  # effectively disabled
         return

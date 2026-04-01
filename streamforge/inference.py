@@ -16,6 +16,19 @@ from .pii_detector import detect_pii
 
 logger = logging.getLogger(__name__)
 
+# ── API key sanitization ────────────────────────────────────────────────────
+# Patterns that look like API keys — mask them before logging.
+_KEY_PATTERNS = re.compile(
+    r'(sk-proj-|sk-or-v1-|sk-|gsk_|key-)[a-zA-Z0-9_-]{8,}',
+    re.IGNORECASE,
+)
+
+
+def _sanitize_for_logging(msg: str) -> str:
+    """Mask API key patterns in log messages to prevent credential leakage."""
+    return _KEY_PATTERNS.sub(r'\1***', msg)
+
+
 # ── Small-cluster inference threshold ────────────────────────────────────────
 # Clusters with fewer than this many events skip the LLM and go straight to
 # statistical_inference(). LLMs produce low-quality output on tiny samples.
@@ -168,7 +181,9 @@ OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
 # Used when OPENROUTER_API_KEY is set and earlier providers fail.
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODELS = [
-    "arcee-ai/trinity-large-preview:free",  # json-mode, reliable on large prompts
+    # NOTE: Never use :free tier models for production streams — no SLA, no DPA.
+    # "arcee-ai/trinity-large-preview:free",  # REMOVED — no data processing agreement
+    "anthropic/claude-3.5-haiku",  # paid tier with SLA
 ]
 OPENROUTER_TIMEOUT_S = 60  # max wait per inference call
 
@@ -275,7 +290,17 @@ MAX_PROMPT_CHARS = 20_000  # ~5k tokens; leaves headroom for system prompt + res
 
 
 def _is_ollama_available() -> bool:
-    """Ping the local Ollama server. Returns True only if it responds within 2 s."""
+    """Ping the local Ollama server. Returns True only if it responds within 2 s.
+
+    Gated behind STREAMFORGE_ENV=dev — local 3B models are not reliable enough
+    for production schema inference. A confidently wrong baseline poisons all
+    future drift detection.
+    """
+    env = os.environ.get("STREAMFORGE_ENV", "")
+    if env and env != "dev":
+        logger.debug("Ollama skipped — STREAMFORGE_ENV=%s (only available in dev)", env)
+        return False
+
     try:
         resp = httpx.get(f"{_OLLAMA_HOST}/api/tags", timeout=2.0)
         return resp.status_code == 200
@@ -820,7 +845,7 @@ def _call_llm(
             return llm_fields, overall_confidence, event_type_values
 
         except Exception as e:
-            logger.warning("Inference attempt %d failed: %s", attempt + 1, e)
+            logger.warning("Inference attempt %d failed: %s", attempt + 1, _sanitize_for_logging(str(e)))
             if attempt < max_retries - 1:
                 messages.append({"role": "user", "content": f"Previous attempt failed: {e}. Please call submit_inferred_schema."})
 
@@ -900,7 +925,7 @@ def _call_llm_json_mode(
             return llm_fields, overall_confidence, event_type_values
 
         except Exception as e:
-            logger.warning("Inference attempt %d failed: %s", attempt + 1, e)
+            logger.warning("Inference attempt %d failed: %s", attempt + 1, _sanitize_for_logging(str(e)))
 
     return None, 0.8, []
 
