@@ -1,6 +1,6 @@
 # StreamForge Stream Profile — stream_v1
-# Profiled: 2026-03-24T13:06:42.073554+00:00
-# Events sampled: 300
+# Profiled: 2026-04-01T18:47:14.747202+00:00
+# Events sampled: 200
 # Parse success rate: 100.0%
 # Sub-schemas discovered: 1
 # Discovery method: single
@@ -9,8 +9,8 @@
 # Edit fields to declare corrections. Run 'streamforge watch' to detect drift.
 
 stream: stream_v1
-profiled_at: '2026-03-24T13:06:42.073554+00:00'
-total_events_sampled: 300
+profiled_at: '2026-04-01T18:47:14.747202+00:00'
+total_events_sampled: 200
 parse_success_rate: 1.0
 discovery_method: single
 routing_field: event_type
@@ -18,9 +18,9 @@ profile_model: llama-3.3-70b-versatile
 sub_schemas:
 - cluster_id: payment.processed
   detection_method: single
-  event_count: 300
+  event_count: 200
   sample_rate: 1.0
-  inference_confidence: 0.95
+  inference_confidence: 0.9
   top_keys:
   - event_id
   - event_type
@@ -40,109 +40,132 @@ sub_schemas:
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.99
-    notes: Unique identifier for the event
+    confidence: 1.0
+    notes: '[registry] Event envelope UUID'
   - path: event_type
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.99
-    notes: Type of event (e.g. payment.processed)
+    confidence: 1.0
+    notes: '[registry] Event type discriminator'
+  - path: timestamp
+    type: timestamp_epoch_ms
+    required: true
+    nullable: false
+    presence_rate: 1.0
+    confidence: 1.0
+    notes: '[registry] Unix epoch milliseconds'
   - path: transaction_id
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.99
-    notes: Unique identifier for the transaction
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
   - path: amount
-    type: float
+    type: mixed
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.99
-    notes: Amount of the transaction
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
   - path: currency
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.99
-    notes: Currency of the transaction
+    confidence: 1.0
+    notes: '[registry] ISO 4217 currency code'
   - path: status
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.99
-    notes: Status of the transaction (e.g. COMPLETED, FAILED)
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
   - path: payment_method
     type: string
     required: true
     nullable: false
     presence_rate: 1.0
-    confidence: 0.99
-    notes: Payment method used (e.g. APPLE_PAY, CARD)
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
   - path: user
     type: object
     required: true
     nullable: false
     presence_rate: 0.96
-    confidence: 0.99
+    confidence: 1.0
     notes: 'Nested object — contains: email, name, user_id'
   - path: user.user_id
     type: string
     required: true
     nullable: false
     presence_rate: 0.96
-    confidence: 0.99
-    notes: Unique identifier for the user
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
   - path: user.email
     type: email
     required: true
     nullable: false
     presence_rate: 0.96
-    confidence: 0.99
+    confidence: 1.0
     pii:
     - email
-    notes: Email address of the user
+    notes: '[registry] Resolved from field type registry'
   - path: user.name
     type: string
     required: true
     nullable: false
     presence_rate: 0.96
-    confidence: 0.99
+    confidence: 1.0
     pii:
     - name
-    notes: Name of the user
+    notes: '[registry] Resolved from field type registry'
   - path: metadata
     type: object
     required: true
     nullable: false
-    presence_rate: 0.895
-    confidence: 0.99
+    presence_rate: 0.9
+    confidence: 1.0
     notes: 'Nested object — contains: ip_address, region, user_agent'
   - path: metadata.ip_address
     type: string
     required: true
     nullable: false
-    presence_rate: 0.895
-    confidence: 0.99
+    presence_rate: 0.9
+    confidence: 1.0
     pii:
     - ip_address
-    notes: IP address of the user
+    notes: '[registry] Resolved from field type registry'
   - path: metadata.user_agent
     type: string
     required: true
     nullable: false
-    presence_rate: 0.895
-    confidence: 0.99
-    notes: User agent of the user
+    presence_rate: 0.9
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
   - path: metadata.region
     type: string
     required: true
     nullable: false
-    presence_rate: 0.895
-    confidence: 0.99
-    notes: Region of the user
+    presence_rate: 0.9
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
+  - path: user_id
+    type: string
+    required: false
+    nullable: false
+    presence_rate: 0.04
+    confidence: 1.0
+    notes: '[registry] Resolved from field type registry'
+  - path: user_email
+    type: email
+    required: false
+    nullable: false
+    presence_rate: 0.04
+    confidence: 1.0
+    pii:
+    - email
+    notes: '[registry] Resolved from field type registry'
