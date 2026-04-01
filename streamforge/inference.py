@@ -4,6 +4,7 @@ import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import httpx
 import yaml
@@ -486,19 +487,67 @@ def _correct_type_mismatches(
         (FieldType.FLOAT,   FieldType.INTEGER),
     }
 
+    from . import audit
+
     corrected = []
     for f in fields:
         samples = field_stats.get(f.path, [])
         if len(samples) >= 3:
             stat_type = _infer_field_type_from_values(samples)
+
+            # Audit: validate inferred type against sample values
+            matching = sum(1 for v in samples[:50] if _value_matches_type(v, f.field_type))
+            audit.log_validation(
+                field_path=f.path,
+                expected_type=f.field_type.value if hasattr(f.field_type, 'value') else str(f.field_type),
+                values_checked=min(len(samples), 50),
+                values_matching=matching,
+                mismatches=[v for v in samples[:10] if not _value_matches_type(v, f.field_type)][:3],
+            )
+
             if (f.field_type, stat_type) in SAFE_OVERRIDES:
                 logger.info(
                     "Type correction: %s %s → %s (statistical evidence from %d samples)",
                     f.path, f.field_type, stat_type, len(samples),
                 )
+                audit.log_type_correction(
+                    field_path=f.path,
+                    original_type=str(f.field_type),
+                    corrected_type=str(stat_type),
+                    reason=f"statistical override from {len(samples)} samples",
+                    sample_values=samples[:5],
+                )
                 f = f.model_copy(update={"field_type": stat_type})
         corrected.append(f)
     return corrected
+
+
+def _value_matches_type(value: Any, expected_type) -> bool:
+    """Check if a single value matches the expected field type."""
+    if value is None:
+        return True  # null is valid for any nullable field
+    ft = expected_type.value if hasattr(expected_type, 'value') else str(expected_type)
+    if ft == "timestamp_epoch_ms":
+        return isinstance(value, int) and 1_000_000_000_000 <= value <= 9_999_999_999_999
+    elif ft == "timestamp_iso8601":
+        return isinstance(value, str) and len(value) >= 10 and value[4:5] == "-"
+    elif ft == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    elif ft == "float":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    elif ft == "boolean":
+        return isinstance(value, bool)
+    elif ft == "string":
+        return isinstance(value, str)
+    elif ft == "uuid":
+        return isinstance(value, str) and len(value) == 36 and value[8] == "-"
+    elif ft == "email":
+        return isinstance(value, str) and "@" in value
+    elif ft == "array":
+        return isinstance(value, list)
+    elif ft == "object":
+        return isinstance(value, dict)
+    return True  # unknown type — don't reject
 
 
 def _check_field_coverage(
@@ -776,6 +825,8 @@ def infer_schema(
       4. OpenRouter — json-mode (if OPENROUTER_API_KEY is set)
       5. Statistical inference — last resort, no LLM needed
     """
+    from . import audit
+
     # ── 0. Field Type RAG Registry lookup ─────────────────────────────────────
     registry_config = RegistryConfig()
     registry_enabled = os.environ.get("STREAMFORGE_REGISTRY_ENABLED", "1") != "0"
@@ -798,6 +849,16 @@ def infer_schema(
                 for path, obs in cached.items():
                     rate = presence_rates.get(path, 1.0)
                     cached_fields.append(registry.to_field_schema(obs, presence_rate=rate))
+                    audit.log_type_decision(
+                        field_path=path, inferred_type=obs.field_type,
+                        source="registry", confidence=obs.confidence,
+                        sample_values=field_stats.get(path, [])[:5],
+                        stream=stream_name,
+                        notes=f"obs_count={obs.observation_count}",
+                    )
+
+                for path in unknown_paths:
+                    audit.log_registry_event("miss", path, stream=stream_name)
 
                 # Only send unknown fields to LLM
                 remaining_stats = {p: field_stats[p] for p in unknown_paths if p in field_stats}

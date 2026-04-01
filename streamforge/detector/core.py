@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import UTC, datetime
 
+from .. import audit
 from ..models import (
     DriftClass,
     DriftReport,
@@ -359,6 +360,29 @@ def detect_drift(
         summary_parts.append(f"{len(tier1)} non-breaking change(s)")
 
     summary = f"Detected {len(drifts)} drift event(s): " + "; ".join(summary_parts) + "."
+
+    # ── Audit: log per-field drift verdicts ─────────────────────────────────
+    for d in drifts:
+        audit.log_drift_check(
+            field_path=d.field_path,
+            check_type=d.drift_type,
+            verdict="drift",
+            details={
+                "tier": d.tier.value,
+                "drift_class": d.drift_class.value if d.drift_class else None,
+                "previous_presence": d.previous_presence_rate,
+                "observed_presence": d.observed_presence_rate,
+                "affected_rate": d.affected_event_rate,
+            },
+            stream=stream_name,
+        )
+    # Also log clean fields (no drift)
+    for path in baseline_by_path:
+        if path not in {d.field_path for d in drifts}:
+            audit.log_drift_check(
+                field_path=path, check_type="all", verdict="clean",
+                stream=stream_name,
+            )
 
     evolution_count = sum(1 for d in drifts if d.drift_class == DriftClass.EVOLUTION)
     noise_count = sum(1 for d in drifts if d.drift_class == DriftClass.NOISE)
