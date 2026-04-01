@@ -932,6 +932,12 @@ def infer_schema(
             deduped.append(f)
     deduped.reverse()
 
+    # ── 8b. Correct type mismatches on ALL fields (including registry-cached) ─
+    # The registry can hold stale types from other streams (e.g. wiki's ISO8601
+    # timestamp poisons payments' epoch_ms timestamp). Run correction on the
+    # full merged set against THIS stream's actual sample values.
+    deduped = _correct_type_mismatches(deduped, field_stats)
+
     # ── 9. Record all resolved fields back to registry ────────────────────────
     if registry is not None and registry_enabled:
         try:
