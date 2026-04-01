@@ -233,6 +233,7 @@ def accept(
     field: str | None = typer.Option(None, "--field", "-f", help="Accept only this field path (accepts all open if omitted)"),
     output_dir: str = typer.Option("schemas", "--output", "-o"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would change without writing. Safe to run anytime."),
 ):
     """Accept drift incidents — update schema.yaml and bump its version.
 
@@ -275,6 +276,13 @@ def accept(
             f"[cyan]{inc.field_path}[/cyan] — {inc.drift_type.replace('_', ' ')} "
             f"({inc.occurrences} occurrence(s))"
         )
+
+    if dry_run:
+        console.print(
+            f"\n[dim]--dry-run: Would update schema.yaml and bump version. "
+            f"No files will be written.[/dim]"
+        )
+        raise typer.Exit(0)
 
     if not yes:
         typer.confirm("\nThis will update schema.yaml and bump its version. Continue?", abort=True)

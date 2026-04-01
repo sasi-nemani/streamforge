@@ -33,7 +33,7 @@ def _cluster_key(event: dict) -> str:
             return val.strip()
     # Structural fingerprint: hash sorted top-level key names
     key_sig = "|".join(sorted(str(k) for k in visible))
-    h = hashlib.md5(key_sig.encode()).hexdigest()[:8]
+    h = hashlib.sha256(key_sig.encode()).hexdigest()[:12]
     return f"struct:{h}"
 
 

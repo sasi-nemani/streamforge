@@ -558,7 +558,14 @@ class FieldTypeRegistry:
         )
 
     def save(self, path: Path | None = None) -> None:
-        """Persist registry to JSON file."""
+        """Persist registry to JSON file with advisory file lock.
+
+        Uses fcntl.flock() to prevent concurrent init processes from
+        clobbering each other's updates. The lock is held only during
+        the write — read operations are lockless.
+        """
+        import fcntl
+
         target = path or DEFAULT_REGISTRY_PATH
         target.parent.mkdir(parents=True, exist_ok=True)
         data = {
@@ -569,9 +576,17 @@ class FieldTypeRegistry:
                 k: v.to_dict() for k, v in sorted(self._observations.items())
             },
         }
-        tmp = target.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
-        tmp.replace(target)  # atomic on POSIX
+
+        lock_path = target.with_suffix(".lock")
+        lock_fd = open(lock_path, "w")
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)  # exclusive lock
+            tmp = target.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+            tmp.replace(target)  # atomic on POSIX
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            lock_fd.close()
         logger.info("Field registry saved: %d entries → %s", len(self._observations), target)
 
     @staticmethod
