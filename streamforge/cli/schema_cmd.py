@@ -79,13 +79,36 @@ def plan(
         kafka_cfg = KafkaConfig(
             bootstrap_servers=broker_list,
             auto_offset_reset="earliest",
-            consumer_group=f"streamforge-plan-{topic}",
+            consumer_group=f"streamforge-plan-{topic}-{int(_time.time())}",
         )
         console.print(f"Consuming up to {sample_size} events from [cyan]{topic}[/cyan] (Kafka)...")
 
         async def _consume_plan() -> list[dict]:
-            async with KafkaConnector(topic, kafka_cfg) as conn:
-                return await conn.read_batch(max_messages=sample_size, timeout_ms=15_000)
+            """Read the LATEST sample_size events from the topic tail."""
+            from kafka import KafkaConsumer as _KC, TopicPartition as _TP
+            _c = _KC(
+                bootstrap_servers=broker_list,
+                value_deserializer=lambda m: __import__("json").loads(m),
+                consumer_timeout_ms=10_000,
+                auto_offset_reset="latest",
+            )
+            # Assign all partitions and seek to (end - sample_size)
+            partitions = _c.partitions_for_topic(topic) or {0}
+            tps = [_TP(topic, p) for p in partitions]
+            _c.assign(tps)
+            _c.seek_to_end(*tps)
+            events = []
+            for tp in tps:
+                end_offset = _c.position(tp)
+                start = max(0, end_offset - sample_size)
+                _c.seek(tp, start)
+            for msg in _c:
+                if isinstance(msg.value, dict):
+                    events.append(msg.value)
+                if len(events) >= sample_size:
+                    break
+            _c.close()
+            return events
 
         try:
             events = asyncio.run(_consume_plan())

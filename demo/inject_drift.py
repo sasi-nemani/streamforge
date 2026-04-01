@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-inject_drift.py — Deterministically inject drifted payment events into events.all.
+inject_drift.py — Deterministically inject drifted payment events into Kafka.
 
 Every event has ALL drift mutations applied — no randomness that could weaken detection:
   - amount_minor_units (int)    replaces  amount (float)      → type change
@@ -27,7 +27,7 @@ from datetime import UTC, datetime
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 
-TOPIC = "events.all"
+DEFAULT_TOPIC = "events.payments"
 _MERCHANTS = ["stripe", "adyen", "checkout", "braintree", "square"]
 _CURRENCIES = ["USD", "EUR", "GBP", "SGD", "AUD", "JPY"]
 
@@ -83,14 +83,16 @@ def main() -> None:
     parser.add_argument("--brokers", default="localhost:9092")
     parser.add_argument("--count", type=int, default=50,
                         help="Number of drifted events to inject (default: 50)")
+    parser.add_argument("--topic", default=DEFAULT_TOPIC,
+                        help=f"Kafka topic to inject into (default: {DEFAULT_TOPIC})")
     args = parser.parse_args()
 
-    print(f"Injecting {args.count} drifted payment events into {TOPIC}…")
+    print(f"Injecting {args.count} drifted payment events into {args.topic}…")
     producer = make_producer(args.brokers)
 
     for i in range(args.count):
         event = drifted_payment_event(i)
-        producer.send(TOPIC, event, key=b"payment")
+        producer.send(args.topic, event, key=b"payment")
 
     producer.flush(timeout=10)
     producer.close()
