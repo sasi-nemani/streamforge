@@ -445,6 +445,11 @@ async def _watch_kafka_async(
     window = EventWindow(capacity=window_capacity)
 
     # ── Stability state machine ────────────────────────────────────────────────
+    # NOTE: The canonical phase logic is in detector/phase.py (WatchPhase class).
+    # This inline implementation is legacy — it will be replaced by WatchPhase
+    # delegation once the persistence layer (WatchState) is migrated.
+    # See: detector/phase.py for the single-source-of-truth state machine.
+    #
     # Phase 1 LEARNING:     observe N cycles, no alerts (even Tier-1/2).
     #                       Tier-3 always alerts immediately (data integrity risk).
     # Phase 2 STABILIZING:  require M consecutive clean cycles before declaring stable.

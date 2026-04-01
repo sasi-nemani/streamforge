@@ -15,7 +15,7 @@ class PIIDetection:
 EMAIL_PATTERN = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
 CARD_PATTERN = re.compile(r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b')
 PASSPORT_PATTERN = re.compile(r'\b[A-Z]{1,2}\d{7,9}\b')
-IP_PATTERN = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+_IP_RAW_PATTERN = re.compile(r'\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b')
 DOB_PATTERN = re.compile(r'\b\d{4}-\d{2}-\d{2}\b')
 SSN_PATTERN = re.compile(r'\b\d{3}-\d{2}-\d{4}\b')
 AADHAAR_PATTERN = re.compile(r'\b\d{4}\s\d{4}\s\d{4}\b')
@@ -41,6 +41,25 @@ def _looks_like_phone(val: str) -> bool:
     )
 
 
+def _looks_like_ip(val: str) -> bool:
+    """Check if a string looks like an IP address, not a version string.
+
+    Validates that each octet is 0-255 and at least one octet exceeds 100.
+    This eliminates false positives on version strings like "1.2.3.4" or
+    "2024.1.15.3" while catching real IPs like "192.168.1.1".
+    """
+    m = _IP_RAW_PATTERN.search(val)
+    if not m:
+        return False
+    octets = [int(m.group(i)) for i in range(1, 5)]
+    # All octets must be 0-255
+    if not all(0 <= o <= 255 for o in octets):
+        return False
+    # At least one octet > 100 — real IPs almost always have this,
+    # version strings almost never do (1.2.3.4 → max octet is 4)
+    return max(octets) > 100
+
+
 PII_NAME_HINTS: dict[PIICategory, list[str]] = {
     PIICategory.EMAIL: ["email", "e_mail", "mail"],
     PIICategory.PHONE: ["phone", "mobile", "tel", "contact_number"],
@@ -60,7 +79,7 @@ _PATTERN_CHECKS: dict[PIICategory, Any] = {
     PIICategory.PHONE: _looks_like_phone,
     PIICategory.CARD_NUMBER: lambda val: bool(CARD_PATTERN.search(val)),
     PIICategory.PASSPORT: lambda val: bool(PASSPORT_PATTERN.search(val)),
-    PIICategory.IP_ADDRESS: lambda val: bool(IP_PATTERN.search(val)),
+    PIICategory.IP_ADDRESS: lambda val: _looks_like_ip(val),
     PIICategory.NATIONAL_ID: lambda val: bool(SSN_PATTERN.search(val) or AADHAAR_PATTERN.search(val)),
 }
 

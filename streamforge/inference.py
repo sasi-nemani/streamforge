@@ -1142,11 +1142,8 @@ def infer_schema(
         overall_confidence = 0.6
         model = f"{model}(statistical-fallback)"
 
-    # ── 5. Post-process: correct obvious type mis-labels from LLM ─────────────
-    # Fixes cases like ISO8601 strings inferred as timestamp_epoch_ms, or
-    # float sensor values inferred as integer — structural mismatches the LLM
-    # makes deterministically when samples are small or model quality varies.
-    llm_fields = _correct_type_mismatches(llm_fields, field_stats)
+    # ── 5. (Type correction moved to step 8b — runs on ALL fields including
+    #        registry-cached, not just LLM fields. Single correction pass.)
 
     # ── 6. Post-process: align inferred paths to observed field paths ──────────
     # Fix A: correct array-prefix paths (e.g. 'passenger_name' → 'passengers[].passenger_name')
