@@ -337,6 +337,15 @@ def detect_drift(
             drift.tier = classify_drift_tier(drift)
             drifts.append(drift)
 
+    # Stream-level heartbeat — fires on every poll cycle, even when clean
+    audit.log_poll_heartbeat(
+        stream=stream_name,
+        events_sampled=len(new_sample),
+        window_size=len(new_sample),
+        drift_count=len(drifts),
+        highest_tier=max((d.tier.value for d in drifts), default=0),
+    )
+
     if not drifts:
         return None
 
@@ -383,15 +392,6 @@ def detect_drift(
                 field_path=path, check_type="all", verdict="clean",
                 stream=stream_name,
             )
-
-    # Stream-level heartbeat — fires at INFO on every poll cycle, even when clean
-    audit.log_poll_heartbeat(
-        stream=stream_name,
-        events_sampled=len(new_sample),
-        window_size=len(new_sample),  # caller's window size not available here
-        drift_count=len(drifts),
-        highest_tier=max((d.tier.value for d in drifts), default=0),
-    )
 
     evolution_count = sum(1 for d in drifts if d.drift_class == DriftClass.EVOLUTION)
     noise_count = sum(1 for d in drifts if d.drift_class == DriftClass.NOISE)
