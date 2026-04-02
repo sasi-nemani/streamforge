@@ -114,6 +114,16 @@ class FieldDrift(BaseModel):
     cluster_id: str | None = None  # sub-schema cluster this drift belongs to; None = flat schema path
     drift_class: DriftClass = DriftClass.DRIFT  # classification: drift | evolution | noise
 
+    def model_post_init(self, __context) -> None:
+        """Round all rate fields to 4 decimal places. Eliminates IEEE 754 noise
+        like 0.07999999999999999 → 0.08 in audit logs and drift reports."""
+        if self.affected_event_rate is not None:
+            object.__setattr__(self, "affected_event_rate", round(self.affected_event_rate, 4))
+        if self.previous_presence_rate is not None:
+            object.__setattr__(self, "previous_presence_rate", round(self.previous_presence_rate, 4))
+        if self.observed_presence_rate is not None:
+            object.__setattr__(self, "observed_presence_rate", round(self.observed_presence_rate, 4))
+
 
 class DriftReport(BaseModel):
     stream_name: str
