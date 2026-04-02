@@ -290,7 +290,7 @@ def detect_drift_multi_schema(
             continue
 
         sub = _sub_schema_to_inferred_schema(cluster, stream_name)
-        report = detect_drift(sub, cluster_events, stream_name, stability_cfg=stability_cfg)
+        report = detect_drift(sub, cluster_events, stream_name, stability_cfg=stability_cfg, _emit_heartbeat=False)
         if report is None:
             continue
 

@@ -46,6 +46,7 @@ def detect_drift(
     stream_name: str,
     *,
     stability_cfg=None,  # StabilityConfig | None
+    _emit_heartbeat: bool = True,  # False when called from multi-schema (routing.py emits its own)
 ) -> DriftReport | None:
     """Compare new_sample against baseline_schema. Returns DriftReport or None."""
     if not new_sample:
@@ -337,14 +338,17 @@ def detect_drift(
             drift.tier = classify_drift_tier(drift)
             drifts.append(drift)
 
-    # Stream-level heartbeat — fires on every poll cycle, even when clean
-    audit.log_poll_heartbeat(
-        stream=stream_name,
-        events_sampled=len(new_sample),
-        window_size=len(new_sample),
-        drift_count=len(drifts),
-        highest_tier=max((d.tier.value for d in drifts), default=0),
-    )
+    # Stream-level heartbeat — fires on every poll cycle, even when clean.
+    # Suppressed when called from detect_drift_multi_schema (routing.py
+    # emits its own stream-level heartbeat to avoid double-counting).
+    if _emit_heartbeat:
+        audit.log_poll_heartbeat(
+            stream=stream_name,
+            events_sampled=len(new_sample),
+            window_size=len(new_sample),
+            drift_count=len(drifts),
+            highest_tier=max((d.tier.value for d in drifts), default=0),
+        )
 
     if not drifts:
         return None

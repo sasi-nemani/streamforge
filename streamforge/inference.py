@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import time as _time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,7 @@ import httpx
 import yaml
 from openai import OpenAI
 
+from . import audit as _audit
 from .field_registry import FieldTypeRegistry, RegistryConfig
 from .models import FieldSchema, FieldType, InferredSchema, PIICategory, SubSchema
 from .pii_detector import detect_pii
@@ -315,6 +317,12 @@ def _is_ollama_available() -> bool:
 
 def _synthetic_pii_value(category: str, original: str) -> str:
     """Generate a synthetic value that preserves format, length, and data type.
+
+    SECURITY NOTE: Synthetic values are derived from SHA256(original). SHA256 is
+    one-way, but short originals (e.g. 4-digit card_last_four) have only 10,000
+    possibilities and can be brute-forced if the synthetic is persisted alongside
+    the category. These values are intended ONLY for ephemeral LLM prompts.
+    Do NOT persist synthetic values as a stable identifier.
 
     Properties:
       - Same length as original (for numeric/fixed-format types)
@@ -666,7 +674,7 @@ def _correct_type_mismatches(
         (FieldType.FLOAT,   FieldType.INTEGER),
     }
 
-    from . import audit
+
 
     corrected = []
     for f in fields:
@@ -676,7 +684,7 @@ def _correct_type_mismatches(
 
             # Audit: validate inferred type against sample values
             matching = sum(1 for v in samples[:50] if _value_matches_type(v, f.field_type))
-            audit.log_validation(
+            _audit.log_validation(
                 field_path=f.path,
                 expected_type=f.field_type.value if hasattr(f.field_type, 'value') else str(f.field_type),
                 values_checked=min(len(samples), 50),
@@ -689,7 +697,7 @@ def _correct_type_mismatches(
                     "Type correction: %s %s → %s (statistical evidence from %d samples)",
                     f.path, f.field_type, stat_type, len(samples),
                 )
-                audit.log_type_correction(
+                _audit.log_type_correction(
                     field_path=f.path,
                     original_type=str(f.field_type),
                     corrected_type=str(stat_type),
@@ -805,7 +813,7 @@ def quorum_type_inference(
     """
     from collections import Counter
 
-    from . import audit
+
     from .detector.classify import _infer_field_type_from_values
     from .sampler import get_all_field_paths, reservoir_sample
 
@@ -852,7 +860,7 @@ def quorum_type_inference(
         avg_presence[path] = sum(rates) / len(rates) if rates else 0.0
 
         # Audit: log every quorum decision
-        audit.log_type_decision(
+        _audit.log_type_decision(
             field_path=path,
             inferred_type=winner,
             source="quorum",
@@ -863,7 +871,7 @@ def quorum_type_inference(
 
         # Warn on split votes
         if agreement < 1.0:
-            audit.log_type_correction(
+            _audit.log_type_correction(
                 field_path=path,
                 original_type=str(counter.most_common()[-1][0]),
                 corrected_type=winner,
@@ -944,8 +952,6 @@ def _call_llm(
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
-    import time as _time
-    from . import audit as _audit
 
     # Derive stream name from field paths (for audit context)
     _stream_ctx = ""  # will be set by caller via thread-local or param in future
@@ -1059,8 +1065,6 @@ def _call_llm_json_mode(
         {"role": "system", "content": SYSTEM_PROMPT_JSON_MODE},
         {"role": "user", "content": prompt},
     ]
-    import time as _time
-    from . import audit as _audit
 
     for attempt in range(max_retries):
         logger.info("Inference attempt %d/%d (json-mode, model: %s)...", attempt + 1, max_retries, model)
@@ -1171,7 +1175,7 @@ def infer_schema(
       4. OpenRouter — json-mode (if OPENROUTER_API_KEY is set)
       5. Statistical inference — last resort, no LLM needed
     """
-    from . import audit
+
 
     # ── 0. Field Type RAG Registry lookup ─────────────────────────────────────
     registry_config = RegistryConfig()
@@ -1195,7 +1199,7 @@ def infer_schema(
                 for path, obs in cached.items():
                     rate = presence_rates.get(path, 1.0)
                     cached_fields.append(registry.to_field_schema(obs, presence_rate=rate))
-                    audit.log_type_decision(
+                    _audit.log_type_decision(
                         field_path=path, inferred_type=obs.field_type,
                         source="registry", confidence=obs.confidence,
                         sample_values=field_stats.get(path, [])[:5],
@@ -1204,7 +1208,7 @@ def infer_schema(
                     )
 
                 for path in unknown_paths:
-                    audit.log_registry_event("miss", path, stream=stream_name)
+                    _audit.log_registry_event("miss", path, stream=stream_name)
 
                 # Only send unknown fields to LLM
                 remaining_stats = {p: field_stats[p] for p in unknown_paths if p in field_stats}
@@ -1340,13 +1344,13 @@ def infer_schema(
     # LLM fields for cached paths get presence=0.0 because remaining_rates
     # excludes them. Registry fields get default 1.0. Both are wrong.
     # The source of truth is the full presence_rates from get_all_field_paths.
-    for i, f in enumerate(deduped):
-        true_rate = presence_rates.get(f.path)
-        if true_rate is not None and abs(f.presence_rate - true_rate) > 0.01:
-            deduped[i] = f.model_copy(update={
-                "presence_rate": true_rate,
-                "required": true_rate >= 0.8,
-            })
+    deduped = [
+        f.model_copy(update={"presence_rate": true_rate, "required": true_rate >= 0.8})
+        if (true_rate := presence_rates.get(f.path)) is not None
+        and abs(f.presence_rate - true_rate) > 0.01
+        else f
+        for f in deduped
+    ]
 
     # ── 8b. Correct type mismatches on ALL fields (including registry-cached) ─
     # The registry can hold stale types from other streams (e.g. wiki's ISO8601
