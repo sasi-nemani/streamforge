@@ -73,6 +73,46 @@ Purpose: Record every feature, design choice, and intentional gap with rationale
 | Schema rollback CLI | `git revert` on schema.yaml works. CLI command is convenience. | When schema-as-code workflow matures |
 | Retention policy enforcement | `find -mtime -delete` cron works. Product feature is enterprise. | When customer accumulates >1000 drift reports |
 
+### Audit & Observability (implemented)
+| Feature | File(s) | Design Choice | Rationale |
+|---------|---------|---------------|-----------|
+| LLM call audit (prompt + response) | `audit.py`, `inference.py` | Logs provider, model, latency, prompt/response preview (2KB max) | Security can verify exactly what data left the system |
+| Multi-schema audit coverage | `detector/routing.py` | Routing regression now emits audit events | Bookings/wiki were silent — 2 of 4 streams had no audit trail |
+| Configurable audit verbosity | `audit.py` | `STREAMFORGE_AUDIT_LEVEL=DEBUG\|INFO\|WARNING` | Clean checks at DEBUG (90% noise reduction), drifts at INFO |
+| Format-preserving PII pseudonymization | `inference.py` | Synthetic values match original format/length | `alice@stripe.com` → `user_6943@streamforge.synthetic` — LLM infers correct type |
+| Float precision rounding | `models.py` | `FieldDrift.model_post_init` rounds to 4dp | Eliminates `0.07999999999999999` in audit logs |
+| Card PII false positive suppression | `pii_detector.py` | Skip card pattern on `_id/_uuid/_ref` fields | `event_id` with numeric values no longer triggers Tier-3 |
+| IP regex range check | `pii_detector.py` | Octet range + max>100 check | Version strings like `1.2.3.4` no longer trigger PII:ip_address |
+
+### Structural Improvements (implemented)
+| Feature | File(s) | Design Choice | Rationale |
+|---------|---------|---------------|-----------|
+| WatchPhase state machine | `detector/phase.py` | Single class, 13 unit tests | Eliminates duplicated LEARNING→STABILIZING→STABLE logic |
+| E2E integration test | `test_e2e_lifecycle.py` | init→plan(clean)→plan(drifted) | Tests the module seams unit tests miss |
+| Registry file locking | `field_registry.py` | `fcntl.flock()` on save | Prevents concurrent init processes from clobbering |
+| SHA256 structural fingerprinting | `profiler.py` | 12-char SHA256 (was 8-char MD5) | 48-bit collision resistance (65536x better) |
+| --dry-run on accept | `cli/ops_cmd.py` | Preview without writing | Operator safety for one-way door operations |
+
+### Bugs Found in Production Soak Test (fixed)
+| Bug | How found | Fix |
+|-----|-----------|-----|
+| `event_id` falsely flagged as card PII (22 Tier-3 reports overnight) | 9-hour soak on GCP | Suppress card pattern on `_id` fields |
+| IoT `humidity_pct` drifting 82% of cycles | Audit log analysis | Re-init with larger sample (400 events) |
+| Audit log only captured IoT+payments (bookings/wiki silent) | Audit breakdown by stream | Added audit to `detect_drift_multi_schema` routing |
+| 2,108 float values with >10 decimal places | Audit data analysis | `model_post_init` rounds to 4dp |
+| `_enabled()` gated all audit at non-DEBUG levels | Setting AUDIT_LEVEL=INFO silenced everything | Changed to check `level <= CRITICAL` |
+| Cross-stream registry type poisoning (wiki→payments timestamp) | GCP E2E testing | Step 8b correction on all fields |
+| LLM mislabeling epoch_ms as ISO8601 | GCP init testing | Quorum voting + type correction catches it |
+
+### Intentional Gaps (updated)
+| Gap | Severity | Why deferred | When to fix |
+|-----|----------|-------------|-------------|
+| WatchPhase not wired into actual watch loops | MEDIUM | Class extracted + tested, inline logic still runs. Full wire-up needs persistence migration. | Next sprint |
+| Auto-reinit on sustained drift | N/A | Proposal mechanism designed (background re-init → proposed schema). Manual `init` + `accept` works today. | Post-demo feature |
+| inference.py still 1330 lines | LOW | Works correctly. Split when adding features. | When adding new inference providers |
+| drift_detector.py compat shim still exists | LOW | No breakage risk. Cleanup task. | When removing backward compat |
+| File permissions 644 not 600 | MEDIUM | `_secure_write()` exists but not wired into all write paths (registry, schema_writer main path) | Before enterprise |
+
 ---
 
 ## Test Coverage
@@ -81,11 +121,32 @@ Purpose: Record every feature, design choice, and intentional gap with rationale
 |-----------|-------|--------|
 | test_prod_hardening.py | 22 | Audit defaults, API key sanitization, PII redaction, config validation, registry audit |
 | test_security_hardening.py | 16 | PII scrub in prompts, Kafka TLS, file permissions, event size guard, ReDoS guard |
+| test_synthetic_pii.py | 24 | Format-preserving pseudonymization, length preservation, all PII categories |
+| test_audit_coverage.py | 10 | Multi-schema audit, routing regression audit, LLM call audit, verbosity config |
+| test_watch_phase.py | 13 | Phase state machine (LEARNING→STABILIZING→STABLE transitions) |
+| test_e2e_lifecycle.py | 3 | Full init→plan(clean)→plan(drifted) lifecycle |
 | test_exporter_protobuf.py | 56 | Protobuf wire stability, field numbering |
 | test_drift_detector.py | 52+ | Drift detection, tier classification |
-| test_pii_detector.py | 20+ | PII pattern matching |
-| test_field_registry.py | 15+ | Registry CRUD, cache hits, save/load |
+| test_pii_detector.py | 20+ | PII pattern matching, IP range check, card suppression |
+| test_field_registry.py | 15+ | Registry CRUD, cache hits, save/load, file locking |
 | test_inference_cascade.py | 10+ | LLM cascade, fallback, coverage check |
-| test_sampler.py | 15+ | Reservoir sampling, streaming load |
+| test_sampler.py | 15+ | Reservoir sampling, streaming load, size guards |
 | test_statistical_tests.py | 40+ | Z-test, chi-squared, PSI, Cramer's V |
-| **Total** | **962** | **Full suite, zero failures** |
+| **Total** | **1012** | **Full suite, zero failures** |
+
+---
+
+## Production Soak Test Results (GCP, 17+ hours)
+
+| Metric | Value |
+|--------|-------|
+| Duration | 17+ hours (2026-04-01 18:31 → 2026-04-02 11:18) |
+| Total events processed | 1.4M+ across 4 topics |
+| Audit entries | 23,600+ |
+| Drift reports generated | 11 (10 bookings routing, 1 wiki routing) |
+| False positives caught and fixed | 22 (event_id PII), 772/cycle (IoT baseline) |
+| Watchers restarted | 0 (since last deployment) |
+| Errors in watch logs | 0 |
+| PII leaks in registry | 0 |
+| Memory stable | 695MB of 1.9GB |
+| Disk stable | 4.1GB of 20GB (22%) |
