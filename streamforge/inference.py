@@ -308,11 +308,64 @@ def _is_ollama_available() -> bool:
         return False
 
 
-def _scrub_event_for_prompt(event: dict) -> dict:
-    """Remove PII values from an event before including in an LLM prompt.
+# ── Format-preserving PII pseudonymization ───────────────────────────────────
+# Google Cloud DLP calls this "format-preserving tokenization." The LLM needs
+# structurally valid values to infer correct types. "[REDACTED:email]" → the LLM
+# infers "string" (wrong). "user_001@streamforge.synthetic" → infers "email" (right).
 
-    Preserves field structure and non-PII values. PII values are replaced
-    with type-safe placeholders like "[REDACTED:email]".
+def _synthetic_pii_value(category: str, original: str) -> str:
+    """Generate a synthetic value that preserves the format of the PII category.
+
+    Properties:
+      - Structurally matches the original (has @, dots, dashes in the right places)
+      - Obviously fake (uses .synthetic domain, 000 prefixes, etc.)
+      - Deterministic: same input → same output (hash-based index)
+      - Never contains original data
+    """
+    import hashlib
+    # Use hash of original to get a deterministic index
+    h = int(hashlib.sha256(original.encode()).hexdigest()[:8], 16)
+
+    if category == "email":
+        idx = h % 9999
+        return f"user_{idx:04d}@streamforge.synthetic"
+    elif category == "phone":
+        idx = h % 9999999
+        return f"+10 000 {idx:07d}"
+    elif category == "name":
+        names = ["Person_A", "Person_B", "Person_C", "Person_D", "Person_E",
+                 "Person_F", "Person_G", "Person_H", "Person_I", "Person_J"]
+        return names[h % len(names)]
+    elif category == "card_number":
+        idx = h % 9999999999999999
+        return f"{idx:016d}"
+    elif category == "national_id":
+        a, b, c = (h % 900) + 100, (h // 1000) % 90 + 10, (h // 100000) % 9000 + 1000
+        return f"{a:03d}-{b:02d}-{c:04d}"
+    elif category == "ip_address":
+        return f"198.51.100.{(h % 254) + 1}"  # RFC 5737 TEST-NET-2
+    elif category == "passport":
+        return f"XX{(h % 9999999):07d}"
+    elif category == "date_of_birth":
+        year = 1950 + (h % 50)
+        month = (h % 12) + 1
+        day = (h % 28) + 1
+        return f"{year}-{month:02d}-{day:02d}"
+    elif category == "loyalty_number":
+        return f"LY{(h % 9999999):07d}"
+    elif category == "address":
+        return f"{(h % 999) + 1} Synthetic Street"
+    else:
+        # Unknown category — return a safe generic placeholder
+        return f"synthetic_{h % 99999:05d}"
+
+
+def _scrub_event_for_prompt(event: dict) -> dict:
+    """Replace PII values with format-preserving synthetic equivalents.
+
+    Uses _synthetic_pii_value() to generate fake values that match the
+    structural format of the original (email has @, phone has +, etc.)
+    so the LLM infers the correct type.
     """
     from .pii_detector import detect_pii
     from .sampler import flatten_nested
@@ -323,7 +376,7 @@ def _scrub_event_for_prompt(event: dict) -> dict:
         if val is not None and detect_pii(path, [val]):
             cats = detect_pii(path, [val])
             cat_label = cats[0].value if hasattr(cats[0], 'value') else str(cats[0])
-            scrubbed_flat[path] = f"[REDACTED:{cat_label}]"
+            scrubbed_flat[path] = _synthetic_pii_value(cat_label, str(val))
         else:
             scrubbed_flat[path] = val
 
@@ -347,7 +400,7 @@ def _scrub_event_for_prompt(event: dict) -> dict:
             if detect_pii(k, [v] if v is not None else []):
                 cats = detect_pii(k, [v] if v is not None else [])
                 cat_label = cats[0].value if hasattr(cats[0], 'value') else str(cats[0])
-                result[k] = f"[REDACTED:{cat_label}]"
+                result[k] = _synthetic_pii_value(cat_label, str(v))
             else:
                 result[k] = v
 
@@ -373,12 +426,13 @@ def build_inference_prompt(
     for included, path in enumerate(sorted_paths):
         values = field_stats[path]
         rate = presence_rates.get(path, 0.0)
-        # Scrub PII from field stat sample values
-        is_pii = bool(_detect_pii(path, [str(v) for v in values[:3]]))
+        # Scrub PII from field stat sample values using synthetic equivalents
+        _pii_cats = _detect_pii(path, [str(v) for v in values[:3]])
+        _pii_cat = _pii_cats[0].value if _pii_cats and hasattr(_pii_cats[0], 'value') else (str(_pii_cats[0]) if _pii_cats else "")
         seen = []
         for v in values:
-            if is_pii:
-                sv = "[REDACTED]"
+            if _pii_cat:
+                sv = _synthetic_pii_value(_pii_cat, str(v))
             else:
                 sv = str(v)[:60] if isinstance(v, str) else v
             if sv not in seen:
