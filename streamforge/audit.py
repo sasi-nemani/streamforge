@@ -99,8 +99,14 @@ def _ensure_configured() -> None:
 
 
 def _enabled() -> bool:
+    """Check if audit logging is active (not disabled via STREAMFORGE_AUDIT=0).
+
+    Individual functions check their own log level — this only gates
+    whether the audit system is enabled at all.
+    """
     _ensure_configured()
-    return _audit_logger.isEnabledFor(logging.DEBUG)
+    # Level is set to CRITICAL+1 when disabled, any normal level means enabled
+    return _audit_logger.level <= logging.CRITICAL
 
 
 # ── Public API — audit event emitters ────────────────────────────────────────
