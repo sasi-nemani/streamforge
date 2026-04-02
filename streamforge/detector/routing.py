@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import UTC, datetime
 
+from .. import audit
 from ..models import (
     DriftClass,
     DriftReport,
@@ -213,6 +214,14 @@ def detect_drift_multi_schema(
                     f"of stream) received no events — routing metadata may be stale."
                 ),
             ))
+            audit.log_drift_check(
+                field_path="__cluster__",
+                check_type="cluster_routing_regression",
+                verdict="drift",
+                details={"cluster_id": cid, "baseline_rate": baseline_rate,
+                         "observed_rate": 0.0, "tier": 2},
+                stream=stream_name,
+            )
             continue  # nothing to drift-check without events
 
         # ── Partial routing regression ─────────────────────────────────────────
@@ -258,6 +267,15 @@ def detect_drift_multi_schema(
                             f"{relative_drop:.0%} relative drop)."
                         ),
                     ))
+                    audit.log_drift_check(
+                        field_path="__cluster__",
+                        check_type="cluster_routing_regression",
+                        verdict="drift",
+                        details={"cluster_id": cid, "baseline_rate": baseline_rate,
+                                 "observed_rate": round(observed_rate, 4),
+                                 "relative_drop": round(relative_drop, 4), "tier": 2},
+                        stream=stream_name,
+                    )
 
         if len(cluster_events) < MIN_CLUSTER_EVENTS_FOR_DRIFT:
             # Under-sampled in this poll window — below the statistical threshold

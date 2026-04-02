@@ -189,10 +189,16 @@ def log_drift_check(
     details: dict[str, Any] | None = None,
     stream: str = "",
 ) -> None:
-    """Log per-field drift detection verdict with evidence."""
+    """Log per-field drift detection verdict with evidence.
+
+    Clean verdicts log at DEBUG (reduces noise by ~90%).
+    Drift verdicts log at INFO (always visible when audit is on).
+    """
     if not _enabled():
         return
-    _audit_logger.info(
+    level = logging.DEBUG if verdict == "clean" else logging.INFO
+    _audit_logger.log(
+        level,
         "drift_check: %s %s=%s",
         field_path, check_type, verdict,
         extra={
