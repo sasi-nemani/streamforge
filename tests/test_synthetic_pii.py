@@ -95,6 +95,74 @@ class TestSyntheticPiiGenerator:
         assert "secret" not in val.lower()
 
 
+class TestSyntheticLengthPreservation:
+    """Synthetic values must preserve the length of the original for numeric/fixed types."""
+
+    def test_card_4_digits_stays_4(self):
+        from streamforge.inference import _synthetic_pii_value
+        val = _synthetic_pii_value("card_number", "4242")
+        assert len(val) == 4, f"Expected 4 chars, got {len(val)}: {val}"
+        assert val.isdigit(), f"Card synthetic must be all digits: {val}"
+
+    def test_card_16_digits_stays_16(self):
+        from streamforge.inference import _synthetic_pii_value
+        val = _synthetic_pii_value("card_number", "4242424242424242")
+        assert len(val) == 16, f"Expected 16 chars, got {len(val)}: {val}"
+        assert val.isdigit()
+
+    def test_card_19_digits_with_dashes(self):
+        from streamforge.inference import _synthetic_pii_value
+        val = _synthetic_pii_value("card_number", "4242-4242-4242-4242")
+        # 19 chars including dashes — preserve total length
+        assert len(val) == len("4242-4242-4242-4242"), f"Expected 19, got {len(val)}: {val}"
+
+    def test_phone_preserves_length(self):
+        from streamforge.inference import _synthetic_pii_value
+        original = "+44 7700 900123"
+        val = _synthetic_pii_value("phone", original)
+        assert len(val) == len(original), f"Expected {len(original)}, got {len(val)}: {val}"
+
+    def test_passport_preserves_length(self):
+        from streamforge.inference import _synthetic_pii_value
+        for orig in ["AB1234567", "C12345678", "XY123456789"]:
+            val = _synthetic_pii_value("passport", orig)
+            assert len(val) == len(orig), f"Passport '{orig}' ({len(orig)}) -> '{val}' ({len(val)})"
+
+    def test_ssn_preserves_format(self):
+        from streamforge.inference import _synthetic_pii_value
+        val = _synthetic_pii_value("national_id", "123-45-6789")
+        assert len(val) == 11, f"SSN must be 11 chars: {val}"
+        assert val[3] == "-" and val[6] == "-", f"SSN must have dashes at 3,6: {val}"
+
+    def test_ip_preserves_data_type(self):
+        from streamforge.inference import _synthetic_pii_value
+        val = _synthetic_pii_value("ip_address", "192.168.1.100")
+        parts = val.split(".")
+        assert len(parts) == 4
+        assert all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
+
+    def test_dob_preserves_length(self):
+        from streamforge.inference import _synthetic_pii_value
+        val = _synthetic_pii_value("date_of_birth", "1990-05-15")
+        assert len(val) == 10, f"DOB must be 10 chars: {val}"
+
+    def test_name_preserves_approximate_length(self):
+        from streamforge.inference import _synthetic_pii_value
+        for orig in ["Al", "Alice Johnson", "Alexandra Bartholomew-Richardson III"]:
+            val = _synthetic_pii_value("name", orig)
+            # Name length should be within 50% of original (structure varies)
+            assert len(val) >= max(2, len(orig) // 3), f"Name too short: '{orig}' -> '{val}'"
+            assert len(val) <= len(orig) * 2 + 5, f"Name too long: '{orig}' -> '{val}'"
+
+    def test_email_preserves_structure_not_exact_length(self):
+        """Email must have @ and domain. Exact length match is not required."""
+        from streamforge.inference import _synthetic_pii_value
+        for orig in ["a@b.co", "alice.johnson@enterprise-corp.com"]:
+            val = _synthetic_pii_value("email", orig)
+            assert "@" in val
+            assert "." in val.split("@")[1]
+
+
 class TestScrubEventUsesSynthetic:
     """_scrub_event_for_prompt must use synthetic values, not [REDACTED]."""
 

@@ -314,49 +314,96 @@ def _is_ollama_available() -> bool:
 # infers "string" (wrong). "user_001@streamforge.synthetic" → infers "email" (right).
 
 def _synthetic_pii_value(category: str, original: str) -> str:
-    """Generate a synthetic value that preserves the format of the PII category.
+    """Generate a synthetic value that preserves format, length, and data type.
 
     Properties:
-      - Structurally matches the original (has @, dots, dashes in the right places)
-      - Obviously fake (uses .synthetic domain, 000 prefixes, etc.)
-      - Deterministic: same input → same output (hash-based index)
+      - Same length as original (for numeric/fixed-format types)
+      - Same structure (@ in emails, dashes in SSNs, dots in IPs)
+      - Obviously fake (.synthetic domain, TEST-NET IPs, etc.)
+      - Deterministic: same input → same output (SHA256-based index)
       - Never contains original data
+
+    Length preservation ensures the LLM infers the same type that the
+    original data would produce. "4242" (4 digits) stays 4 digits.
     """
     import hashlib
-    # Use hash of original to get a deterministic index
-    h = int(hashlib.sha256(original.encode()).hexdigest()[:8], 16)
+    h = int(hashlib.sha256(original.encode()).hexdigest()[:16], 16)
+    n = len(original)
 
     if category == "email":
         idx = h % 9999
         return f"user_{idx:04d}@streamforge.synthetic"
+
     elif category == "phone":
-        idx = h % 9999999
-        return f"+10 000 {idx:07d}"
+        # Preserve exact length: replace digits with synthetic, keep formatting
+        result = []
+        digit_idx = 0
+        digits = str(h % (10 ** min(n, 15))).zfill(min(n, 15))
+        for ch in original:
+            if ch.isdigit():
+                result.append(digits[digit_idx % len(digits)])
+                digit_idx += 1
+            else:
+                result.append(ch)  # preserve +, spaces, dashes, parens
+        return "".join(result)
+
     elif category == "name":
-        names = ["Person_A", "Person_B", "Person_C", "Person_D", "Person_E",
-                 "Person_F", "Person_G", "Person_H", "Person_I", "Person_J"]
-        return names[h % len(names)]
+        # Generate a name that approximately matches the original length
+        first_names = ["Alex", "Blake", "Casey", "Dana", "Ellis",
+                       "Finley", "Gray", "Harper", "Indigo", "Jordan"]
+        last_names = ["Smith", "Stone", "Swift", "Shore", "Steel",
+                      "Storm", "Sage", "Snow", "Silver", "Stark"]
+        first = first_names[h % len(first_names)]
+        last = last_names[(h // 10) % len(last_names)]
+        synthetic = f"{first} {last}"
+        # Pad or trim to approximate original length
+        if n > len(synthetic) + 5:
+            synthetic += "-" + last_names[(h // 100) % len(last_names)]
+        return synthetic[:max(n, len(first))]
+
     elif category == "card_number":
-        idx = h % 9999999999999999
-        return f"{idx:016d}"
+        # Preserve exact length including any formatting characters
+        digits_only = "".join(c for c in original if c.isdigit())
+        n_digits = len(digits_only) or 16
+        synthetic_digits = str(h % (10 ** min(n_digits, 16))).zfill(n_digits)
+        # Rebuild with original formatting (dashes, spaces)
+        result = []
+        d_idx = 0
+        for ch in original:
+            if ch.isdigit():
+                result.append(synthetic_digits[d_idx % len(synthetic_digits)])
+                d_idx += 1
+            else:
+                result.append(ch)
+        return "".join(result) if result else synthetic_digits
+
     elif category == "national_id":
-        a, b, c = (h % 900) + 100, (h // 1000) % 90 + 10, (h // 100000) % 9000 + 1000
+        a = (h % 900) + 100
+        b = (h // 1000) % 90 + 10
+        c = (h // 100000) % 9000 + 1000
         return f"{a:03d}-{b:02d}-{c:04d}"
+
     elif category == "ip_address":
         return f"198.51.100.{(h % 254) + 1}"  # RFC 5737 TEST-NET-2
+
     elif category == "passport":
-        return f"XX{(h % 9999999):07d}"
+        # Preserve length: 2 letters + (n-2) digits
+        n_digits = max(n - 2, 5)
+        return f"XX{(h % (10 ** n_digits)):0{n_digits}d}"[:n]
+
     elif category == "date_of_birth":
         year = 1950 + (h % 50)
         month = (h % 12) + 1
         day = (h % 28) + 1
         return f"{year}-{month:02d}-{day:02d}"
+
     elif category == "loyalty_number":
         return f"LY{(h % 9999999):07d}"
+
     elif category == "address":
         return f"{(h % 999) + 1} Synthetic Street"
+
     else:
-        # Unknown category — return a safe generic placeholder
         return f"synthetic_{h % 99999:05d}"
 
 
