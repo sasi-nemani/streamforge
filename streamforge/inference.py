@@ -1336,6 +1336,18 @@ def infer_schema(
             deduped.append(f)
     deduped.reverse()
 
+    # ── 8a. Fix presence_rate from full field_stats (not remaining_rates) ────
+    # LLM fields for cached paths get presence=0.0 because remaining_rates
+    # excludes them. Registry fields get default 1.0. Both are wrong.
+    # The source of truth is the full presence_rates from get_all_field_paths.
+    for i, f in enumerate(deduped):
+        true_rate = presence_rates.get(f.path)
+        if true_rate is not None and abs(f.presence_rate - true_rate) > 0.01:
+            deduped[i] = f.model_copy(update={
+                "presence_rate": true_rate,
+                "required": true_rate >= 0.8,
+            })
+
     # ── 8b. Correct type mismatches on ALL fields (including registry-cached) ─
     # The registry can hold stale types from other streams (e.g. wiki's ISO8601
     # timestamp poisons payments' epoch_ms timestamp). Run correction on the
