@@ -218,6 +218,36 @@ def log_drift_check(
     )
 
 
+def log_poll_heartbeat(
+    stream: str,
+    events_sampled: int,
+    window_size: int,
+    drift_count: int,
+    highest_tier: int = 0,
+) -> None:
+    """Log a per-poll-cycle heartbeat for a stream. Always at INFO level.
+
+    Ensures every stream appears in the audit log on every poll cycle,
+    even when clean. Without this, a clean stream at AUDIT_LEVEL=INFO
+    produces zero entries — which looks like it's not being monitored.
+    """
+    if not _enabled():
+        return
+    verdict = "clean" if drift_count == 0 else f"{drift_count} drift(s), tier {highest_tier}"
+    _audit_logger.info(
+        "poll_heartbeat: %s — %s (%d sampled, %d in window)",
+        stream, verdict, events_sampled, window_size,
+        extra={
+            "audit": "poll_heartbeat",
+            "stream": stream,
+            "events_sampled": events_sampled,
+            "window_size": window_size,
+            "drift_count": drift_count,
+            "highest_tier": highest_tier,
+        },
+    )
+
+
 def log_validation(
     field_path: str,
     expected_type: str,
