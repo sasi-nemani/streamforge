@@ -109,13 +109,31 @@ def _check_name_hints(segments: list[str]) -> set[PIICategory]:
     return matched
 
 
+# Field name segments that indicate identifiers (not card numbers)
+_ID_FIELD_SEGMENTS = {"id", "uuid", "ref", "key", "hash", "token", "code", "number"}
+# But these ARE card-related even with "number" in the name
+_CARD_FIELD_SEGMENTS = {"card", "pan", "credit", "debit"}
+
+
 def _check_patterns(str_values: list[str], segments: list[str]) -> set[PIICategory]:
     """Run pattern matching on sample values, return matched categories."""
     matched: set[PIICategory] = set()
+
+    # Suppress card_number pattern on identifier fields (event_id, transaction_id, etc.)
+    # unless the field name explicitly mentions card/pan/credit
+    _all_parts = [p for seg in segments for p in seg.split("_")]
+    suppress_card = (
+        any(p in _ID_FIELD_SEGMENTS for p in _all_parts)
+        and not any(p in _CARD_FIELD_SEGMENTS for p in _all_parts)
+    )
+
     for val in str_values:
         for category, check_fn in _PATTERN_CHECKS.items():
-            if category not in matched and check_fn(val):
-                matched.add(category)
+            if category not in matched:
+                if category == PIICategory.CARD_NUMBER and suppress_card:
+                    continue
+                if check_fn(val):
+                    matched.add(category)
 
         # DOB: only flag if field name also suggests date-of-birth
         if PIICategory.DATE_OF_BIRTH not in matched and DOB_PATTERN.search(val):
