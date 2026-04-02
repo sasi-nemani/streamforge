@@ -239,3 +239,66 @@ class TestLlmCallAudit:
                 assert rec.levelno == logging.WARNING  # failures at WARNING
             finally:
                 audit._audit_logger.removeHandler(handler)
+
+    def test_log_llm_request_includes_prompt_preview(self):
+        """Audit must capture the actual scrubbed prompt sent to the LLM."""
+        import logging
+        from streamforge import audit
+
+        records = []
+        handler = logging.Handler()
+        handler.emit = lambda r: records.append(r)
+
+        with patch.dict(os.environ, {"STREAMFORGE_AUDIT": "1", "STREAMFORGE_AUDIT_LEVEL": "INFO"}):
+            audit._configured = False
+            audit._ensure_configured()
+            audit._audit_logger.addHandler(handler)
+            try:
+                audit.log_llm_request(
+                    provider="groq",
+                    model="llama-3.3-70b",
+                    stream="events.payments",
+                    fields_sent=6,
+                    fields_returned=6,
+                    confidence=0.85,
+                    latency_ms=1200,
+                    success=True,
+                    prompt_chars=5000,
+                    response_chars=2000,
+                    prompt_preview="## Field Statistics\nevent_id 100% ...",
+                    response_preview='{"fields": [{"path": "event_id"}]}',
+                )
+                rec = records[-1]
+                extra = rec.__dict__
+                assert "prompt_preview" in extra
+                assert "Field Statistics" in extra["prompt_preview"]
+                assert "response_preview" in extra
+                assert "event_id" in extra["response_preview"]
+            finally:
+                audit._audit_logger.removeHandler(handler)
+
+    def test_prompt_preview_is_truncated(self):
+        """Prompt preview must be capped to prevent log bloat."""
+        import logging
+        from streamforge import audit
+
+        records = []
+        handler = logging.Handler()
+        handler.emit = lambda r: records.append(r)
+
+        with patch.dict(os.environ, {"STREAMFORGE_AUDIT": "1", "STREAMFORGE_AUDIT_LEVEL": "INFO"}):
+            audit._configured = False
+            audit._ensure_configured()
+            audit._audit_logger.addHandler(handler)
+            try:
+                huge_prompt = "x" * 50000
+                audit.log_llm_request(
+                    provider="groq", model="test", success=True,
+                    prompt_preview=huge_prompt,
+                    response_preview="y" * 50000,
+                )
+                rec = records[-1]
+                assert len(rec.__dict__["prompt_preview"]) <= 2100  # ~2000 + margin
+                assert len(rec.__dict__["response_preview"]) <= 2100
+            finally:
+                audit._audit_logger.removeHandler(handler)

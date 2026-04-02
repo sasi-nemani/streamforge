@@ -249,6 +249,9 @@ def log_validation(
     )
 
 
+_PREVIEW_MAX = 2000
+
+
 def log_llm_request(
     provider: str,
     model: str,
@@ -261,6 +264,8 @@ def log_llm_request(
     prompt_chars: int = 0,
     response_chars: int = 0,
     error: str = "",
+    prompt_preview: str = "",
+    response_preview: str = "",
 ) -> None:
     """Log an LLM API call with request/response details.
 
@@ -294,6 +299,8 @@ def log_llm_request(
             "prompt_chars": prompt_chars,
             "response_chars": response_chars,
             "error": error,
+            "prompt_preview": prompt_preview[:_PREVIEW_MAX] if prompt_preview else "",
+            "response_preview": response_preview[:_PREVIEW_MAX] if response_preview else "",
         },
     )
 

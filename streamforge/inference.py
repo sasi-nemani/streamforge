@@ -914,6 +914,8 @@ def _call_llm(
                 success=True,
                 prompt_chars=len(prompt),
                 response_chars=len(_resp_text),
+                prompt_preview=prompt,
+                response_preview=_resp_text,
             )
             return llm_fields, overall_confidence, event_type_values
 
@@ -928,6 +930,7 @@ def _call_llm(
                 latency_ms=_latency,
                 success=False,
                 prompt_chars=len(prompt),
+                prompt_preview=prompt,
                 error=_sanitize_for_logging(str(e)),
             )
             logger.warning("Inference attempt %d failed: %s", attempt + 1, _sanitize_for_logging(str(e)))
@@ -1022,6 +1025,8 @@ def _call_llm_json_mode(
                 success=True,
                 prompt_chars=len(prompt),
                 response_chars=len(content or ""),
+                prompt_preview=prompt,
+                response_preview=content or "",
             )
             return llm_fields, overall_confidence, event_type_values
 
@@ -1036,6 +1041,7 @@ def _call_llm_json_mode(
                 latency_ms=_latency,
                 success=False,
                 prompt_chars=len(prompt),
+                prompt_preview=prompt,
                 error=_sanitize_for_logging(str(e)),
             )
             logger.warning("Inference attempt %d failed: %s", attempt + 1, _sanitize_for_logging(str(e)))
