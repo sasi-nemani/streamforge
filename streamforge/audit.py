@@ -249,6 +249,55 @@ def log_validation(
     )
 
 
+def log_llm_request(
+    provider: str,
+    model: str,
+    stream: str = "",
+    fields_sent: int = 0,
+    fields_returned: int = 0,
+    confidence: float = 0.0,
+    latency_ms: float = 0.0,
+    success: bool = True,
+    prompt_chars: int = 0,
+    response_chars: int = 0,
+    error: str = "",
+) -> None:
+    """Log an LLM API call with request/response details.
+
+    Every LLM call — successful or failed — must be logged for:
+    - Cost tracking (prompt_chars → token estimation)
+    - Latency monitoring (latency_ms)
+    - Data flow audit (which stream's data went to which provider)
+    - Failure analysis (error messages, retry patterns)
+
+    Success logs at INFO. Failures log at WARNING.
+    """
+    if not _enabled():
+        return
+    level = logging.INFO if success else logging.WARNING
+    _audit_logger.log(
+        level,
+        "llm_request: provider=%s model=%s stream=%s fields=%d->%d confidence=%.2f %sms%s",
+        provider, model, stream, fields_sent, fields_returned,
+        confidence, f"{latency_ms:.0f}",
+        "" if success else f" ERROR: {error}",
+        extra={
+            "audit": "llm_request",
+            "provider": provider,
+            "model": model,
+            "stream": stream,
+            "fields_sent": fields_sent,
+            "fields_returned": fields_returned,
+            "confidence": confidence,
+            "latency_ms": latency_ms,
+            "success": success,
+            "prompt_chars": prompt_chars,
+            "response_chars": response_chars,
+            "error": error,
+        },
+    )
+
+
 def _safe_samples(values: list[Any] | None, max_items: int = 5) -> list:
     """Sanitize sample values for logging — truncate and stringify."""
     if not values:

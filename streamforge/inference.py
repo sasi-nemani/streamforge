@@ -843,8 +843,15 @@ def _call_llm(
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
+    import time as _time
+    from . import audit as _audit
+
+    # Derive stream name from field paths (for audit context)
+    _stream_ctx = ""  # will be set by caller via thread-local or param in future
+
     for attempt in range(max_retries):
         logger.info("Inference attempt %d/%d (model: %s)...", attempt + 1, max_retries, model)
+        _t0 = _time.monotonic()
         try:
             response = client.chat.completions.create(
                 model=model,
@@ -852,8 +859,8 @@ def _call_llm(
                 tools=[INFERENCE_TOOL],
                 tool_choice={"type": "function", "function": {"name": "submit_inferred_schema"}},
                 max_tokens=8192,
-                temperature=0,  # P3 fix: deterministic output reduces run-to-run schema variance
-                timeout=120,    # 2 min max for primary provider
+                temperature=0,
+                timeout=120,
             )
             choice = response.choices[0]
             tool_calls = choice.message.tool_calls
@@ -895,12 +902,37 @@ def _call_llm(
                 ))
             # P0 fix: strip hallucinated type-name fields (e.g. path="array", presence=0.0)
             llm_fields = _validate_inferred_fields(llm_fields, set(field_stats.keys()))
+            _latency = (_time.monotonic() - _t0) * 1000
+            _resp_text = tool_calls[0].function.arguments if tool_calls else ""
+            _audit.log_llm_request(
+                provider=getattr(client, '_base_url', model).host if hasattr(getattr(client, '_base_url', None), 'host') else "unknown",
+                model=model,
+                fields_sent=len(field_stats),
+                fields_returned=len(llm_fields),
+                confidence=overall_confidence,
+                latency_ms=_latency,
+                success=True,
+                prompt_chars=len(prompt),
+                response_chars=len(_resp_text),
+            )
             return llm_fields, overall_confidence, event_type_values
 
         except Exception as e:
+            _latency = (_time.monotonic() - _t0) * 1000
+            _audit.log_llm_request(
+                provider="unknown",
+                model=model,
+                fields_sent=len(field_stats),
+                fields_returned=0,
+                confidence=0.0,
+                latency_ms=_latency,
+                success=False,
+                prompt_chars=len(prompt),
+                error=_sanitize_for_logging(str(e)),
+            )
             logger.warning("Inference attempt %d failed: %s", attempt + 1, _sanitize_for_logging(str(e)))
             if attempt < max_retries - 1:
-                messages.append({"role": "user", "content": f"Previous attempt failed: {e}. Please call submit_inferred_schema."})
+                messages.append({"role": "user", "content": f"Previous attempt failed: {_sanitize_for_logging(str(e))}. Please call submit_inferred_schema."})
 
     return None, 0.8, []
 
@@ -923,15 +955,19 @@ def _call_llm_json_mode(
         {"role": "system", "content": SYSTEM_PROMPT_JSON_MODE},
         {"role": "user", "content": prompt},
     ]
+    import time as _time
+    from . import audit as _audit
+
     for attempt in range(max_retries):
         logger.info("Inference attempt %d/%d (json-mode, model: %s)...", attempt + 1, max_retries, model)
+        _t0 = _time.monotonic()
         try:
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
                 response_format={"type": "json_object"},
                 max_tokens=8192,
-                temperature=0,  # P3 fix: deterministic output reduces run-to-run schema variance
+                temperature=0,
                 timeout=timeout_s,
             )
             content = response.choices[0].message.content
@@ -975,9 +1011,33 @@ def _call_llm_json_mode(
                 ))
             # P0 fix: strip hallucinated type-name fields (e.g. path="array", presence=0.0)
             llm_fields = _validate_inferred_fields(llm_fields, set(field_stats.keys()))
+            _latency = (_time.monotonic() - _t0) * 1000
+            _audit.log_llm_request(
+                provider=getattr(client, '_base_url', model).host if hasattr(getattr(client, '_base_url', None), 'host') else "unknown",
+                model=model,
+                fields_sent=len(field_stats),
+                fields_returned=len(llm_fields),
+                confidence=overall_confidence,
+                latency_ms=_latency,
+                success=True,
+                prompt_chars=len(prompt),
+                response_chars=len(content or ""),
+            )
             return llm_fields, overall_confidence, event_type_values
 
         except Exception as e:
+            _latency = (_time.monotonic() - _t0) * 1000
+            _audit.log_llm_request(
+                provider="unknown",
+                model=model,
+                fields_sent=len(field_stats),
+                fields_returned=0,
+                confidence=0.0,
+                latency_ms=_latency,
+                success=False,
+                prompt_chars=len(prompt),
+                error=_sanitize_for_logging(str(e)),
+            )
             logger.warning("Inference attempt %d failed: %s", attempt + 1, _sanitize_for_logging(str(e)))
 
     return None, 0.8, []

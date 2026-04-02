@@ -157,3 +157,85 @@ class TestAuditVerbosity:
                 assert clean_records[0].levelno == logging.DEBUG
             finally:
                 audit._audit_logger.removeHandler(handler)
+
+
+class TestLlmCallAudit:
+    """Every LLM API call must be logged with request/response details."""
+
+    def test_log_llm_request_exists(self):
+        from streamforge.audit import log_llm_request
+        assert callable(log_llm_request)
+
+    def test_log_llm_request_captures_essentials(self):
+        """Must log provider, model, stream, field count, response, latency."""
+        import logging
+        from streamforge import audit
+
+        records = []
+        handler = logging.Handler()
+        handler.emit = lambda r: records.append(r)
+
+        with patch.dict(os.environ, {"STREAMFORGE_AUDIT": "1", "STREAMFORGE_AUDIT_LEVEL": "INFO"}):
+            audit._configured = False
+            audit._ensure_configured()
+            audit._audit_logger.addHandler(handler)
+            try:
+                audit.log_llm_request(
+                    provider="groq",
+                    model="llama-3.3-70b-versatile",
+                    stream="events.payments",
+                    fields_sent=6,
+                    fields_returned=6,
+                    confidence=0.85,
+                    latency_ms=1200,
+                    success=True,
+                    prompt_chars=5000,
+                    response_chars=2000,
+                )
+                assert len(records) >= 1
+                rec = records[-1]
+                extra = rec.__dict__
+                assert extra["audit"] == "llm_request"
+                assert extra["provider"] == "groq"
+                assert extra["model"] == "llama-3.3-70b-versatile"
+                assert extra["stream"] == "events.payments"
+                assert extra["fields_sent"] == 6
+                assert extra["fields_returned"] == 6
+                assert extra["confidence"] == 0.85
+                assert extra["latency_ms"] == 1200
+                assert extra["success"] is True
+            finally:
+                audit._audit_logger.removeHandler(handler)
+
+    def test_log_llm_request_captures_failure(self):
+        """Failed LLM calls must also be logged."""
+        import logging
+        from streamforge import audit
+
+        records = []
+        handler = logging.Handler()
+        handler.emit = lambda r: records.append(r)
+
+        with patch.dict(os.environ, {"STREAMFORGE_AUDIT": "1", "STREAMFORGE_AUDIT_LEVEL": "INFO"}):
+            audit._configured = False
+            audit._ensure_configured()
+            audit._audit_logger.addHandler(handler)
+            try:
+                audit.log_llm_request(
+                    provider="groq",
+                    model="llama-3.3-70b-versatile",
+                    stream="events.payments",
+                    fields_sent=6,
+                    fields_returned=0,
+                    confidence=0.0,
+                    latency_ms=30000,
+                    success=False,
+                    error="timeout after 30s",
+                )
+                assert len(records) >= 1
+                rec = records[-1]
+                assert rec.__dict__["success"] is False
+                assert rec.__dict__["error"] == "timeout after 30s"
+                assert rec.levelno == logging.WARNING  # failures at WARNING
+            finally:
+                audit._audit_logger.removeHandler(handler)
