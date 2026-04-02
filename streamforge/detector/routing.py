@@ -342,4 +342,15 @@ def detect_drift_multi_schema(
             noise_count=noise_count,
         ))
 
+    # Stream-level heartbeat for multi-schema streams
+    total_drifts = sum(len(r.drifts) for r in reports)
+    highest = max((r.highest_tier.value for r in reports), default=0)
+    audit.log_poll_heartbeat(
+        stream=stream_name,
+        events_sampled=len(new_sample),
+        window_size=len(new_sample),
+        drift_count=total_drifts,
+        highest_tier=highest,
+    )
+
     return reports
