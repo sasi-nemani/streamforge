@@ -444,6 +444,22 @@ async def _watch_kafka_async(
 
     window = EventWindow(capacity=window_capacity)
 
+    # Per-cluster windows for multi-schema — undiluted samples per cluster
+    cluster_window_map = None
+    if multi_schema:
+        from .window import ClusterWindowMap
+        cluster_ids = [s["cluster_id"] for s in profile.get("sub_schemas", [])]
+        routing_field = profile.get("routing_field", "event_type")
+        cluster_window_map = ClusterWindowMap(
+            cluster_ids=cluster_ids,
+            routing_field=routing_field,
+            capacity=window_capacity,
+        )
+        logger.info(
+            "Per-cluster windows: %d clusters, %d capacity each, routing=%s",
+            len(cluster_ids), window_capacity, routing_field,
+        )
+
     # ── Stability state machine ────────────────────────────────────────────────
     # NOTE: The canonical phase logic is in detector/phase.py (WatchPhase class).
     # This inline implementation is legacy — it will be replaced by WatchPhase
@@ -576,6 +592,8 @@ async def _watch_kafka_async(
 
                 if batch:
                     window.add(batch)
+                    if cluster_window_map:
+                        cluster_window_map.add(batch)
                     await conn.ack()  # commit offsets after adding to window
 
                 now_str = datetime.now().strftime("%H:%M:%S")
@@ -584,7 +602,19 @@ async def _watch_kafka_async(
                     logger.info(f"[{now_str}] o {stream_name} - warming up ({len(window)} events in window)")
                     continue
 
-                sample = window.sample(sample_size)
+                # For multi-schema with per-cluster windows: build an undiluted sample
+                # by sampling sample_size from EACH cluster, then concatenating.
+                # This ensures detect_drift_multi_schema gets enough events per
+                # cluster after routing — no dilution.
+                if cluster_window_map and multi_schema:
+                    sample = []
+                    for cid in cluster_window_map.windows:
+                        cluster_sample = cluster_window_map.sample_cluster(cid, sample_size)
+                        sample.extend(cluster_sample)
+                    # Add any unrouted events for new-cluster detection
+                    sample.extend(cluster_window_map.unrouted[:sample_size])
+                else:
+                    sample = window.sample(sample_size)
 
                 # ── Phase 1: LEARNING ──────────────────────────────────────────
                 if _phase == "LEARNING":
