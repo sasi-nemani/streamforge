@@ -33,6 +33,8 @@ def _field_to_yaml_dict(field: FieldSchema) -> dict:
         d["pii"] = [p.value for p in field.pii_categories]
     if field.enum_values:
         d["enum_values"] = field.enum_values
+    if field.value_stats:
+        d["value_stats"] = field.value_stats
     if field.notes:
         d["notes"] = field.notes
     return d
@@ -167,6 +169,41 @@ def write_schema(schema: InferredSchema, output_dir: str) -> str:
 
     logger.info("Written schema: %s", schema_path)
     return str(schema_path)
+
+
+def write_schema_with_exports(schema: InferredSchema, output_dir: str) -> dict[str, str]:
+    """Write schema.yaml + auto-export JSON Schema and Avro.
+
+    Returns dict of format → file path for all written artifacts.
+    This is the primary output function for `streamforge init`.
+    """
+    from .exporters.avro import schema_to_avro
+    from .exporters.json_schema import schema_to_json_schema
+
+    paths = {}
+
+    # 1. Native schema.yaml
+    paths["yaml"] = write_schema(schema, output_dir)
+
+    out = Path(output_dir) / schema.stream_name
+
+    # 2. JSON Schema (Draft 2020-12) — plugs into Confluent SR, dbt, BigQuery
+    js = schema_to_json_schema(schema)
+    js_text = json.dumps(js, indent=2, default=str) if isinstance(js, dict) else js
+    js_path = out / "schema.json"
+    js_path.write_text(js_text, encoding="utf-8")
+    paths["json_schema"] = str(js_path)
+    logger.info("Written JSON Schema: %s", js_path)
+
+    # 3. Avro (.avsc) — plugs into Kafka Connect, Spark, Flink
+    avro = schema_to_avro(schema)
+    avro_text = json.dumps(avro, indent=2, default=str) if isinstance(avro, dict) else avro
+    avro_path = out / "schema.avsc"
+    avro_path.write_text(avro_text, encoding="utf-8")
+    paths["avro"] = str(avro_path)
+    logger.info("Written Avro schema: %s", avro_path)
+
+    return paths
 
 
 def load_profile(schema_dir: Path) -> "dict | None":

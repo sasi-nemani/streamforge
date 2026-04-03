@@ -352,3 +352,29 @@ def get_all_field_paths(events: list[dict]) -> tuple[dict[str, list[Any]], dict[
 
     presence_rates = {path: count / total for path, count in field_counts.items()}
     return field_values, presence_rates
+
+
+def compute_value_stats(values: list, field_type: str = "") -> dict:
+    """Compute summary statistics for a field's observed values.
+
+    Returns a dict with:
+      cardinality: number of distinct non-null values
+      min/max: for numeric types (int, float, timestamp_epoch_ms)
+      (no min/max for strings — not meaningful)
+
+    Used to enrich schema.yaml with value metadata for data engineering tooling.
+    """
+    if not values:
+        return {"cardinality": 0}
+
+    non_null = [v for v in values if v is not None]
+    distinct = len(set(str(v) for v in non_null))
+    stats: dict = {"cardinality": distinct}
+
+    # Numeric min/max
+    numeric = [v for v in non_null if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    if numeric and field_type in ("float", "integer", "timestamp_epoch_ms", ""):
+        stats["min"] = min(numeric)
+        stats["max"] = max(numeric)
+
+    return stats

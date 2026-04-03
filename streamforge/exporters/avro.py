@@ -63,7 +63,15 @@ def _avro_type(field: FieldSchema) -> Any:
     base: Any
 
     if field.field_type == FieldType.STRING:
-        base = "string"
+        # Use native Avro enum for low-cardinality string fields with known values
+        if field.enum_values and len(field.enum_values) <= 50:
+            # Avro enum names must be [A-Za-z_][A-Za-z0-9_]* — sanitize
+            import re
+            enum_name = re.sub(r'[^A-Za-z0-9_]', '_', field.path.split(".")[-1]).title() + "Enum"
+            safe_symbols = [re.sub(r'[^A-Za-z0-9_.]', '_', v) for v in field.enum_values]
+            base = {"type": "enum", "name": enum_name, "symbols": safe_symbols}
+        else:
+            base = "string"
     elif field.field_type == FieldType.INTEGER:
         base = "long"          # Use long (64-bit) to avoid overflow on large IDs
     elif field.field_type == FieldType.FLOAT:

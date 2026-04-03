@@ -60,6 +60,7 @@ class FieldSchema(BaseModel):
     pii_categories: list[PIICategory] = []
     confidence: float = 1.0
     notes: str | None = None
+    value_stats: dict | None = None  # {"min": X, "max": Y, "cardinality": N}
 
     @field_validator("presence_rate", "confidence", mode="before")
     @classmethod
