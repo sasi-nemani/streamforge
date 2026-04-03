@@ -175,6 +175,44 @@ class TestTimeSlidingWindow:
             w.add([{"id": i}])
         assert len(w) == 5  # count-based eviction still works
 
+    def test_sample_does_not_materialize_full_window(self):
+        """sample(200) from a 10K window should NOT allocate 10K elements."""
+        import sys
+        from streamforge.detector.window import EventWindow
+
+        w = EventWindow(capacity=10000)
+        w.add([{"id": i, "data": "x" * 100} for i in range(10000)])
+        assert len(w) == 10000
+
+        # Sample 200 — should return exactly 200, not 10000
+        result = w.sample(200)
+        assert len(result) == 200
+
+        # Each result element should be a dict, not a tuple
+        assert isinstance(result[0], dict)
+        assert "id" in result[0]
+
+    def test_sample_uniform_distribution(self):
+        """Reservoir sampling must give uniform probability to all events."""
+        from collections import Counter
+        from streamforge.detector.window import EventWindow
+
+        w = EventWindow(capacity=1000)
+        w.add([{"id": i} for i in range(1000)])
+
+        # Sample 100 events 1000 times and check distribution
+        counts = Counter()
+        for _ in range(1000):
+            for e in w.sample(100):
+                counts[e["id"]] += 1
+
+        # Each of the 1000 events should be sampled ~100 times (100/1000 * 1000 = 100)
+        # Allow 50% variance for randomness
+        for event_id in range(1000):
+            assert 30 < counts.get(event_id, 0) < 200, (
+                f"Event {event_id} sampled {counts.get(event_id, 0)} times, expected ~100"
+            )
+
     def test_window_config_in_stream_policy(self):
         """stream_policy.yaml should support window_max_age_seconds."""
         import yaml

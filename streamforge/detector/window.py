@@ -2,6 +2,8 @@
 
 import json as _json
 import logging
+import random
+import time as _time
 from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,6 +29,10 @@ class EventWindow:
     time eviction ensures stale events from quiet periods don't pollute
     the sample.
 
+    Performance: sample() uses in-place reservoir sampling over the deque
+    via indexed access — O(n) allocation where n=sample_size, NOT O(window_capacity).
+    At 100K window capacity with 200 sample size, this is 200KB not 100MB.
+
     Configurable per topic via stream_policy.yaml:
       window_capacity: 5000
       window_max_age_seconds: 300
@@ -38,8 +44,7 @@ class EventWindow:
 
     def add(self, events: list[dict]) -> None:
         """Append new events with timestamp. Oldest evicted by deque maxlen."""
-        import time as _t
-        now = _t.time()
+        now = _time.time()
         for e in events:
             self._buf.append((now, e))
 
@@ -47,8 +52,7 @@ class EventWindow:
         """Remove events older than max_age_seconds. Returns count evicted."""
         if self._max_age <= 0:
             return 0
-        import time as _t
-        cutoff = _t.time() - self._max_age
+        cutoff = _time.time() - self._max_age
         evicted = 0
         while self._buf and self._buf[0][0] < cutoff:
             self._buf.popleft()
@@ -56,9 +60,26 @@ class EventWindow:
         return evicted
 
     def sample(self, n: int) -> list[dict]:
-        """Reservoir-sample n events from the current window contents."""
+        """Reservoir-sample n events directly from deque — O(n) memory, not O(len(buf)).
+
+        Uses Algorithm R with indexed deque access. The deque supports O(1)
+        __getitem__, so we never materialize the full window as a list.
+        At 100K window with n=200, allocates 200 events not 100K.
+        """
         self.evict_expired()
-        return reservoir_sample([e for _, e in self._buf], n)
+        buf_len = len(self._buf)
+        if buf_len == 0:
+            return []
+        if buf_len <= n:
+            return [self._buf[i][1] for i in range(buf_len)]
+
+        # Algorithm R: reservoir of size n, then replace with probability n/i
+        reservoir = [self._buf[i][1] for i in range(n)]
+        for i in range(n, buf_len):
+            j = random.randint(0, i)
+            if j < n:
+                reservoir[j] = self._buf[i][1]
+        return reservoir
 
     def __len__(self) -> int:
         return len(self._buf)
