@@ -203,6 +203,14 @@ def write_schema_with_exports(schema: InferredSchema, output_dir: str) -> dict[s
     paths["avro"] = str(avro_path)
     logger.info("Written Avro schema: %s", avro_path)
 
+    # 4. Markdown data dictionary — human-readable, for Slack/wiki/onboarding
+    from .exporters.markdown import schema_to_markdown
+    md_text = schema_to_markdown(schema)
+    md_path = out / "DATA_DICTIONARY.md"
+    md_path.write_text(md_text, encoding="utf-8")
+    paths["markdown"] = str(md_path)
+    logger.info("Written data dictionary: %s", md_path)
+
     return paths
 
 

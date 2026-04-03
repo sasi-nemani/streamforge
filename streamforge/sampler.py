@@ -377,4 +377,11 @@ def compute_value_stats(values: list, field_type: str = "") -> dict:
         stats["min"] = min(numeric)
         stats["max"] = max(numeric)
 
+    # Enum distribution for low-cardinality string fields (<=30 distinct values)
+    if distinct <= 30 and non_null and field_type in ("string", ""):
+        from collections import Counter
+        counts = Counter(str(v) for v in non_null)
+        total = len(non_null)
+        stats["distribution"] = {k: round(c / total, 4) for k, c in counts.most_common()}
+
     return stats

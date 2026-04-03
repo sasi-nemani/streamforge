@@ -17,24 +17,56 @@ class EventWindow:
     population.  Each watch poll adds newly-seen events; the oldest fall off
     when capacity is reached (collections.deque maxlen behaviour).
 
-    Sampling from the full window — rather than from only the latest batch —
-    gives statistically stable signals and makes slow drift (e.g. a field
-    presence rate falling from 80% to 60% over hours) detectable.
+    Supports both count-based AND time-based eviction:
+      capacity:         max events in window (deque maxlen)
+      max_age_seconds:  evict events older than this (0 = disabled)
+
+    Time-based eviction is critical for high-throughput streams: at 1M/sec,
+    a 2000-event window is 2ms of data. A 300-second window at 1M/sec is
+    300M events (too many to hold), so the count cap still applies — but
+    time eviction ensures stale events from quiet periods don't pollute
+    the sample.
+
+    Configurable per topic via stream_policy.yaml:
+      window_capacity: 5000
+      window_max_age_seconds: 300
     """
 
-    def __init__(self, capacity: int = 2000) -> None:
-        self._buf: deque[dict] = deque(maxlen=capacity)
+    def __init__(self, capacity: int = 2000, max_age_seconds: int = 0) -> None:
+        self._buf: deque[tuple[float, dict]] = deque(maxlen=capacity)
+        self._max_age = max_age_seconds  # 0 = no time eviction
 
     def add(self, events: list[dict]) -> None:
-        """Append new events; oldest are evicted automatically when at capacity."""
-        self._buf.extend(events)
+        """Append new events with timestamp. Oldest evicted by deque maxlen."""
+        import time as _t
+        now = _t.time()
+        for e in events:
+            self._buf.append((now, e))
+
+    def evict_expired(self) -> int:
+        """Remove events older than max_age_seconds. Returns count evicted."""
+        if self._max_age <= 0:
+            return 0
+        import time as _t
+        cutoff = _t.time() - self._max_age
+        evicted = 0
+        while self._buf and self._buf[0][0] < cutoff:
+            self._buf.popleft()
+            evicted += 1
+        return evicted
 
     def sample(self, n: int) -> list[dict]:
         """Reservoir-sample n events from the current window contents."""
-        return reservoir_sample(list(self._buf), n)
+        self.evict_expired()
+        return reservoir_sample([e for _, e in self._buf], n)
 
     def __len__(self) -> int:
         return len(self._buf)
+
+    @property
+    def events(self) -> list[dict]:
+        """Return all events without timestamps (for checkpoint compatibility)."""
+        return [e for _, e in self._buf]
 
 
 def _load_new_events(
@@ -134,7 +166,9 @@ def _save_checkpoint(window: EventWindow, checkpoint_path: Path) -> None:
     try:
         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
         with open(tmp, "w", encoding="utf-8") as fh:
-            for event in window._buf:
+            for item in window._buf:
+                # _buf contains (timestamp, event) tuples; persist only the event
+                event = item[1] if isinstance(item, tuple) else item
                 fh.write(_json.dumps(event) + "\n")
             fh.flush()
         tmp.replace(checkpoint_path)  # atomic on POSIX

@@ -69,8 +69,7 @@ class TestEventWindow:
         w.add([{"id": 4}])
         assert len(w) == 3
         # oldest (id=1) should be evicted; id=4 should be present
-        contents = list(w._buf)
-        ids = [e["id"] for e in contents]
+        ids = [e["id"] for e in w.events]
         assert 1 not in ids
         assert 4 in ids
 
