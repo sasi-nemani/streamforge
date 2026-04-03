@@ -90,6 +90,60 @@ class EventWindow:
         return [e for _, e in self._buf]
 
 
+class ClusterWindowMap:
+    """Per-cluster event windows — each cluster gets undiluted samples.
+
+    Routes incoming events to the correct cluster window based on a routing
+    field (e.g. event_type). Each cluster has its own EventWindow with its
+    own capacity. Sampling from a cluster returns full sample_size events
+    from that cluster only — no dilution across clusters.
+
+    If an event doesn't match any known cluster, it goes to the unrouted list
+    for new-cluster detection.
+    """
+
+    def __init__(
+        self,
+        cluster_ids: list[str],
+        routing_field: str = "event_type",
+        capacity: int = 2000,
+        max_age_seconds: int = 0,
+    ) -> None:
+        self.routing_field = routing_field
+        self.windows: dict[str, EventWindow] = {
+            cid: EventWindow(capacity=capacity, max_age_seconds=max_age_seconds)
+            for cid in cluster_ids
+        }
+        self.unrouted: list[dict] = []
+        self._capacity = capacity
+
+    def add(self, events: list[dict]) -> None:
+        """Route events to cluster windows. Unmatched go to unrouted."""
+        self.unrouted.clear()
+        for event in events:
+            cid = event.get(self.routing_field)
+            if cid is not None and cid in self.windows:
+                self.windows[cid].add([event])
+            else:
+                self.unrouted.append(event)
+
+    def sample_cluster(self, cluster_id: str, n: int) -> list[dict]:
+        """Sample n events from a specific cluster — full sample, no dilution."""
+        w = self.windows.get(cluster_id)
+        if w is None:
+            return []
+        return w.sample(n)
+
+    @property
+    def total_count(self) -> int:
+        """Total events across all cluster windows + unrouted."""
+        return sum(len(w) for w in self.windows.values()) + len(self.unrouted)
+
+    def cluster_counts(self) -> dict[str, int]:
+        """Return event count per cluster."""
+        return {cid: len(w) for cid, w in self.windows.items()}
+
+
 def _load_new_events(
     stream_path: str,
     file_line_counts: dict[str, int],
