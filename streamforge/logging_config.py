@@ -33,8 +33,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from datetime import UTC, datetime
+from logging.handlers import RotatingFileHandler
 
 # ── ANSI colour codes for human mode ──────────────────────────────────────────
 _RESET  = "\033[0m"
@@ -178,7 +180,11 @@ def configure(
 
     # ── file handler (always structured JSON for machine parsing) ─────────────
     if log_file:
-        file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+        max_bytes = int(os.environ.get("STREAMFORGE_LOG_MAX_BYTES", 100_000_000))  # 100MB
+        backup_count = int(os.environ.get("STREAMFORGE_LOG_BACKUP_COUNT", 10))
+        file_handler = RotatingFileHandler(
+            log_file, mode="a", maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
+        )
         file_handler.setFormatter(StructuredFormatter())
         root.addHandler(file_handler)
 

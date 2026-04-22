@@ -34,21 +34,28 @@ from __future__ import annotations
 
 import json
 import logging
+import logging.handlers
 import os
+import re
+import threading
 from datetime import UTC, datetime
 from typing import Any
 
 # ── Audit logger — separate from main app logger ────────────────────────────
 _audit_logger = logging.getLogger("streamforge.audit")
 _configured = False
+_configure_lock = threading.Lock()
 
 
 def _ensure_configured() -> None:
-    """Configure audit logger on first use. Idempotent."""
+    """Configure audit logger on first use. Thread-safe and idempotent."""
     global _configured
     if _configured:
         return
-    _configured = True
+    with _configure_lock:
+        if _configured:  # double-checked locking
+            return
+        _configured = True
 
     enabled = os.environ.get("STREAMFORGE_AUDIT", "1") != "0"
     if not enabled:
@@ -93,9 +100,24 @@ def _ensure_configured() -> None:
 
     if audit_file:
         os.makedirs(os.path.dirname(audit_file) or ".", exist_ok=True)
-        file_h = logging.FileHandler(audit_file, mode="a", encoding="utf-8")
+        max_bytes = int(os.environ.get("STREAMFORGE_AUDIT_MAX_BYTES", "100000000"))  # 100MB
+        backup_count = int(os.environ.get("STREAMFORGE_AUDIT_BACKUP_COUNT", "10"))
+        file_h = logging.handlers.RotatingFileHandler(
+            audit_file, mode="a", encoding="utf-8",
+            maxBytes=max_bytes, backupCount=backup_count,
+        )
         file_h.setFormatter(_AuditFormatter())
         _audit_logger.addHandler(file_h)
+
+    # Optional syslog forwarding
+    syslog_addr = os.environ.get("STREAMFORGE_AUDIT_SYSLOG")
+    if syslog_addr:
+        parts = syslog_addr.split(":")
+        host = parts[0]
+        port = int(parts[1]) if len(parts) > 1 else 514
+        syslog_h = logging.handlers.SysLogHandler(address=(host, port))
+        syslog_h.setFormatter(_AuditFormatter())
+        _audit_logger.addHandler(syslog_h)
 
 
 def _enabled() -> bool:
@@ -218,6 +240,43 @@ def log_drift_check(
     )
 
 
+def log_drift_detected(
+    stream: str,
+    drift_count: int,
+    highest_tier: int,
+    evolution_count: int = 0,
+    noise_count: int = 0,
+    events_sampled: int = 0,
+) -> None:
+    """Log aggregate drift detection event for alerting/monitoring.
+
+    Emitted once per poll cycle when drift is detected, summarizing
+    all drift across all fields. This is the event to alert on.
+    """
+    if not _enabled():
+        return
+    _audit_logger.warning(
+        "drift_detected: %s — %d drift(s), tier %d (%d sampled)",
+        stream, drift_count, highest_tier, events_sampled,
+        extra={
+            "audit": "drift_detected",
+            "stream": stream,
+            "drift_count": drift_count,
+            "highest_tier": highest_tier,
+            "evolution_count": evolution_count,
+            "noise_count": noise_count,
+            "events_sampled": events_sampled,
+        },
+    )
+
+
+# Heartbeat sampling — reduces audit log volume at scale.
+# STREAMFORGE_AUDIT_HEARTBEAT_EVERY=N logs every Nth heartbeat (default=1 = every cycle).
+# Drift events are NEVER sampled — always logged.
+_heartbeat_counter: int = 0
+_heartbeat_lock = threading.Lock()
+
+
 def log_poll_heartbeat(
     stream: str,
     events_sampled: int,
@@ -225,13 +284,21 @@ def log_poll_heartbeat(
     drift_count: int,
     highest_tier: int = 0,
 ) -> None:
-    """Log a per-poll-cycle heartbeat for a stream. Always at INFO level.
+    """Log a per-poll-cycle heartbeat for a stream.
 
-    Ensures every stream appears in the audit log on every poll cycle,
-    even when clean. Without this, a clean stream at AUDIT_LEVEL=INFO
-    produces zero entries — which looks like it's not being monitored.
+    Heartbeats are sampled via STREAMFORGE_AUDIT_HEARTBEAT_EVERY env var
+    to reduce log volume at scale (default=1, meaning every cycle).
+    At 1000 streams x 30s intervals, HEARTBEAT_EVERY=10 reduces from
+    2.88M to 288K heartbeat lines/day.
     """
     if not _enabled():
+        return
+    global _heartbeat_counter
+    every_n = int(os.environ.get("STREAMFORGE_AUDIT_HEARTBEAT_EVERY", "1"))
+    with _heartbeat_lock:
+        _heartbeat_counter += 1
+        current = _heartbeat_counter
+    if every_n > 1 and (current % every_n) != 0:
         return
     verdict = "clean" if drift_count == 0 else f"{drift_count} drift(s), tier {highest_tier}"
     _audit_logger.info(
@@ -329,18 +396,46 @@ def log_llm_request(
             "prompt_chars": prompt_chars,
             "response_chars": response_chars,
             "error": error,
-            "prompt_preview": prompt_preview[:_PREVIEW_MAX] if prompt_preview else "",
-            "response_preview": response_preview[:_PREVIEW_MAX] if response_preview else "",
+            "prompt_preview": _scrub_preview(prompt_preview[:_PREVIEW_MAX]) if prompt_preview else "",
+            "response_preview": _scrub_preview(response_preview[:_PREVIEW_MAX]) if response_preview else "",
         },
     )
 
 
+_PII_REDACT_PATTERNS = [
+    re.compile(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'),  # email
+    re.compile(r'\d{3}-\d{2}-\d{4}'),                                  # SSN
+    re.compile(r'\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}'),            # card number
+    re.compile(r'\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b'),    # IP address
+    re.compile(r'\+\d{1,3}[\s-]?\d{3,14}'),                            # phone intl
+    re.compile(r'\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:-[A-Z][a-z]+)?\b'),   # name (John Smith)
+    re.compile(r'\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b'),  # DOB (1990-05-15)
+    re.compile(r'\b\d{1,5}\s+[A-Z][a-z]+\s+(?:St|Ave|Blvd|Dr|Rd|Ln|Ct|Way|Pl)\b'),  # address
+]
+
+
+def _scrub_preview(text: str) -> str:
+    """Scrub PII from preview strings using the module-level redaction patterns."""
+    if not text:
+        return text
+    for pattern in _PII_REDACT_PATTERNS:
+        text = pattern.sub("[REDACTED]", text)
+    return text
+
+
 def _safe_samples(values: list[Any] | None, max_items: int = 5) -> list:
-    """Sanitize sample values for logging — truncate and stringify."""
+    """Sanitize sample values for logging — truncate, stringify, redact PII.
+
+    PII patterns (email, SSN, card number, IP, phone) are replaced with
+    [REDACTED:<category>] before the value reaches the audit log.
+    """
     if not values:
         return []
     result = []
     for v in values[:max_items]:
         s = repr(v)
+        # Redact PII patterns in the stringified value
+        for pattern in _PII_REDACT_PATTERNS:
+            s = pattern.sub("[REDACTED]", s)
         result.append(s[:100] if len(s) > 100 else s)
     return result

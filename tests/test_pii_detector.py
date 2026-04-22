@@ -138,3 +138,32 @@ def test_aadhaar_detected():
     """AADHAAR pattern with matching field name IS flagged."""
     result = detect_pii("aadhaar_number", ["1234 5678 9012"])
     assert PIICategory.NATIONAL_ID in result
+
+
+# --- UUID detection (production bug fix) ---
+
+
+def test_uuid_not_flagged_as_pii_in_id_field():
+    """UUIDs in ID fields should NOT be flagged as PII."""
+    uuids = ["550e8400-e29b-41d4-a716-446655440000"] * 5
+    assert detect_pii("event_id", uuids) == []
+    assert detect_pii("transaction_id", uuids) == []
+    assert detect_pii("request_uuid", uuids) == []
+
+
+def test_uuid_in_non_id_field_still_safe():
+    """UUIDs in non-ID fields are also not PII (UUIDs are never PII)."""
+    uuids = ["550e8400-e29b-41d4-a716-446655440000"]
+    # UUIDs don't match any PII pattern (email, phone, SSN, etc.)
+    result = detect_pii("some_data", uuids)
+    assert PIICategory.EMAIL not in result
+    assert PIICategory.PHONE not in result
+    assert PIICategory.NATIONAL_ID not in result
+
+
+def test_mixed_uuid_and_other_values():
+    """If values are mixed (not all UUIDs), don't suppress PII checks."""
+    mixed = ["550e8400-e29b-41d4-a716-446655440000", "alice@example.com"]
+    result = detect_pii("event_id", mixed)
+    # Email should still be detected since not all values are UUIDs
+    assert PIICategory.EMAIL in result

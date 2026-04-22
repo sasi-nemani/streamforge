@@ -1,10 +1,12 @@
 """Watch loops — file-based and Kafka-backed continuous drift detection."""
 
 import atexit
+import json as _json
 import logging
 import os
 import signal
 import threading
+import time as _time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -28,6 +30,8 @@ from .window import (
     _write_poll_state,
 )
 
+from ..metrics import DRIFT_DETECTED, EVENTS_SAMPLED, POLL_CYCLES, POLL_DURATION
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -41,6 +45,51 @@ def _handle_signal(signum: int, frame: Any) -> None:
     """Signal handler for SIGTERM and SIGINT."""
     logger.info("Received signal %s, initiating graceful shutdown...", signal.Signals(signum).name)
     _shutdown.set()
+
+
+def _write_health(
+    schema_dir: Path,
+    stream_name: str,
+    phase: str,
+    window_size: int,
+    poll_duration_ms: float,
+    poll_interval_seconds: int,
+    drift_count: int,
+) -> None:
+    """Write health.json for external monitoring. Non-fatal on failure."""
+    try:
+        health_dir = schema_dir / ".watch_state"
+        health_dir.mkdir(parents=True, exist_ok=True)
+        status = "degraded" if poll_duration_ms > poll_interval_seconds * 2 * 1000 else "ok"
+        health = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "stream_name": stream_name,
+            "phase": phase,
+            "window_size": window_size,
+            "poll_duration_ms": round(poll_duration_ms, 1),
+            "poll_interval_seconds": poll_interval_seconds,
+            "status": status,
+            "last_drift_count": drift_count,
+        }
+        try:
+            from ..metrics import metrics_snapshot
+            health["metrics"] = metrics_snapshot()
+        except Exception:
+            pass
+        (health_dir / "health.json").write_text(
+            _json.dumps(health, indent=2), encoding="utf-8"
+        )
+    except OSError as e:
+        logger.warning("Failed to write health.json: %s", e)
+
+
+def _sd_notify(state: str) -> None:
+    """Send systemd watchdog notification. No-op if not under systemd."""
+    try:
+        import sdnotify
+        sdnotify.SystemdNotifier().notify(state)
+    except (ImportError, Exception):
+        pass
 
 
 def watch_stream(
@@ -79,7 +128,7 @@ def watch_stream(
         baseline = load_schema(schema_path)
 
     stream_name = baseline.stream_name
-    drift_output_dir = Path("drift_reports")
+    drift_output_dir = schema_dir / "drift_reports"
 
     mode_note = (
         f"multi-schema ({len(profile['sub_schemas'])} clusters, "
@@ -183,6 +232,7 @@ def watch_stream(
 
     try:
         while not _shutdown.is_set():
+            _poll_start = _time.monotonic()
             # Load only newly appended lines (P1-B: track by line count, not mtime)
             new_events = _load_new_events(stream_path, file_line_counts)
             if new_events:
@@ -378,6 +428,25 @@ def watch_stream(
             # Write last-polled state for the UI (last event timestamp + sample counts)
             _write_poll_state(schema_dir, len(sample), len(window), len(new_events))
 
+            # Increment Prometheus-style metrics
+            _poll_end = _time.monotonic()
+            _poll_ms = (_poll_end - _poll_start) * 1000
+            POLL_CYCLES.inc()
+            POLL_DURATION.observe(_poll_ms / 1000)
+            EVENTS_SAMPLED.inc(len(sample))
+            if new_drifts_to_report:
+                DRIFT_DETECTED.inc(len(new_drifts_to_report))
+
+            # Write health.json for external monitoring + systemd watchdog
+            _write_health(
+                schema_dir=schema_dir, stream_name=stream_name,
+                phase=_wstate.phase, window_size=len(window),
+                poll_duration_ms=_poll_ms,
+                poll_interval_seconds=poll_interval_seconds,
+                drift_count=len(new_drifts_to_report) if new_drifts_to_report else 0,
+            )
+            _sd_notify("WATCHDOG=1")
+
             _shutdown.wait(poll_interval_seconds)
 
     except KeyboardInterrupt:
@@ -427,7 +496,7 @@ async def _watch_kafka_async(
         baseline = load_schema(schema_path)
 
     stream_name = baseline.stream_name
-    drift_output_dir = Path("drift_reports")
+    drift_output_dir = schema_dir / "drift_reports"
     checkpoint_path = schema_dir / ".watch_state" / "window.ndjson"
 
     mode_note = (
@@ -576,6 +645,7 @@ async def _watch_kafka_async(
     kafka_cfg.consumer_group = "streamforge-watcher"
 
     _shutdown.clear()
+    _sd_notify("READY=1")
 
     try:
         async with KafkaConnector(topic, kafka_cfg) as conn:
@@ -584,6 +654,7 @@ async def _watch_kafka_async(
                 f"Connected: {conn.source_id}"
             )
             while not _shutdown.is_set():
+                _kpoll_start = _time.monotonic()
                 # Poll for up to poll_interval_seconds — the timeout IS the interval
                 batch = await conn.read_batch(
                     max_messages=kafka_cfg.max_poll_records,
@@ -656,6 +727,15 @@ async def _watch_kafka_async(
                     _save_watch_state_kws()
                     _save_checkpoint(window, checkpoint_path)
                     _write_poll_state(schema_dir, len(sample), len(window), len(batch))
+                    _kpoll_ms = (_time.monotonic() - _kpoll_start) * 1000
+                    POLL_CYCLES.inc()
+                    POLL_DURATION.observe(_kpoll_ms / 1000)
+                    EVENTS_SAMPLED.inc(len(sample))
+                    _write_health(schema_dir=schema_dir, stream_name=stream_name,
+                                  phase=_phase, window_size=len(window),
+                                  poll_duration_ms=_kpoll_ms, poll_interval_seconds=poll_interval_seconds,
+                                  drift_count=0)
+                    _sd_notify("WATCHDOG=1")
                     continue
 
                 # ── Phase 2: STABILIZING ───────────────────────────────────────
@@ -698,6 +778,15 @@ async def _watch_kafka_async(
                     _save_watch_state_kws()
                     _save_checkpoint(window, checkpoint_path)
                     _write_poll_state(schema_dir, len(sample), len(window), len(batch))
+                    _kpoll_ms = (_time.monotonic() - _kpoll_start) * 1000
+                    POLL_CYCLES.inc()
+                    POLL_DURATION.observe(_kpoll_ms / 1000)
+                    EVENTS_SAMPLED.inc(len(sample))
+                    _write_health(schema_dir=schema_dir, stream_name=stream_name,
+                                  phase=_phase, window_size=len(window),
+                                  poll_duration_ms=_kpoll_ms, poll_interval_seconds=poll_interval_seconds,
+                                  drift_count=0)
+                    _sd_notify("WATCHDOG=1")
                     continue
 
                 # ── Phase 3: STABLE ────────────────────────────────────────────
@@ -780,6 +869,18 @@ async def _watch_kafka_async(
                 _save_watch_state_kws()
                 _save_checkpoint(window, checkpoint_path)
                 _write_poll_state(schema_dir, len(sample), len(window), len(batch))
+                _drift_count = sum(len(r.drifts) for r in reports) if reports else 0
+                _kpoll_ms = (_time.monotonic() - _kpoll_start) * 1000
+                POLL_CYCLES.inc()
+                POLL_DURATION.observe(_kpoll_ms / 1000)
+                EVENTS_SAMPLED.inc(len(sample))
+                if _drift_count:
+                    DRIFT_DETECTED.inc(_drift_count)
+                _write_health(schema_dir=schema_dir, stream_name=stream_name,
+                              phase=_phase, window_size=len(window),
+                              poll_duration_ms=_kpoll_ms, poll_interval_seconds=poll_interval_seconds,
+                              drift_count=_drift_count)
+                _sd_notify("WATCHDOG=1")
 
     except KeyboardInterrupt:
         pass

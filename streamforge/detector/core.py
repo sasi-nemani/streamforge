@@ -400,6 +400,16 @@ def detect_drift(
     evolution_count = sum(1 for d in drifts if d.drift_class == DriftClass.EVOLUTION)
     noise_count = sum(1 for d in drifts if d.drift_class == DriftClass.NOISE)
 
+    if drifts:
+        audit.log_drift_detected(
+            stream=stream_name,
+            drift_count=len(drifts),
+            highest_tier=highest.value,
+            evolution_count=evolution_count,
+            noise_count=noise_count,
+            events_sampled=len(new_sample),
+        )
+
     return DriftReport(
         stream_name=stream_name,
         detected_at=now,

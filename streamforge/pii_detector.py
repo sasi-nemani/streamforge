@@ -19,6 +19,9 @@ _IP_RAW_PATTERN = re.compile(r'\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b')
 DOB_PATTERN = re.compile(r'\b\d{4}-\d{2}-\d{2}\b')
 SSN_PATTERN = re.compile(r'\b\d{3}-\d{2}-\d{4}\b')
 AADHAAR_PATTERN = re.compile(r'\b\d{4}\s\d{4}\s\d{4}\b')
+UUID_PATTERN = re.compile(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+)
 
 # Phone patterns: require explicit formatting (+ prefix, parenthesized area code,
 # or dash/space-separated groups). Plain digit sequences are rejected.
@@ -41,12 +44,41 @@ def _looks_like_phone(val: str) -> bool:
     )
 
 
+def _is_rfc1918_or_special(octets: list[int]) -> bool:
+    """Check if octets match RFC 1918 private ranges, loopback, or link-local.
+
+    Private:    10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+    Loopback:   127.0.0.0/8
+    Link-local: 169.254.0.0/16
+    """
+    a = octets[0]
+    if a == 10:             # 10.0.0.0/8
+        return True
+    if a == 172 and 16 <= octets[1] <= 31:  # 172.16.0.0/12
+        return True
+    if a == 192 and octets[1] == 168:       # 192.168.0.0/16
+        return True
+    if a == 127:            # loopback
+        return True
+    if a == 169 and octets[1] == 254:       # link-local
+        return True
+    return False
+
+
+def _is_uuid(val: str) -> bool:
+    """Check if value is a UUID (v1-v5 format)."""
+    return bool(UUID_PATTERN.match(val))
+
+
 def _looks_like_ip(val: str) -> bool:
     """Check if a string looks like an IP address, not a version string.
 
-    Validates that each octet is 0-255 and at least one octet exceeds 100.
-    This eliminates false positives on version strings like "1.2.3.4" or
-    "2024.1.15.3" while catching real IPs like "192.168.1.1".
+    Strategy:
+    1. All octets must be 0-255.
+    2. Accept if ANY of these hold:
+       a. RFC 1918 private range or loopback (10.x, 172.16-31.x, 192.168.x, 127.x)
+       b. At least one octet > 100 (real public IPs almost always have this)
+    3. Reject otherwise (version strings like "1.2.3.4" or "2.0.1.3").
     """
     m = _IP_RAW_PATTERN.search(val)
     if not m:
@@ -55,8 +87,10 @@ def _looks_like_ip(val: str) -> bool:
     # All octets must be 0-255
     if not all(0 <= o <= 255 for o in octets):
         return False
-    # At least one octet > 100 — real IPs almost always have this,
-    # version strings almost never do (1.2.3.4 → max octet is 4)
+    # Accept RFC 1918 / loopback / link-local unconditionally
+    if _is_rfc1918_or_special(octets):
+        return True
+    # For public IPs, require at least one high octet to reject version strings
     return max(octets) > 100
 
 
@@ -153,6 +187,12 @@ def detect_pii_scored(field_path: str, sample_values: list[Any]) -> list[PIIDete
     """
     segments = _path_segments(field_path)
     str_values = [v for v in sample_values if isinstance(v, str)][:20]
+
+    # Skip PII checks for ID fields containing only UUIDs — UUIDs are never PII
+    _all_parts = [p for seg in segments for p in seg.split("_")]
+    is_id_field = any(p in _ID_FIELD_SEGMENTS for p in _all_parts)
+    if is_id_field and str_values and all(_is_uuid(v) for v in str_values):
+        return []
 
     name_matches = _check_name_hints(segments)
     pattern_matches = _check_patterns(str_values, segments)
