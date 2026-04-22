@@ -407,6 +407,7 @@ def _render_impact_assessment(drifted_fields: list[dict], consumers_data: dict) 
 
 def render_command_bar(n_streams, drift_streams, pii_streams, all_schemas):
     from .data import load_drift_reports as _ldr
+    from .data import load_poll_state
 
     # Need stream_names for iteration — get from all_schemas keys
     _stream_names = sorted(all_schemas.keys())
@@ -416,14 +417,54 @@ def render_command_bar(n_streams, drift_streams, pii_streams, all_schemas):
     n_reports  = sum(len(_ldr(sn)) for sn in _stream_names)
     clean_pct  = int((n_streams - n_drift) / n_streams * 100) if n_streams else 100
 
+    # Calculate events/min from poll states
+    total_events_min = 0
+    for sn in _stream_names:
+        poll = load_poll_state(sn)
+        if poll:
+            window = poll.get("window_size", 0)
+            interval = poll.get("poll_interval_seconds", 30)
+            if interval > 0:
+                total_events_min += int(window / interval * 60)
+
+    # Determine if there are high-severity drifts (Tier 1 or 2)
+    critical_drifts = []
+    for sn in sorted(drift_streams):
+        rpts = _ldr(sn)
+        for rpt in rpts:
+            tier = rpt.get("tier", 3)
+            if tier <= 2:
+                critical_drifts.append((sn, rpt.get("summary", "Schema drift detected"), tier))
+
     status_col = _RED if n_drift else _GREEN
     status_txt = f"{n_drift} Drift Active" if n_drift else "All Systems Operational"
 
+    # Critical action banner for Tier 1/2 drifts
+    critical_banner = ""
+    if critical_drifts:
+        top_drift = critical_drifts[0]
+        critical_banner = (
+            f'<div style="background:rgba(248,113,113,0.15);border:1px solid {_RED};'
+            f'border-radius:8px;padding:12px 16px;margin:0 -1.5rem 12px -1.5rem;'
+            f'display:flex;align-items:center;gap:12px">'
+            f'<span style="font-size:18px">🚨</span>'
+            f'<div style="flex:1">'
+            f'<div style="font-size:13px;font-weight:600;color:{_RED}">Critical Action Required</div>'
+            f'<div style="font-size:12px;color:{_TEXT2}">'
+            f'Tier {top_drift[2]} drift in <strong>{top_drift[0]}</strong>: {top_drift[1][:60]}...'
+            f'</div>'
+            f'</div>'
+            f'<span style="font-size:11px;color:{_TEXT3};background:{_SURF2};'
+            f'padding:4px 10px;border-radius:4px">View Details →</span>'
+            f'</div>'
+        )
+
     st.markdown(
+        critical_banner +
         f'<div style="background:{_SURF};border-bottom:1px solid {_BORDER};'
         f'padding:12px 0;margin:0 -1.5rem 0 -1.5rem">'
 
-        # Top row: brand left, status pill right
+        # Top row: brand left, live counter + status pill right
         f'<div style="display:flex;align-items:center;padding:0 20px;margin-bottom:8px">'
         f'<div>'
         f'<span style="font-size:15px;font-weight:700;color:{_TEXT};'
@@ -431,6 +472,17 @@ def render_command_bar(n_streams, drift_streams, pii_streams, all_schemas):
         f'<span style="font-size:12px;color:{_TEXT3};margin-left:10px">Contract control plane for event streams</span>'
         f'</div>'
         f'<div style="flex:1"></div>'
+
+        # Live events counter
+        f'<div style="display:flex;align-items:center;gap:6px;margin-right:12px;'
+        f'background:{_SURF2};padding:4px 10px;border-radius:980px;border:1px solid {_BORDER}">'
+        f'<span style="width:6px;height:6px;border-radius:50%;background:{_GREEN};'
+        f'animation:pulse 2s infinite;display:inline-block"></span>'
+        f'<span style="font-size:11px;font-weight:500;color:{_GREEN}">'
+        f'{total_events_min:,} events/min</span>'
+        f'</div>'
+
+        # Status pill
         f'<div style="display:flex;align-items:center;gap:7px;'
         f'background:{_SURF2};padding:5px 13px;border-radius:980px;border:1px solid {_BORDER}">'
         f'<span style="width:6px;height:6px;border-radius:50%;background:{status_col};'

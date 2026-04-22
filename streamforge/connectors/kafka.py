@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from typing import Any
 
@@ -75,8 +76,8 @@ except ImportError:
 
 if not _CONFLUENT_AVAILABLE:
     try:
-        from kafka import KafkaConsumer  # type: ignore[import]
-        from kafka.errors import KafkaError  # type: ignore[import]
+        from kafka import KafkaConsumer
+        from kafka.errors import KafkaError
         _KAFKA_PYTHON_AVAILABLE = True
         logger.debug("Using kafka-python (pure Python)")
     except ImportError:
@@ -85,6 +86,30 @@ if not _CONFLUENT_AVAILABLE:
 
 class KafkaConnectorError(RuntimeError):
     """Raised when neither kafka library is available or connection fails."""
+
+
+class RetryableKafkaError(Exception):
+    """Kafka error with explicit retryability flag for circuit breaker integration."""
+
+    def __init__(self, message: str, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Return True if the Kafka error is transient and safe to retry.
+
+    Uses a _kafka_retryable attribute if set by the caller (for classified errors).
+    For unknown exceptions, defaults to False (fail-safe).
+    """
+    return getattr(exc, "_kafka_retryable", False)
+
+
+# Default batch memory limit: 10 MB
+_DEFAULT_MAX_BATCH_BYTES = 10 * 1024 * 1024
+
+# Maximum single event size: 5 MB (configurable via env)
+_MAX_EVENT_BYTES = int(os.environ.get("STREAMFORGE_MAX_EVENT_BYTES", "5000000"))
 
 
 class KafkaConnector(StreamConnector):
@@ -102,7 +127,7 @@ class KafkaConnector(StreamConnector):
         _last_batch:   Most recently read batch (used by ack() for offset commit).
     """
 
-    def __init__(self, topic: str, cfg: KafkaConfig) -> None:
+    def __init__(self, topic: str, cfg: KafkaConfig, max_batch_bytes: int = _DEFAULT_MAX_BATCH_BYTES) -> None:
         if not _CONFLUENT_AVAILABLE and not _KAFKA_PYTHON_AVAILABLE:
             raise KafkaConnectorError(
                 "No Kafka client library found. Install one of:\n"
@@ -111,6 +136,7 @@ class KafkaConnector(StreamConnector):
             )
         self.topic = topic
         self.cfg = cfg
+        self._max_batch_bytes = max_batch_bytes
         self._consumer: Any = None
         self._last_batch: list[dict] = []
         self._messages_read: int = 0
@@ -162,7 +188,7 @@ class KafkaConnector(StreamConnector):
         self._start_time = time.monotonic()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> bool:
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Close the consumer, releasing group membership."""
         if self._consumer is not None:
             try:
@@ -177,7 +203,7 @@ class KafkaConnector(StreamConnector):
             except Exception as e:
                 logger.warning("Error closing Kafka consumer: %s", e)
         # Don't suppress exceptions
-        return False
+        return None
 
     # ── Public interface (StreamConnector protocol) ───────────────────────────
 
@@ -206,6 +232,10 @@ class KafkaConnector(StreamConnector):
         """
         Commit offsets for the last batch (at-least-once semantics).
         Call this AFTER successfully processing read_batch() output.
+
+        Raises KafkaConnectorError on commit failure so the caller can decide
+        whether to retry or skip. Silent swallowing of commit failures led to
+        offset drift in production — the caller must handle the error.
         """
         if not self._last_batch:
             return
@@ -215,8 +245,9 @@ class KafkaConnector(StreamConnector):
             else:
                 self._consumer.commit()
             logger.debug("Committed offsets", extra={"batch_size": len(self._last_batch)})
+            self._last_batch = []  # clear after successful commit
         except Exception as e:
-            logger.warning("Failed to commit offsets: %s", e)
+            raise KafkaConnectorError(f"Offset commit failed: {e}") from e
 
     async def close(self) -> None:
         """Explicit close (also called by __aexit__)."""
@@ -252,7 +283,13 @@ class KafkaConnector(StreamConnector):
                     # End of one partition — other partitions may still have data
                     logger.debug("Reached end of partition %s", msg.partition())
                     continue
-                logger.error("Kafka error: %s", err)
+                # Classify error: transient → continue, fatal → break
+                is_retryable = getattr(err, "retriable", lambda: False)()
+                if is_retryable:
+                    logger.warning("Transient Kafka error (retrying): %s", err)
+                    continue
+                # Fatal errors: log and break
+                logger.error("Fatal Kafka error: %s", err)
                 break
 
             parsed = self._parse_message(msg.value())
@@ -374,11 +411,19 @@ class KafkaConnector(StreamConnector):
         """
         if not raw:
             return None  # Tombstone or empty message — skip silently
+        if len(raw) > _MAX_EVENT_BYTES:
+            logger.warning("Skipping oversized message (%d bytes, limit %d)", len(raw), _MAX_EVENT_BYTES)
+            return None
         try:
             text = raw.decode("utf-8", errors="replace").strip()
             if not text:
                 return None
-            return json.loads(text)
+            parsed = json.loads(text)
+            # Only dicts are valid events — arrays, strings, numbers are not
+            if not isinstance(parsed, dict):
+                logger.debug("Skipping non-dict JSON (type=%s)", type(parsed).__name__)
+                return None
+            return parsed
         except json.JSONDecodeError as e:
             logger.debug("Skipping non-JSON message: %s (first 80 chars: %r)", e, raw[:80])
             return None
