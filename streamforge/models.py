@@ -298,3 +298,163 @@ class DriftState(BaseModel):
     stream_name: str
     updated_at: str
     incidents: list[DriftIncident] = []
+
+
+# ── Schema Dependency Graph models ────────────────────────────────────────────
+
+
+class FieldUsageEntry(BaseModel):
+    """One field's usage across a single stream."""
+    stream_name: str
+    field_type: str
+    presence_rate: float = 1.0
+    required: bool = True
+    pii_categories: list[str] = []
+
+
+class FieldNode(BaseModel):
+    """A field_path and all streams that contain it."""
+    field_path: str
+    usages: list[FieldUsageEntry] = []
+    is_inconsistent: bool = False
+
+    @property
+    def stream_names(self) -> list[str]:
+        return [u.stream_name for u in self.usages]
+
+    @property
+    def stream_count(self) -> int:
+        return len(self.usages)
+
+
+class CrossTopicImpact(BaseModel):
+    """Cross-topic context for a single drifted field."""
+    field_path: str
+    drift_type: str
+    source_stream: str
+    also_in_streams: list[str] = []
+    type_in_other_streams: dict[str, str] = {}
+    consumer_services: list[str] = []
+
+
+class DependencyGraphMeta(BaseModel):
+    """Top-level metadata for the persisted graph."""
+    version: str = "1.0"
+    built_at: str = ""
+    stream_count: int = 0
+    field_count: int = 0
+    edge_count: int = 0
+
+
+class StreamAssignment(BaseModel):
+    """One stream to watch — used by the supervisor."""
+    stream_uri: str
+    schema_path: str
+    namespace: str = "default"
+    poll_interval_seconds: int = 30
+    sample_size: int = 200
+    window_capacity: int = 2000
+    webhook_url: str | None = None
+
+
+class SupervisorConfig(BaseModel):
+    """Configuration for the multi-stream supervisor."""
+    assignments: list[StreamAssignment]
+    restart_delay_seconds: int = 5
+    max_restart_count: int = 10
+    health_check_interval: int = 30
+    pid_file: str = "streamforge-supervisor.pid"
+
+
+# ---------------------------------------------------------------------------
+# Multi-Schema Confidence Models (Stripe Engineering Requirements)
+# ---------------------------------------------------------------------------
+
+class DiscriminatorMethod(StrEnum):
+    """How the discriminator field was determined."""
+    EXPLICIT = "explicit"           # User-specified via --discriminator
+    AUTO_DETECTED = "auto_detected" # Entropy-based detection
+    STRUCTURAL = "structural"       # Fallback to field fingerprint
+
+
+class DiscriminatorInfo(BaseModel):
+    """Metadata about the discriminator field used for schema routing."""
+    field_path: str                           # e.g., "type" or "metadata.event_type"
+    method: DiscriminatorMethod               # How it was determined
+    cardinality: int                          # Number of unique values
+    coverage: float                           # Fraction of events with this field present
+    entropy: float                            # Shannon entropy (higher = better discriminator)
+    candidates_evaluated: list[str] = []      # Other fields considered
+
+
+class TypeConfidence(BaseModel):
+    """Statistical confidence for a single event type's schema inference."""
+    type_value: str
+    sample_count: int
+    population_estimate: int | None = None    # Estimated count in full stream
+    frequency: float                          # Observed fraction in sample
+    confidence_lower: float                   # 95% CI lower bound
+    confidence_upper: float                   # 95% CI upper bound
+    schema_confidence: float                  # Inference confidence for this type
+    statistically_valid: bool                 # sample_count >= 30
+
+
+class TypeDistribution(BaseModel):
+    """Distribution entry for a single event type."""
+    type_value: str
+    count: int
+    percentage: float
+    sample_count: int
+    warning: str | None = None                # "insufficient samples" etc.
+
+
+class SamplingReport(BaseModel):
+    """Audit trail for sampling decisions."""
+    total_population: int | None = None       # Estimated stream size
+    total_sampled: int
+    sampling_rate: float | None = None
+    stratified: bool = False
+    min_per_type: int | None = None
+    types_below_minimum: list[str] = []       # Types with < min samples
+    sampling_method: str = "reservoir"        # "reservoir" | "stratified"
+
+
+class MultiSchemaConfidence(BaseModel):
+    """
+    Confidence report for multi-schema detection.
+
+    Provides statistical guarantees about schema discovery:
+    - What types we found
+    - How confident we are in each type's schema
+    - What rare types we may have missed
+    - Audit trail for sampling decisions
+    """
+    discriminator: DiscriminatorInfo
+    types_detected: int
+    distribution: list[TypeDistribution]
+    per_type_confidence: list[TypeConfidence]
+    overall_confidence: float                 # Weighted by type frequency
+    coverage_guarantee: str                   # e.g., "95% confident all types >0.1% are captured"
+    sampling: SamplingReport
+    warnings: list[str] = []
+
+    # Telemetry fields
+    detection_time_ms: float | None = None
+    inference_time_ms: float | None = None
+
+
+class MultiSchemaAuditEvent(BaseModel):
+    """
+    Audit event for multi-schema detection operations.
+
+    Emitted at each stage of the pipeline for observability.
+    """
+    timestamp: str
+    operation: str                            # "discriminator_detection" | "grouping" | "sampling" | "inference"
+    stream_name: str
+    duration_ms: float
+    input_count: int
+    output_count: int | None = None
+    success: bool = True
+    error_message: str | None = None
+    details: dict[str, Any] = {}              # Operation-specific metadata
