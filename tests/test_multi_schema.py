@@ -177,7 +177,7 @@ class TestRouteEventToCluster:
         import hashlib
         keys = ["amount", "currency", "id"]
         key_sig = "|".join(sorted(keys))
-        h = hashlib.md5(key_sig.encode()).hexdigest()[:8]
+        h = hashlib.sha256(key_sig.encode()).hexdigest()[:12]
         cluster_id = f"struct:{h}"
         profile = _make_profile(
             [_make_cluster(cluster_id)],

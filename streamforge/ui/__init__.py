@@ -48,6 +48,7 @@ from .pages.about import (
 )
 from .pages.fleet import render_fleet_overview as render_fleet_overview
 from .pages.registry import render_registry as render_registry
+from .pages.schemas import render_schemas_overview as render_schemas_overview
 from .pages.stream_detail import render_stream_detail as render_stream_detail
 from .styling import (
     _BG as _BG,
@@ -160,6 +161,12 @@ def run_dashboard() -> None:
         if st.button("Fleet Overview", use_container_width=True,
                      type="primary" if st.session_state.view == "fleet" else "secondary"):
             st.session_state.view = "fleet"
+            st.session_state.selected_stream = None
+            st.rerun()
+
+        if st.button(f"📋 Schemas ({len(stream_names)})", use_container_width=True,
+                     type="primary" if st.session_state.view == "schemas" else "secondary"):
+            st.session_state.view = "schemas"
             st.session_state.selected_stream = None
             st.rerun()
 
@@ -300,6 +307,8 @@ def run_dashboard() -> None:
         render_setup_guide()
     elif st.session_state.view == "registry":
         render_registry()
+    elif st.session_state.view == "schemas":
+        render_schemas_overview()
     elif st.session_state.view == "fleet" or not st.session_state.selected_stream:
         render_fleet_overview()
     else:

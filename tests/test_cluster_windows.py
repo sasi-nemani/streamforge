@@ -32,7 +32,8 @@ class TestClusterWindowMap:
         assert len(cwm.windows["payment.created"]) == 2
         assert len(cwm.windows["payment.failed"]) == 1
 
-    def test_cluster_window_map_unknown_events_go_to_other(self):
+    def test_cluster_window_map_unknown_events_auto_discovered(self):
+        """Unknown event types get auto-created as new cluster windows (dynamic discovery)."""
         from streamforge.detector.window import ClusterWindowMap
         cwm = ClusterWindowMap(
             cluster_ids=["payment.created"],
@@ -44,6 +45,25 @@ class TestClusterWindowMap:
             {"event_type": "payment.new_type", "id": 2},
         ])
         assert len(cwm.windows["payment.created"]) == 1
+        assert "payment.new_type" in cwm.windows
+        assert len(cwm.windows["payment.new_type"]) == 1
+        assert len(cwm.unrouted) == 0
+
+    def test_cluster_window_map_unknown_events_go_to_unrouted_when_at_max(self):
+        """When max_clusters is reached, unknown events go to unrouted."""
+        from streamforge.detector.window import ClusterWindowMap
+        cwm = ClusterWindowMap(
+            cluster_ids=["payment.created"],
+            routing_field="event_type",
+            capacity=100,
+            max_clusters=1,
+        )
+        cwm.add([
+            {"event_type": "payment.created", "id": 1},
+            {"event_type": "payment.new_type", "id": 2},
+        ])
+        assert len(cwm.windows["payment.created"]) == 1
+        assert "payment.new_type" not in cwm.windows
         assert len(cwm.unrouted) == 1
 
     def test_cluster_window_sample_undiluted(self):

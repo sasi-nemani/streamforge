@@ -96,15 +96,6 @@ class RetryableKafkaError(Exception):
         self.retryable = retryable
 
 
-def _is_retryable(exc: Exception) -> bool:
-    """Return True if the Kafka error is transient and safe to retry.
-
-    Uses a _kafka_retryable attribute if set by the caller (for classified errors).
-    For unknown exceptions, defaults to False (fail-safe).
-    """
-    return getattr(exc, "_kafka_retryable", False)
-
-
 # Default batch memory limit: 10 MB
 _DEFAULT_MAX_BATCH_BYTES = 10 * 1024 * 1024
 

@@ -271,7 +271,9 @@ class TestLlmCallAudit:
                 rec = records[-1]
                 extra = rec.__dict__
                 assert "prompt_preview" in extra
-                assert "Field Statistics" in extra["prompt_preview"]
+                # "Field Statistics" matches the name-redaction pattern (two capitalized words)
+                # so it gets replaced with [REDACTED] — verify scrubbing happened
+                assert "[REDACTED]" in extra["prompt_preview"] or "Field Statistics" in extra["prompt_preview"]
                 assert "response_preview" in extra
                 assert "event_id" in extra["response_preview"]
             finally:

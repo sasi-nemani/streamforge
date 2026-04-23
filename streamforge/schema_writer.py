@@ -160,12 +160,8 @@ def write_schema(schema: InferredSchema, output_dir: str) -> str:
     )
 
     schema_path = out / "schema.yaml"
-    tmp_path = schema_path.with_suffix(".tmp")
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        f.write(header)
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-        f.flush()
-    tmp_path.replace(schema_path)  # atomic on POSIX
+    content = header + yaml.dump(doc, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    _secure_write(schema_path, content)
 
     logger.info("Written schema: %s", schema_path)
     return str(schema_path)
@@ -191,7 +187,7 @@ def write_schema_with_exports(schema: InferredSchema, output_dir: str) -> dict[s
     js = schema_to_json_schema(schema)
     js_text = json.dumps(js, indent=2, default=str) if isinstance(js, dict) else js
     js_path = out / "schema.json"
-    js_path.write_text(js_text, encoding="utf-8")
+    _secure_write(js_path, js_text)
     paths["json_schema"] = str(js_path)
     logger.info("Written JSON Schema: %s", js_path)
 
@@ -199,7 +195,7 @@ def write_schema_with_exports(schema: InferredSchema, output_dir: str) -> dict[s
     avro = schema_to_avro(schema)
     avro_text = json.dumps(avro, indent=2, default=str) if isinstance(avro, dict) else avro
     avro_path = out / "schema.avsc"
-    avro_path.write_text(avro_text, encoding="utf-8")
+    _secure_write(avro_path, avro_text)
     paths["avro"] = str(avro_path)
     logger.info("Written Avro schema: %s", avro_path)
 
@@ -207,7 +203,7 @@ def write_schema_with_exports(schema: InferredSchema, output_dir: str) -> dict[s
     from .exporters.markdown import schema_to_markdown
     md_text = schema_to_markdown(schema)
     md_path = out / "DATA_DICTIONARY.md"
-    md_path.write_text(md_text, encoding="utf-8")
+    _secure_write(md_path, md_text)
     paths["markdown"] = str(md_path)
     logger.info("Written data dictionary: %s", md_path)
 
@@ -310,8 +306,7 @@ def write_inference_report(
             lines.append(f"- **`{f.path}`** — present in {f.presence_rate:.0%} of events")
 
     report_path = out / "inference_report.md"
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+    _secure_write(report_path, "\n".join(lines) + "\n")
 
     logger.info("Written report: %s", report_path)
     return str(report_path)
@@ -322,8 +317,7 @@ def write_samples(sample_events: list[dict], output_dir: str, stream_name: str) 
     out = Path(output_dir) / stream_name / ".samples"
     out.mkdir(parents=True, exist_ok=True)
     samples_path = out / "latest.json"
-    with open(samples_path, "w", encoding="utf-8") as f:
-        json.dump(sample_events, f, indent=2)
+    _secure_write(samples_path, json.dumps(sample_events, indent=2))
     return str(samples_path)
 
 
@@ -372,9 +366,8 @@ def write_profile(profile: StreamProfile, output_dir: str) -> str:
     }
 
     profile_path = out / "profile.yaml"
-    with open(profile_path, "w", encoding="utf-8") as f:
-        f.write(header)
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    content = header + yaml.dump(doc, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    _secure_write(profile_path, content)
 
     logger.info("Written profile: %s", profile_path)
     return str(profile_path)
@@ -438,8 +431,7 @@ def write_profile_report(profile: StreamProfile, output_dir: str) -> str:
             )]
 
     report_path = out / "profile_report.md"
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+    _secure_write(report_path, "\n".join(lines) + "\n")
 
     logger.info("Written profile report: %s", report_path)
     return str(report_path)
@@ -529,13 +521,12 @@ def save_drift_state(schema_dir: Path, state: DriftState) -> None:
         "incidents": [inc.model_dump(mode="json") for inc in state.incidents],
     }
     p = schema_dir / _DRIFT_STATE_FILE
-    tmp = p.with_suffix(".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write("# StreamForge Drift State — managed automatically by 'streamforge watch'\n")
-        f.write("# Use 'streamforge accept' or 'streamforge suppress' to action incidents.\n\n")
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-        f.flush()
-    tmp.replace(p)  # atomic on POSIX
+    content = (
+        "# StreamForge Drift State — managed automatically by 'streamforge watch'\n"
+        "# Use 'streamforge accept' or 'streamforge suppress' to action incidents.\n\n"
+        + yaml.dump(doc, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    )
+    _secure_write(p, content)
     logger.debug("Saved drift state: %s", p)
 
 
@@ -710,14 +701,16 @@ def accept_drift(
 def _secure_write(path: Path, content: str) -> None:
     """Write content to file with restrictive permissions (0o600).
 
-    Uses atomic write (tmp → rename) to prevent partial reads.
-    Sets owner-only read/write before any content is visible.
+    Uses os.open() with O_CREAT to create the file with 0o600 in a single
+    syscall — no window where the file exists with default umask permissions.
+    Then atomic rename (tmp → target) to prevent partial reads.
     """
-    import stat as _stat
-
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    os.chmod(tmp, _stat.S_IRUSR | _stat.S_IWUSR)  # 0o600
+    fd = os.open(str(tmp), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+    try:
+        os.write(fd, content.encode("utf-8"))
+    finally:
+        os.close(fd)
     tmp.replace(path)  # atomic on POSIX

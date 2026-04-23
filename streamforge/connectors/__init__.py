@@ -5,7 +5,7 @@ Every source — files, Redis Streams, Kafka, SQS — implements StreamConnector
 Nothing above this package knows what the source is.
 """
 from .base import ConnectorError, StreamConnector
-from .file import FileConnector
+from .file import FileConnector, supported_extensions
 from .mock import DriftPhase, MockConnector
 
 __all__ = [
@@ -14,4 +14,5 @@ __all__ = [
     "FileConnector",
     "MockConnector",
     "DriftPhase",
+    "supported_extensions",
 ]

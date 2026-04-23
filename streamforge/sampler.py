@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import random
 import re
 from pathlib import Path
@@ -297,32 +298,54 @@ def streaming_resilient_sample_from_folder(
     return clean_reservoir, partial_reservoir, total, stats
 
 
-_MAX_FLATTEN_DEPTH = 10
-_MAX_FLATTEN_KEYS = 500
+_MAX_FLATTEN_DEPTH = int(os.environ.get("STREAMFORGE_MAX_FLATTEN_DEPTH", "10"))
+_MAX_FLATTEN_KEYS = int(os.environ.get("STREAMFORGE_MAX_FLATTEN_KEYS", "1000"))
+_MAX_VALUE_LENGTH = int(os.environ.get("STREAMFORGE_MAX_VALUE_LENGTH", "100000"))  # 100KB per string value
 
 
 def flatten_nested(obj: dict, prefix: str = "", sep: str = ".", _depth: int = 0) -> dict:
     """Flatten nested dicts to dot-notation. Arrays: flatten first element, mark as array.
 
     Safety bounds:
-      MAX_DEPTH = 10 — prevents stack overflow on pathological nesting
-      MAX_KEYS = 500 — prevents OOM on events with thousands of fields
+      MAX_DEPTH — prevents stack overflow on pathological nesting (env: STREAMFORGE_MAX_FLATTEN_DEPTH)
+      MAX_KEYS  — prevents OOM on events with thousands of fields (env: STREAMFORGE_MAX_FLATTEN_KEYS)
     """
     if _depth > _MAX_FLATTEN_DEPTH:
+        logger.warning(
+            "Flattening depth %d exceeded limit %d at '%s' — data truncated",
+            _depth, _MAX_FLATTEN_DEPTH, prefix,
+        )
         return {}
 
     result = {}
     for key, value in obj.items():
         if len(result) >= _MAX_FLATTEN_KEYS:
+            logger.warning(
+                "Flattening key count %d reached limit %d — remaining fields truncated",
+                len(result), _MAX_FLATTEN_KEYS,
+            )
             break
+        # Sanitize null bytes from field names
+        key = key.replace("\x00", "")
         full_key = f"{prefix}{sep}{key}" if prefix else key
         if isinstance(value, dict):
-            result.update(flatten_nested(value, full_key, sep, _depth + 1))
+            nested = flatten_nested(value, full_key, sep, _depth + 1)
+            for nk, nv in nested.items():
+                if len(result) >= _MAX_FLATTEN_KEYS:
+                    break
+                result[nk] = nv
         elif isinstance(value, list):
             result[full_key] = value
             if value and isinstance(value[0], dict):
-                result.update(flatten_nested(value[0], f"{full_key}[]", sep, _depth + 1))
+                nested = flatten_nested(value[0], f"{full_key}[]", sep, _depth + 1)
+                for nk, nv in nested.items():
+                    if len(result) >= _MAX_FLATTEN_KEYS:
+                        break
+                    result[nk] = nv
         else:
+            # Truncate oversized string values to prevent OOM
+            if isinstance(value, str) and len(value) > _MAX_VALUE_LENGTH:
+                value = value[:_MAX_VALUE_LENGTH]
             result[full_key] = value
     return result
 

@@ -108,6 +108,7 @@ class ClusterWindowMap:
         routing_field: str = "event_type",
         capacity: int = 2000,
         max_age_seconds: int = 0,
+        max_clusters: int = 100,
     ) -> None:
         self.routing_field = routing_field
         self.windows: dict[str, EventWindow] = {
@@ -116,16 +117,36 @@ class ClusterWindowMap:
         }
         self.unrouted: list[dict] = []
         self._capacity = capacity
+        self._max_age = max_age_seconds
+        self._max_clusters = max_clusters
 
     def add(self, events: list[dict]) -> None:
-        """Route events to cluster windows. Unmatched go to unrouted."""
+        """Route events to cluster windows. Unmatched go to unrouted.
+
+        Dynamic cluster discovery: when an event's routing field value is not
+        in self.windows and we haven't hit max_clusters, a new EventWindow is
+        created automatically. Logs WARNING when max_clusters is exceeded.
+        """
         self.unrouted.clear()
+        _warned_clusters: set[str] = set()
         for event in events:
             cid = event.get(self.routing_field)
             if cid is not None and cid in self.windows:
                 self.windows[cid].add([event])
+            elif cid is not None and len(self.windows) < self._max_clusters:
+                # Dynamic cluster discovery
+                self.windows[cid] = EventWindow(capacity=self._capacity, max_age_seconds=self._max_age)
+                self.windows[cid].add([event])
             else:
                 self.unrouted.append(event)
+                if cid is not None and cid not in _warned_clusters:
+                    _warned_clusters.add(cid)
+                    logger.warning(
+                        "max_clusters (%d) exceeded — cluster '%s' routed to unrouted "
+                        "(per-cluster drift detection disabled for this type). "
+                        "Set STREAMFORGE_MAX_CLUSTERS to increase limit.",
+                        self._max_clusters, cid,
+                    )
 
     def sample_cluster(self, cluster_id: str, n: int) -> list[dict]:
         """Sample n events from a specific cluster — full sample, no dilution."""

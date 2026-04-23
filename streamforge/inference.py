@@ -65,19 +65,65 @@ def _load_schema_hints() -> dict:
         return {}
 
 
+# ── Hint validation helpers (prompt injection defense) ──────────────────────
+
+
+def _validate_hint_field_type(type_str: str) -> FieldType:
+    """Validate that a field_type string from schema_hints.yaml maps to a known FieldType."""
+    if not type_str or "\n" in type_str or "\r" in type_str:
+        raise ValueError(f"Invalid field_type: {type_str!r}")
+    try:
+        return FieldType(type_str)
+    except ValueError:
+        raise ValueError(
+            f"Invalid field_type: {type_str!r}. "
+            f"Must be one of: {[ft.value for ft in FieldType]}"
+        )
+
+
+def _sanitize_hint_description(desc: str, max_length: int = 500) -> str:
+    """Strip control characters and cap length for hint descriptions."""
+    import unicodedata
+    cleaned = "".join(
+        ch if unicodedata.category(ch)[0] != "C" or ch in (" ",) else " "
+        for ch in desc
+    )
+    cleaned = " ".join(cleaned.split())  # collapse whitespace
+    return cleaned[:max_length]
+
+
+def _validate_hint_regex(pattern_str: str) -> re.Pattern:
+    """Compile regex and reject overlong patterns. Raises ValueError on failure."""
+    if len(pattern_str) > 2000:
+        raise ValueError(f"Regex too long ({len(pattern_str)} chars, max 2000)")
+    try:
+        return re.compile(pattern_str)
+    except re.error as exc:
+        raise ValueError(f"Invalid regex {pattern_str!r}: {exc}") from exc
+
+
 # Pre-compile hint regexes once at module load
 def _compile_hint_patterns(hints: dict) -> list[tuple[re.Pattern, str, float]]:
-    """Return list of (compiled_regex, field_type_str, confidence_floor)."""
+    """Return list of (compiled_regex, field_type_str, confidence_floor).
+
+    Validates each entry: field_type must be a valid FieldType enum value,
+    regex must compile without errors, description is sanitized.
+    Invalid entries are logged and skipped.
+    """
     compiled = []
     for entry in hints.get("type_patterns", []):
         try:
+            # Validate field_type against FieldType enum
+            _validate_hint_field_type(entry["field_type"])
+            # Validate and compile regex
+            pattern = _validate_hint_regex(entry["regex"])
             compiled.append((
-                re.compile(entry["regex"]),
+                pattern,
                 entry["field_type"],
                 float(entry.get("confidence_floor", 0.95)),
             ))
-        except re.error as exc:
-            logger.warning("Bad regex in schema_hints.yaml (%s): %s", entry.get("name"), exc)
+        except (ValueError, KeyError) as exc:
+            logger.warning("Skipping invalid schema_hints entry (%s): %s", entry.get("name", "?"), exc)
     return compiled
 
 
@@ -151,13 +197,19 @@ def _build_hints_vocab(hints: dict) -> str:
     """
     Build a compact type recognition reference from schema_hints.yaml entries.
     This is appended to SYSTEM_PROMPT so the LLM has the vocabulary in context.
+
+    Validates field_type and sanitizes descriptions to defend against
+    prompt injection via schema_hints.yaml.
     """
     lines = ["\n## Type Recognition Reference (use these exact types)\n"]
     for entry in hints.get("type_patterns", []):
-        lines.append(
-            f"- {entry['field_type']}: {entry['description']} "
-            f"(pattern: {entry['regex']})"
-        )
+        try:
+            _validate_hint_field_type(entry["field_type"])
+            desc = _sanitize_hint_description(entry.get("description", ""))
+            regex = entry.get("regex", "")[:200]  # cap regex display
+            lines.append(f"- {entry['field_type']}: {desc} (pattern: {regex})")
+        except (ValueError, KeyError):
+            continue  # skip invalid entries
     return "\n".join(lines)
 
 

@@ -41,7 +41,7 @@ def test_incident_report_no_reports(tmp_path, monkeypatch):
 def test_incident_report_shows_tier3(tmp_path, monkeypatch):
     """TIER 3 incidents appear in report."""
     monkeypatch.chdir(tmp_path)
-    ts = "2026-03-20T14:30:00Z"
+    ts = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
     _make_drift_report_md(tmp_path, "events.payments", 3, "amount", "field_removed", ts)
     runner = CliRunner()
     result = runner.invoke(app, ["incident-report", "kafka://events.payments",
@@ -71,8 +71,8 @@ def test_incident_report_since_filter(tmp_path, monkeypatch):
 def test_incident_report_min_tier_filter(tmp_path, monkeypatch):
     """--min-tier flag filters by minimum tier."""
     monkeypatch.chdir(tmp_path)
-    ts1 = "2026-03-20T14:30:00Z"
-    ts2 = "2026-03-21T10:00:00Z"
+    ts1 = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts2 = (datetime.now(timezone.utc) - timedelta(days=4)).strftime("%Y-%m-%dT%H:%M:%SZ")
     _make_drift_report_md(tmp_path, "events.payments", 1, "new_field", "field_added", ts1)
     _make_drift_report_md(tmp_path, "events.payments", 3, "amount", "field_removed", ts2)
     runner = CliRunner()
@@ -88,11 +88,13 @@ def test_incident_report_min_tier_filter(tmp_path, monkeypatch):
 def test_incident_report_output_format(tmp_path, monkeypatch):
     """Output is structured and readable — contains count, topic name, timestamps."""
     monkeypatch.chdir(tmp_path)
-    ts = "2026-03-20T14:30:00Z"
+    now = datetime.now(timezone.utc) - timedelta(days=3)
+    ts = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    date_str = now.strftime("%Y-%m-%d")
     _make_drift_report_md(tmp_path, "events.payments", 3, "amount", "field_removed", ts)
     runner = CliRunner()
     result = runner.invoke(app, ["incident-report", "kafka://events.payments",
                                   "--drift-reports-dir", str(tmp_path / "drift_reports")])
     assert result.exit_code == 0
     assert "events.payments" in result.output
-    assert "2026-03-20" in result.output
+    assert date_str in result.output

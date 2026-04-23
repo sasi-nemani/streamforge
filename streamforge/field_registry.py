@@ -10,6 +10,7 @@ Persistence: .streamforge/field_registry.json
 import json
 import logging
 import os
+import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -383,6 +384,7 @@ class FieldTypeRegistry:
 
     def __init__(self, observations: dict[str, FieldTypeObservation] | None = None) -> None:
         self._observations: dict[str, FieldTypeObservation] = observations or {}
+        self._lock = threading.RLock()
         self._hits: int = 0
         self._misses: int = 0
 
@@ -466,57 +468,59 @@ class FieldTypeRegistry:
                 sample_values = [f"[REDACTED — pii: {cat_label}]" for _ in sample_values[:5]]
 
         now = datetime.now(UTC).isoformat()
-        existing = self._observations.get(field_path)
 
         from . import audit
 
-        if existing is not None:
-            # Update: increment count, merge stream names, use latest confidence
-            streams = list(set(existing.stream_names + [stream_name]))
-            new_confidence = confidence
-            merged_samples = (sample_values or [])[:5] if sample_values else existing.sample_values[:5]
-            merged_pii = list(set(existing.pii_categories + (pii_categories or [])))
-            new_obs_count = existing.observation_count + 1
+        with self._lock:
+            existing = self._observations.get(field_path)
 
-            self._observations[field_path] = FieldTypeObservation(
-                field_path=field_path,
-                field_type=field_type,
-                confidence=new_confidence,
-                last_seen=now,
-                stream_names=streams,
-                observation_count=new_obs_count,
-                sample_values=merged_samples,
-                pii_categories=merged_pii,
-                nullable=nullable or existing.nullable,
-                notes=notes or existing.notes,
-            )
+            if existing is not None:
+                # Update: increment count, merge stream names, use latest confidence
+                streams = list(set(existing.stream_names + [stream_name]))
+                new_confidence = confidence
+                merged_samples = (sample_values or [])[:5] if sample_values else existing.sample_values[:5]
+                merged_pii = list(set(existing.pii_categories + (pii_categories or [])))
+                new_obs_count = existing.observation_count + 1
 
-            audit.log_registry_event(
-                "update", field_path,
-                cached_type=field_type,
-                observation_count=new_obs_count,
-                stream=stream_name,
-            )
-        else:
-            self._observations[field_path] = FieldTypeObservation(
-                field_path=field_path,
-                field_type=field_type,
-                confidence=confidence,
-                last_seen=now,
-                stream_names=[stream_name],
-                observation_count=1,
-                sample_values=(sample_values or [])[:5],
-                pii_categories=pii_categories or [],
-                nullable=nullable,
-                notes=notes,
-            )
+                self._observations[field_path] = FieldTypeObservation(
+                    field_path=field_path,
+                    field_type=field_type,
+                    confidence=new_confidence,
+                    last_seen=now,
+                    stream_names=streams,
+                    observation_count=new_obs_count,
+                    sample_values=merged_samples,
+                    pii_categories=merged_pii,
+                    nullable=nullable or existing.nullable,
+                    notes=notes or existing.notes,
+                )
 
-            audit.log_registry_event(
-                "update", field_path,
-                cached_type=field_type,
-                observation_count=1,
-                stream=stream_name,
-            )
+                audit.log_registry_event(
+                    "update", field_path,
+                    cached_type=field_type,
+                    observation_count=new_obs_count,
+                    stream=stream_name,
+                )
+            else:
+                self._observations[field_path] = FieldTypeObservation(
+                    field_path=field_path,
+                    field_type=field_type,
+                    confidence=confidence,
+                    last_seen=now,
+                    stream_names=[stream_name],
+                    observation_count=1,
+                    sample_values=(sample_values or [])[:5],
+                    pii_categories=pii_categories or [],
+                    nullable=nullable,
+                    notes=notes,
+                )
+
+                audit.log_registry_event(
+                    "update", field_path,
+                    cached_type=field_type,
+                    observation_count=1,
+                    stream=stream_name,
+                )
 
     def record_from_schema(self, schema_fields: list[FieldSchema], stream_name: str) -> None:
         """Record all fields from an inferred schema into the registry."""
@@ -557,6 +561,31 @@ class FieldTypeRegistry:
             notes=f"[registry] {obs.notes}" if obs.notes else "[registry] Resolved from field type registry",
         )
 
+    def evict_stale(self, max_age_days: int = 90) -> int:
+        """Remove observations older than max_age_days. Returns count evicted.
+
+        Self-cleaning: prevents unbounded registry growth from decommissioned
+        streams. Called automatically during save() when STREAMFORGE_REGISTRY_EVICT=1.
+        """
+        if max_age_days <= 0:
+            return 0
+        cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
+        stale: list[str] = []
+        with self._lock:
+            for path, obs in self._observations.items():
+                if obs.last_seen:
+                    try:
+                        last = datetime.fromisoformat(obs.last_seen.replace("Z", "+00:00"))
+                        if last < cutoff:
+                            stale.append(path)
+                    except (ValueError, TypeError):
+                        pass
+            for path in stale:
+                del self._observations[path]
+        if stale:
+            logger.info("Registry evicted %d stale entries (older than %d days)", len(stale), max_age_days)
+        return len(stale)
+
     def save(self, path: Path | None = None) -> None:
         """Persist registry to JSON file with advisory file lock.
 
@@ -566,21 +595,38 @@ class FieldTypeRegistry:
         """
         import fcntl
 
+        # Self-cleaning: evict stale entries before persisting
+        if os.environ.get("STREAMFORGE_REGISTRY_EVICT", "1") != "0":
+            self.evict_stale(int(os.environ.get("STREAMFORGE_REGISTRY_MAX_AGE_DAYS", "90")))
+
         target = path or DEFAULT_REGISTRY_PATH
         target.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            "version": "1.0",
-            "updated_at": datetime.now(UTC).isoformat(),
-            "entry_count": len(self._observations),
-            "observations": {
-                k: v.to_dict() for k, v in sorted(self._observations.items())
-            },
-        }
 
         lock_path = target.with_suffix(".lock")
         lock_fd = open(lock_path, "w")
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)  # exclusive lock
+
+            # Reload from disk inside the lock to merge with other writers
+            if target.exists():
+                try:
+                    disk_data = json.loads(target.read_text(encoding="utf-8"))
+                    for obs_dict in disk_data.get("observations", {}).values():
+                        fp = obs_dict.get("field_path", "")
+                        if fp and fp not in self._observations:
+                            self._observations[fp] = FieldTypeObservation.from_dict(obs_dict)
+                except (json.JSONDecodeError, KeyError):
+                    pass  # disk file corrupt — overwrite with our data
+
+            data = {
+                "version": "1.0",
+                "updated_at": datetime.now(UTC).isoformat(),
+                "entry_count": len(self._observations),
+                "observations": {
+                    k: v.to_dict() for k, v in sorted(self._observations.items())
+                },
+            }
+
             tmp = target.with_suffix(".tmp")
             tmp.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
             tmp.replace(target)  # atomic on POSIX
@@ -592,15 +638,24 @@ class FieldTypeRegistry:
     @staticmethod
     def load(path: Path | None = None, *, seed: bool = True) -> "FieldTypeRegistry":
         """Load registry from JSON file. Seeds common patterns if file doesn't exist."""
+        import fcntl
+
         target = path or DEFAULT_REGISTRY_PATH
         registry = FieldTypeRegistry()
 
         if target.exists():
             try:
-                data = json.loads(target.read_text(encoding="utf-8"))
-                for obs_dict in data.get("observations", {}).values():
-                    obs = FieldTypeObservation.from_dict(obs_dict)
-                    registry._observations[obs.field_path] = obs
+                lock_path = target.with_suffix(".lock")
+                lock_fd = open(lock_path, "w")
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_SH)  # shared lock during read
+                    data = json.loads(target.read_text(encoding="utf-8"))
+                    for obs_dict in data.get("observations", {}).values():
+                        obs = FieldTypeObservation.from_dict(obs_dict)
+                        registry._observations[obs.field_path] = obs
+                finally:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                    lock_fd.close()
                 logger.info("Field registry loaded: %d entries from %s", len(registry._observations), target)
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning("Failed to load field registry: %s — starting fresh", e)

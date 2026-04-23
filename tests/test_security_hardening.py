@@ -149,7 +149,7 @@ class TestEventSizeGuard:
         # Build an object with 2000 keys
         obj = {f"field_{i}": f"value_{i}" for i in range(2000)}
         flat = flatten_nested(obj)
-        assert len(flat) <= 500, f"Got {len(flat)} keys, expected max 500"
+        assert len(flat) <= 1000, f"Got {len(flat)} keys, expected max 1000"
 
     def test_flatten_normal_event_unchanged(self):
         from streamforge.sampler import flatten_nested

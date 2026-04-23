@@ -55,10 +55,13 @@ class NdjsonSource:
     def _load(self) -> None:
         if self._loaded:
             return
+        resolved_root = self._folder.resolve()
         files = sorted(
             f for f in self._folder.rglob("*")
             if f.suffix in (".ndjson", ".json") and f.is_file()
             and not f.name.startswith("._")
+            # Security: reject symlinks pointing outside folder_path
+            and str(f.resolve()).startswith(str(resolved_root))
         )
         for fp in files:
             try:

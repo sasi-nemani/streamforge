@@ -31,6 +31,22 @@ class DLQRouter:
         self.config = config
         self._producer = None
 
+    def close(self) -> None:
+        """Close the Kafka producer and release resources."""
+        if self._producer is not None:
+            try:
+                self._producer.close(timeout=5)
+            except Exception as e:
+                logger.warning("DLQ producer close failed (non-fatal): %s", e)
+            self._producer = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
     def route(self, events: list[dict], violation_type: str, producer_id: str | None = None) -> int:
         """
         Route non-conforming events to DLQ topic.

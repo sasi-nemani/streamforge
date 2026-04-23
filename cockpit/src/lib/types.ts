@@ -1,0 +1,107 @@
+export interface Source {
+  name: string
+  type: 'kafka' | 'file' | 'sftp'
+  uri: string
+  status: 'active' | 'inactive' | 'error' | 'unknown'
+  last_seen: string | null
+  messages_sampled: number
+}
+
+export interface Connector {
+  type: string
+  name: string
+  description: string
+  available: boolean
+  configured: boolean
+  formats: string[]
+}
+
+export interface MetricsSummary {
+  messages_sampled: number
+  fields_detected: number
+  schemas_inferred: number
+  pii_fields: number
+  active_drifts: number
+}
+
+export interface DriftAlert {
+  stream: string
+  report: string
+  detected_at: string
+}
+
+export interface PiiSummary {
+  total: number
+  by_category: Record<string, number>
+}
+
+export interface HealthComponent {
+  name: string
+  status: 'ok' | 'error' | 'degraded' | 'unavailable'
+  latency_ms: number
+  error?: string | null
+}
+
+export interface HealthStatus {
+  status: 'ok' | 'degraded' | 'error'
+  components: HealthComponent[]
+}
+
+export interface EnumValue {
+  value: string
+  count: number
+}
+
+export interface FieldRange {
+  min: number
+  max: number
+}
+
+export interface FieldDetail {
+  path: string
+  type: string
+  required: boolean
+  nullable: boolean
+  presence_rate: number
+  confidence: number
+  pii: string[]
+  notes: string
+  sample_values: unknown[]
+  enum_values: EnumValue[] | null
+  range: FieldRange | null
+}
+
+export interface SubSchema {
+  cluster_id: string
+  event_count: number
+  detection_method: string
+}
+
+export interface StreamDetail {
+  stream: string
+  version: string
+  inferred_at: string
+  inference_model: string
+  event_count_sampled: number
+  fields: FieldDetail[]
+  sub_schemas: SubSchema[]
+  sample_count: number
+}
+
+export interface SearchResult {
+  stream: string
+  path: string
+  type: string
+  required: boolean
+  nullable: boolean
+  presence_rate: number
+  pii: string[]
+  notes: string
+}
+
+export interface SearchResponse {
+  query: string
+  filters: { type: string | null; pii_only: boolean }
+  count: number
+  results: SearchResult[]
+}

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -47,6 +48,7 @@ _ENV = {
     "api_key":              "GROQ_API_KEY",          # primary
     "api_key_openai":       "OPENAI_API_KEY",        # fallback
     "api_key_generic":      "LLM_API_KEY",           # generic fallback
+    "namespace":            "STREAMFORGE_NAMESPACE",
 }
 
 
@@ -65,7 +67,7 @@ class KafkaConfig:
     security_protocol: str = "PLAINTEXT"
     sasl_mechanism: str | None = None
     sasl_username: str | None = None
-    sasl_password: str | None = None
+    sasl_password: str | None = field(default=None, repr=False)
     ssl_ca_location: str | None = None
     ssl_cert_location: str | None = None
     ssl_key_location: str | None = None
@@ -163,6 +165,7 @@ class Config:
     all fields as read-only after construction. Pass the Config object
     explicitly through call stacks instead of using a module-level singleton.
     """
+    namespace: str = "default"
     inference: InferenceConfig = field(default_factory=InferenceConfig)
     kafka: KafkaConfig = field(default_factory=KafkaConfig)
     drift: DriftConfig = field(default_factory=DriftConfig)
@@ -172,6 +175,22 @@ class Config:
     output: OutputConfig = field(default_factory=OutputConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     dashboard: DashboardConfig = field(default_factory=DashboardConfig)
+
+    @property
+    def namespace_slug(self) -> str:
+        """Filesystem-safe namespace identifier."""
+        return re.sub(r'[^a-z0-9_-]', '_', self.namespace.lower()).strip('_') or "default"
+
+    def resolve_path(self, base: str) -> Path:
+        """Resolve a base path with namespace prefix for multi-tenant isolation.
+
+        Returns Path(base) when namespace is "default" (backward compatible).
+        Returns Path(base) / namespace_slug when namespace is set.
+        """
+        p = Path(base)
+        if self.namespace == "default":
+            return p
+        return p / self.namespace_slug
 
     # ── Secret resolution ────────────────────────────────────────────────────
     # Resolved at load-time from env vars. Not in config.yaml.
@@ -367,6 +386,10 @@ def _apply_env(cfg: Config) -> Config:
     if v := _env("pagerduty_key"):
         cfg.notifications.pagerduty.routing_key = v
         cfg.notifications.pagerduty.enabled = True
+
+    # Namespace
+    if v := _env("namespace"):
+        cfg.namespace = v
 
     # API key — resolved from multiple env vars in priority order
     api_key = (

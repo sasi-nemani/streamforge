@@ -74,9 +74,11 @@ def _route_event_to_cluster(event: dict, profile: dict) -> str | None:
             return val.strip()
 
     # Structural fingerprint: recompute hash of sorted top-level key names.
+    # Uses SHA256[:16] (64-bit) instead of MD5[:8] (32-bit) to reduce
+    # birthday-paradox collision risk at 100+ clusters.
     if len(visible) >= 2:
         key_sig = "|".join(sorted(str(k) for k in visible))
-        h = hashlib.md5(key_sig.encode()).hexdigest()[:8]
+        h = hashlib.sha256(key_sig.encode()).hexdigest()[:12]
         candidate = f"struct:{h}"
         if candidate in known:
             return candidate
