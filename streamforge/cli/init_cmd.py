@@ -15,6 +15,10 @@ def init(
     sample_size: int = typer.Option(0, "--sample-size", "-n", help="Number of events to sample (0 = use config)"),
     output_dir: str = typer.Option("schemas", "--output", "-o", help="Output directory for schema files"),
     api_key: str | None = typer.Option(None, "--api-key", help="LLM API key (or set GROQ_API_KEY / OPENAI_API_KEY)"),
+    offline: bool = typer.Option(
+        False, "--offline",
+        help="Deterministic statistical inference only — no LLM, no API key required.",
+    ),
     model: str = typer.Option("", "--model", "-m", help="Model name (default from config)"),
     base_url: str = typer.Option("", "--base-url", help="OpenAI-compatible API base URL (default from config)"),
     brokers: str | None = typer.Option(
@@ -76,7 +80,9 @@ def init(
     _MIN_CLEAN_EVENTS = 20  # floor below which inference quality is unreliable
 
     is_kafka = stream_path.startswith("kafka://")
-    key = _resolve_api_key(api_key)
+    key = "" if offline else _resolve_api_key(api_key)
+    if offline:
+        console.print("[dim]Offline mode — deterministic statistical inference (no LLM)[/dim]")
 
     # Resolve topic name for config lookup
     _topic_for_cfg = stream_path[len("kafka://"):] if is_kafka else _stream_name(stream_path)
@@ -238,7 +244,10 @@ def init(
         console.print(f"    [dim]_other / _sparse               {noise_count:>5} events  (noise bucket, not inferred)[/dim]")
 
     # Infer sub-schemas — one LLM call per significant cluster
-    console.print(f"\n🤖 Inferring sub-schemas with [bold]{effective_model}[/bold]...")
+    if offline:
+        console.print("\n📊 Inferring sub-schemas — [bold]deterministic statistical[/bold] (no LLM)...")
+    else:
+        console.print(f"\n🤖 Inferring sub-schemas with [bold]{effective_model}[/bold]...")
     sub_schemas = []
     all_pii = []
 
@@ -253,6 +262,7 @@ def init(
             model=effective_model,
             base_url=effective_base_url,
             quorum_votes=quorum_votes if quorum_votes > 0 else None,
+            offline=offline,
         )
         sub_schemas.append(sub)
         pii = [(f.path, f.pii_categories) for f in sub.fields if f.pii_categories]

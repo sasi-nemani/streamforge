@@ -1472,6 +1472,7 @@ def infer_sub_schema(
     model: str = DEFAULT_MODEL,
     base_url: str = DEFAULT_BASE_URL,
     quorum_votes: int | None = None,
+    offline: bool = False,
 ) -> SubSchema:
     """
     Infer schema for one cluster of structurally similar events.
@@ -1543,14 +1544,19 @@ def infer_sub_schema(
         confidence = 0.95  # identical shape to a previously-inferred schema
         source = "fingerprint_cache"
         metrics.SCHEMA_CACHE_HITS.inc()
-    elif len(sample) < _min_events_for_llm():
-        logger.info(
-            "Cluster %s: only %d events — below MIN_EVENTS_FOR_LLM_INFERENCE (%d), "
-            "using statistical inference",
-            cluster_id, len(sample), _min_events_for_llm(),
-        )
+    elif offline or len(sample) < _min_events_for_llm():
+        if offline:
+            logger.info("Cluster %s: offline mode — deterministic statistical inference", cluster_id)
+        else:
+            logger.info(
+                "Cluster %s: only %d events — below MIN_EVENTS_FOR_LLM_INFERENCE (%d), "
+                "using statistical inference",
+                cluster_id, len(sample), _min_events_for_llm(),
+            )
         fields = stat_fields
-        confidence = min(0.65, 0.3 + 0.007 * len(sample))
+        confidence = min(0.65, 0.3 + 0.007 * len(sample)) if not offline else round(
+            sum(f.confidence for f in stat_fields) / max(len(stat_fields), 1), 4
+        )
         source = "statistical"
         metrics.STATISTICAL_INFERENCES.inc()
     else:

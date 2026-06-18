@@ -125,3 +125,29 @@ def test_metrics_snapshot_has_inference_source_split():
         "inference_statistical_total",
     ):
         assert key in snap
+
+
+def test_offline_mode_skips_llm_without_key(monkeypatch):
+    """offline=True must use the deterministic statistical path and never call
+    the LLM — even with enough events to otherwise trigger it, and no API key."""
+    from streamforge import inference
+
+    # Disable the fingerprint cache so we exercise the statistical branch directly.
+    monkeypatch.setenv("STREAMFORGE_SCHEMA_CACHE", "0")
+
+    def _boom(**_kwargs):
+        raise AssertionError("LLM must not be called in offline mode")
+
+    monkeypatch.setattr(inference, "infer_schema", _boom)
+
+    events = [{"amount": float(i), "currency": "USD", "ok": True} for i in range(60)]
+    sub = inference.infer_sub_schema(
+        cluster_id="c",
+        events=events,
+        detection_method="single",
+        total_stream_events=60,
+        api_key="",  # no key
+        offline=True,
+    )
+    assert sub.inference_source == "statistical"
+    assert {f.path for f in sub.fields} == {"amount", "currency", "ok"}
