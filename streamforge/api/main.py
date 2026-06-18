@@ -8,6 +8,7 @@ from .routes import (
     connectors,
     drift,
     eval,
+    graph,
     health,
     metrics,
     pii,
@@ -43,6 +44,7 @@ app.include_router(streams.router)
 app.include_router(search.router)
 app.include_router(connectors.router)
 app.include_router(eval.router, prefix="/api", tags=["eval"])
+app.include_router(graph.router, prefix="/api", tags=["graph"])
 
 
 @app.get("/")

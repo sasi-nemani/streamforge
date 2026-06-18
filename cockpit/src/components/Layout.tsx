@@ -25,6 +25,12 @@ export function Layout({ children }: LayoutProps) {
                 to="/"
                 className={`text-sm ${location.pathname === '/' ? 'text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
               >
+                Blast Radius
+              </Link>
+              <Link
+                to="/overview"
+                className={`text-sm ${location.pathname === '/overview' ? 'text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+              >
                 Dashboard
               </Link>
               <Link

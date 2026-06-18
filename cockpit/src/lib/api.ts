@@ -1,4 +1,4 @@
-import type { Source, Connector, MetricsSummary, DriftAlert, PiiSummary, HealthStatus, StreamDetail, SearchResponse, EvalScorecard } from './types'
+import type { Source, Connector, MetricsSummary, DriftAlert, PiiSummary, HealthStatus, StreamDetail, SearchResponse, EvalScorecard, GraphOverview, FieldDetail } from './types'
 
 const API_BASE = '/api'
 
@@ -28,4 +28,7 @@ export const api = {
   getFieldTypes: () => fetchJson<{ types: string[] }>('/search/types'),
   getBenchmarks: () => fetchJson<{ benchmarks: string[] }>('/eval'),
   getEval: (stream: string) => fetchJson<EvalScorecard>(`/eval/${stream}`),
+  getGraph: () => fetchJson<GraphOverview>('/graph'),
+  getFieldDetail: (path: string) =>
+    fetchJson<FieldDetail>(`/graph/field?path=${encodeURIComponent(path)}`),
 }

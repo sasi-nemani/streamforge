@@ -106,6 +106,53 @@ class SchemaGraph:
                      sum(1 for n in nodes.values() if n.is_inconsistent))
         return SchemaGraph(nodes=nodes, meta=meta)
 
+    @staticmethod
+    def from_schemas(schemas_dir: str = "schemas") -> SchemaGraph:
+        """Build the graph directly from committed schema.yaml files.
+
+        Unlike build() (which relies on the field registry's stream membership),
+        this always reflects the current committed schemas — the right source for
+        the cockpit's cross-topic view. A field used in >1 stream with >1 type is
+        flagged inconsistent (the cross-topic bugs worth surfacing).
+        """
+        from .schema_writer import load_schema
+
+        by_field: dict[str, list[FieldUsageEntry]] = {}
+        all_streams: set[str] = set()
+        edge_count = 0
+
+        for schema_path in sorted(Path(schemas_dir).glob("*/schema.yaml")):
+            stream_name = schema_path.parent.name
+            try:
+                schema = load_schema(str(schema_path))
+            except Exception as e:  # noqa: BLE001 — skip unreadable schema, keep going
+                logger.debug("Could not load schema for %s: %s", stream_name, e)
+                continue
+            all_streams.add(stream_name)
+            for f in schema.fields:
+                ftype = f.field_type.value if hasattr(f.field_type, "value") else str(f.field_type)
+                pii = [c.value if hasattr(c, "value") else str(c) for c in f.pii_categories]
+                by_field.setdefault(f.path, []).append(FieldUsageEntry(
+                    stream_name=stream_name, field_type=ftype,
+                    presence_rate=f.presence_rate, required=f.required, pii_categories=pii,
+                ))
+                edge_count += 1
+
+        nodes: dict[str, FieldNode] = {}
+        for field_path, usages in by_field.items():
+            types_seen = {u.field_type for u in usages}
+            nodes[field_path] = FieldNode(
+                field_path=field_path, usages=usages,
+                is_inconsistent=len(types_seen) > 1,
+            )
+
+        meta = DependencyGraphMeta(
+            built_at=datetime.now(UTC).isoformat(),
+            stream_count=len(all_streams),
+            field_count=len(nodes), edge_count=edge_count,
+        )
+        return SchemaGraph(nodes=nodes, meta=meta)
+
     # ── Queries ─────────────────────────────────────────────────────────
 
     def field_usage(self, field_path: str) -> FieldNode | None:

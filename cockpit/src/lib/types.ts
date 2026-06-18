@@ -155,3 +155,48 @@ export interface EvalScorecard {
     rating: string
   }
 }
+
+export interface FieldTypeGroup {
+  type: string
+  streams: string[]
+}
+
+export interface Inconsistency {
+  field_path: string
+  types: FieldTypeGroup[]
+}
+
+export interface SharedField {
+  field_path: string
+  streams: string[]
+  count: number
+  inconsistent: boolean
+  pii: string[]
+}
+
+export interface GraphOverview {
+  overview: {
+    fields: number
+    streams: number
+    shared_fields: number
+    inconsistencies: number
+  }
+  inconsistencies: Inconsistency[]
+  shared_fields: SharedField[]
+}
+
+export interface FieldUsage {
+  stream: string
+  type: string
+  presence_rate: number
+  required: boolean
+  pii: string[]
+}
+
+export interface FieldDetail {
+  field_path: string
+  found: boolean
+  is_inconsistent?: boolean
+  usages: FieldUsage[]
+  consumers: string[]
+}
