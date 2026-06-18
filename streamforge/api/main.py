@@ -4,7 +4,17 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import connectors, drift, health, metrics, pii, search, sources, streams
+from .routes import (
+    connectors,
+    drift,
+    eval,
+    health,
+    metrics,
+    pii,
+    search,
+    sources,
+    streams,
+)
 
 app = FastAPI(
     title="StreamForge Cockpit",
@@ -32,6 +42,7 @@ app.include_router(pii.router, prefix="/api", tags=["pii"])
 app.include_router(streams.router)
 app.include_router(search.router)
 app.include_router(connectors.router)
+app.include_router(eval.router, prefix="/api", tags=["eval"])
 
 
 @app.get("/")

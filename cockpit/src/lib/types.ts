@@ -105,3 +105,37 @@ export interface SearchResponse {
   count: number
   results: SearchResult[]
 }
+
+export interface EvalScenario {
+  label: string
+  f1: number
+  caught: boolean
+}
+
+export interface EvalScorecard {
+  stream: string
+  inference_path: string
+  seed: number
+  schema: {
+    type_precision: number
+    type_recall: number
+    type_f1: number
+    type_accuracy: number
+    pii_f1: number
+    n_truth: number
+    n_inferred: number
+  }
+  drift: {
+    precision: number
+    recall: number
+    f1: number
+    detection_latency_events: number | null
+    fpr_null: number
+    scenarios: EvalScenario[]
+  }
+  calibration: {
+    ece: number
+    n_samples: number
+    rating: string
+  }
+}

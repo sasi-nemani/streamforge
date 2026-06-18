@@ -4,6 +4,7 @@ import { Layout } from '../components/Layout'
 import { SourcesTable } from '../components/SourcesTable'
 import { HealthStatus } from '../components/HealthStatus'
 import { DashboardSkeleton } from '../components/Skeleton'
+import { Scorecard } from '../components/Scorecard'
 
 function MetricCard({
   label,
@@ -198,6 +199,10 @@ export function Dashboard() {
         <p className="text-sm text-gray-500 mt-1">
           Real-time schema intelligence across your data estate
         </p>
+      </div>
+
+      <div className="mb-8 bg-gray-50 rounded-xl border border-gray-200 p-6">
+        <Scorecard />
       </div>
 
       <div className="grid grid-cols-5 gap-4 mb-8">
