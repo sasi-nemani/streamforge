@@ -1,0 +1,31 @@
+# Consumers of events.payments — declarative field-level lineage.
+# Each service lists the fields it reads; `required: true` means it breaks
+# without that field. StreamForge uses this to compute drift blast radius.
+consumers:
+  - name: fraud-detection-service
+    team: risk
+    criticality: tier1
+    repo: github.com/acme/fraud-detection
+    fields_used:
+      - { path: amount, required: true }
+      - { path: currency, required: true }
+      - { path: user.user_id, required: true }
+      - { path: status, required: true }
+      - { path: payment_method, required: false }
+
+  - name: ledger-sync
+    team: finance
+    criticality: tier1
+    repo: github.com/acme/ledger-sync
+    fields_used:
+      - { path: transaction_id, required: true }
+      - { path: amount, required: true }
+      - { path: currency, required: true }
+
+  - name: analytics-warehouse
+    team: data
+    criticality: tier2
+    fields_used:
+      - { path: amount, required: false }
+      - { path: payment_method, required: false }
+      - { path: timestamp, required: true }

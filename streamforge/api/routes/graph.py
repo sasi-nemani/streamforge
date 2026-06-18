@@ -80,15 +80,14 @@ async def field_detail(path: str = Query(..., description="Field path, e.g. 'tim
     if node is None:
         return {"field_path": path, "found": False, "usages": [], "consumers": []}
 
-    consumers: list[str] = []
+    # Cross-topic blast radius: which registered consumers actually read this field,
+    # across every topic that carries it, and would it be a hard (required) break.
+    consumers: list[dict] = []
     try:
-        from ...consumer_registry import load_consumers
+        from ...consumer_registry import field_blast_radius
 
-        for u in node.usages:
-            for c in load_consumers(schemas_dir, u.stream_name):
-                name = getattr(c, "name", None) or (c.get("name") if isinstance(c, dict) else None)
-                if name and name not in consumers:
-                    consumers.append(name)
+        streams = [u.stream_name for u in node.usages]
+        consumers = field_blast_radius(schemas_dir, path, streams)
     except Exception:  # noqa: BLE001 — consumer registry is optional/best-effort
         pass
 
@@ -107,4 +106,5 @@ async def field_detail(path: str = Query(..., description="Field path, e.g. 'tim
             for u in node.usages
         ],
         "consumers": consumers,
+        "hard_breaks": sum(1 for c in consumers if c.get("required")),
     }

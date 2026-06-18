@@ -61,3 +61,50 @@ def test_graph_api_returns_overview_and_field_detail(tmp_path, monkeypatch):
     assert detail["is_inconsistent"] is True
     assert len(detail["usages"]) == 2
     assert isinstance(detail["consumers"], list)  # may be empty (no consumers registered)
+
+
+def test_field_blast_radius_is_field_level_and_cross_topic(tmp_path):
+    from streamforge.consumer_registry import field_blast_radius
+
+    # `amount` lives in two topics; consumers in BOTH read it (one required).
+    _write_schema(tmp_path / "payments" / "schema.yaml", _schema_doc("payments", [("amount", "float")]))
+    _write_schema(tmp_path / "refunds" / "schema.yaml", _schema_doc("refunds", [("amount", "float")]))
+    (tmp_path / "payments" / "consumers.yaml").write_text(
+        "consumers:\n"
+        "  - name: ledger\n    team: finance\n    criticality: tier1\n"
+        "    fields_used:\n      - { path: amount, required: true }\n"
+        "  - name: dashboards\n    team: data\n    criticality: tier3\n"
+        "    fields_used:\n      - { path: other, required: false }\n",  # does NOT read amount
+        encoding="utf-8",
+    )
+    (tmp_path / "refunds" / "consumers.yaml").write_text(
+        "consumers:\n"
+        "  - name: analytics\n    team: data\n    criticality: tier2\n"
+        "    fields_used:\n      - { path: amount, required: false }\n",
+        encoding="utf-8",
+    )
+
+    impact = field_blast_radius(str(tmp_path), "amount", ["payments", "refunds"])
+    names = {i["consumer"] for i in impact}
+    assert names == {"ledger", "analytics"}        # 'dashboards' excluded (doesn't read amount)
+    assert impact[0]["consumer"] == "ledger"       # hard break (required) sorts first
+    assert impact[0]["required"] is True
+    assert {i["stream"] for i in impact} == {"payments", "refunds"}  # cross-topic
+
+
+def test_graph_field_api_returns_consumer_impact(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    _write_schema(tmp_path / "payments" / "schema.yaml", _schema_doc("payments", [("amount", "float")]))
+    (tmp_path / "payments" / "consumers.yaml").write_text(
+        "consumers:\n  - name: ledger\n    team: finance\n    criticality: tier1\n"
+        "    fields_used:\n      - { path: amount, required: true }\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("STREAMFORGE_SCHEMA_DIR", str(tmp_path))
+    from streamforge.api.main import app
+
+    d = TestClient(app).get("/api/graph/field", params={"path": "amount"}).json()
+    assert d["hard_breaks"] == 1
+    assert d["consumers"][0]["consumer"] == "ledger"
+    assert d["consumers"][0]["required"] is True

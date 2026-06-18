@@ -193,10 +193,19 @@ export interface FieldUsage {
   pii: string[]
 }
 
+export interface ConsumerImpact {
+  consumer: string
+  team: string
+  stream: string
+  criticality: string
+  required: boolean
+}
+
 export interface FieldDetail {
   field_path: string
   found: boolean
   is_inconsistent?: boolean
   usages: FieldUsage[]
-  consumers: string[]
+  consumers: ConsumerImpact[]
+  hard_breaks?: number
 }

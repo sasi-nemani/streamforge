@@ -239,6 +239,35 @@ def load_consumers(schemas_dir: str, stream_name: str) -> list[StreamConsumer]:
     return consumers
 
 
+def field_blast_radius(
+    schemas_dir: str, field_path: str, streams: list[str]
+) -> list[dict[str, Any]]:
+    """Cross-topic blast radius for a single field.
+
+    Across every topic that carries ``field_path``, find the registered consumers
+    that actually read it. Returns one entry per (consumer, topic) with whether
+    the dependency is required (a hard break) and the consumer's criticality —
+    sorted hard-breaks-first, then by criticality. Empty when no consumers are
+    registered (the honest "unmapped" state).
+    """
+    impacted: list[dict[str, Any]] = []
+    for stream in streams:
+        for c in load_consumers(schemas_dir, stream):
+            cf = next((f for f in c.fields_used if f.path == field_path), None)
+            if cf is None:
+                continue
+            impacted.append({
+                "consumer": c.name,
+                "team": c.team,
+                "stream": stream,
+                "criticality": c.criticality,
+                "required": cf.required,
+            })
+    _crit = {"tier1": 0, "tier2": 1, "tier3": 2}
+    impacted.sort(key=lambda x: (not x["required"], _crit.get(x["criticality"], 9)))
+    return impacted
+
+
 def write_consumers_template(schemas_dir: str, stream_name: str) -> str:
     """
     Write a consumers.yaml template for a stream that doesn't have one yet.

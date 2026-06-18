@@ -1,0 +1,24 @@
+# Consumers of events.bookings — declarative field-level lineage.
+consumers:
+  - name: revenue-reporting
+    team: finance
+    criticality: tier1
+    fields_used:
+      - { path: total_price, required: true }
+      - { path: currency, required: true }
+      - { path: cabin_class, required: false }
+
+  - name: passenger-manifest
+    team: ops
+    criticality: tier1
+    fields_used:
+      - { path: "passengers[].passport_number", required: true }
+      - { path: "passengers[].date_of_birth", required: true }
+      - { path: "passengers[].last_name", required: true }
+
+  - name: loyalty-engine
+    team: growth
+    criticality: tier2
+    fields_used:
+      - { path: loyalty_number, required: true }
+      - { path: contact_email, required: false }

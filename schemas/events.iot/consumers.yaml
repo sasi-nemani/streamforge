@@ -1,0 +1,17 @@
+# Consumers of events.iot — declarative field-level lineage.
+consumers:
+  - name: realtime-alerting
+    team: platform
+    criticality: tier1
+    fields_used:
+      - { path: value, required: true }
+      - { path: sensor_type, required: true }
+      - { path: anomaly, required: true }
+
+  - name: ops-dashboard
+    team: platform
+    criticality: tier3
+    fields_used:
+      - { path: value, required: false }
+      - { path: timestamp, required: true }
+      - { path: battery_level, required: false }

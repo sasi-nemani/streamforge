@@ -93,18 +93,46 @@ function BlastPanel({ field, onClose }: { field: string; onClose: () => void }) 
             ))}
           </div>
 
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Downstream consumers</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500 uppercase tracking-wide">Downstream consumers at risk</p>
+            {detail.hard_breaks ? (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">
+                {detail.hard_breaks} hard break{detail.hard_breaks === 1 ? '' : 's'}
+              </span>
+            ) : null}
+          </div>
           {detail.consumers.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {detail.consumers.map((c) => (
-                <span key={c} className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                  {c}
-                </span>
+            <div className="space-y-1.5">
+              {detail.consumers.map((c, i) => (
+                <div
+                  key={`${c.consumer}-${c.stream}-${i}`}
+                  className={`flex items-center justify-between rounded border px-2.5 py-1.5 ${
+                    c.required ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{c.consumer}</p>
+                    <p className="text-xs text-gray-500">
+                      {c.team} · via <span className="font-mono">{c.stream}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs text-gray-400 uppercase">{c.criticality}</span>
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded ${
+                        c.required ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {c.required ? 'breaks' : 'degraded'}
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
             <p className="text-xs text-gray-400">
-              No consumers registered — run consumer discovery to map downstream impact.
+              No consumers registered for this field — add a consumers.yaml or run
+              Kafka consumer discovery to map downstream impact.
             </p>
           )}
         </>
