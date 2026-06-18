@@ -64,6 +64,23 @@ The full Kafka-based 4-act investor script lives in `demo/demo.sh` (live events 
 
 ---
 
+## C. The cockpit + the moat (blast radius & observed lineage)
+
+```bash
+# 1. seed observed lineage by running sample consumers over the events:
+python3 demo/seed_access_graph.py
+# 2. start the API + cockpit:
+uvicorn streamforge.api.main:app --port 8000   # in one terminal
+cd cockpit && npm run dev                       # in another → http://localhost:5173
+```
+- The homepage (`/`) is the **cross-topic dependency map** — lead with the 7 real inconsistencies (`timestamp` defined 4 ways across 7 topics).
+- **Click a field** (e.g. `currency`) → the **blast radius** panel:
+  - **Observed at runtime (LIVE):** the consumers that *actually read* the field, with access counts (fraud-detection 300×, ledger-sync 300×, revenue-reporting 250× — cross-topic). Built by observing message access; **no manifest**.
+  - **Declared contracts:** the intended contract + hard-break severity.
+- **The moat line:** *"This isn't declared — we observed it. It compounds every day it runs, per company. A competitor starting today is months behind on every customer. Removing `currency` breaks three services across two teams — and we can prove they read it."*
+
+---
+
 ## Talking points cheat-sheet
 - **Measurable:** `streamforge eval` gives P/R/F1, detection latency, FPR-under-null, and calibration — the system grades itself against ground truth.
 - **Explainable:** every drift carries its test, p-value, and effect size, in the report and the audit log.

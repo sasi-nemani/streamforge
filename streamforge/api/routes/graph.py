@@ -80,15 +80,27 @@ async def field_detail(path: str = Query(..., description="Field path, e.g. 'tim
     if node is None:
         return {"field_path": path, "found": False, "usages": [], "consumers": []}
 
-    # Cross-topic blast radius: which registered consumers actually read this field,
-    # across every topic that carries it, and would it be a hard (required) break.
+    streams = [u.stream_name for u in node.usages]
+
+    # DECLARED lineage: from consumers.yaml contracts (required = hard break).
     consumers: list[dict] = []
     try:
         from ...consumer_registry import field_blast_radius
 
-        streams = [u.stream_name for u in node.usages]
         consumers = field_blast_radius(schemas_dir, path, streams)
     except Exception:  # noqa: BLE001 — consumer registry is optional/best-effort
+        pass
+
+    # OBSERVED lineage: which consumers actually READ this field at runtime, with
+    # access counts. Compounds over time; no manifest required. This is the moat.
+    observed: list[dict] = []
+    try:
+        from ...access_observer import ObservedAccessStore
+
+        store_path = os.environ.get("STREAMFORGE_ACCESS_GRAPH")
+        store = ObservedAccessStore.load(store_path) if store_path else ObservedAccessStore.load()
+        observed = store.consumers_of_field(path, topics=streams)
+    except Exception:  # noqa: BLE001 — observed lineage is optional/best-effort
         pass
 
     return {
@@ -106,5 +118,6 @@ async def field_detail(path: str = Query(..., description="Field path, e.g. 'tim
             for u in node.usages
         ],
         "consumers": consumers,
+        "observed": observed,
         "hard_breaks": sum(1 for c in consumers if c.get("required")),
     }

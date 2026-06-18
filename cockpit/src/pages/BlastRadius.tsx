@@ -93,8 +93,32 @@ function BlastPanel({ field, onClose }: { field: string; onClose: () => void }) 
             ))}
           </div>
 
+          {detail.observed && detail.observed.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Observed at runtime</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold tracking-wide">LIVE</span>
+              </div>
+              <div className="space-y-1.5">
+                {detail.observed.map((o, i) => (
+                  <div
+                    key={`obs-${o.consumer}-${o.topic}-${i}`}
+                    className="flex items-center justify-between rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{o.consumer}</p>
+                      <p className="text-xs text-gray-500">via <span className="font-mono">{o.topic}</span></p>
+                    </div>
+                    <span className="text-xs font-mono text-emerald-700 shrink-0">read {o.count.toLocaleString()}×</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">Observed from real message access — no manifest, compounds over time.</p>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Downstream consumers at risk</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wide">Declared contracts</p>
             {detail.hard_breaks ? (
               <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">
                 {detail.hard_breaks} hard break{detail.hard_breaks === 1 ? '' : 's'}

@@ -201,11 +201,19 @@ export interface ConsumerImpact {
   required: boolean
 }
 
+export interface ObservedConsumer {
+  consumer: string
+  topic: string
+  count: number
+  last_seen: string
+}
+
 export interface FieldDetail {
   field_path: string
   found: boolean
   is_inconsistent?: boolean
   usages: FieldUsage[]
   consumers: ConsumerImpact[]
+  observed?: ObservedConsumer[]
   hard_breaks?: number
 }
