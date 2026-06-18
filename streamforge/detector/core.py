@@ -111,6 +111,21 @@ def _apply_fdr_filtering(
     return filtered, fdr_report
 
 
+def _attach_evidence(drift: FieldDrift, test_name: str, test=None) -> None:
+    """Attach statistical evidence to a drift so it can explain *why* it fired.
+
+    ``test`` is a StatTestResult (with .p_value / .effect_size) when a
+    statistical test backed the decision, or None for threshold/heuristic
+    checks (enum, PII) where only the test name is meaningful.
+    """
+    drift.test_name = test_name
+    if test is not None:
+        drift.p_value = test.p_value  # kept at full precision; renderer formats it
+        drift.effect_size = (
+            round(test.effect_size, 4) if test.effect_size is not None else None
+        )
+
+
 def detect_drift(
     baseline_schema: InferredSchema,
     new_sample: list[dict],
@@ -202,6 +217,7 @@ def detect_drift(
                     correction_confidence=0.9,
                 )
                 drift.tier = classify_drift_tier(drift)
+                _attach_evidence(drift, "binomial_z", presence_test)
                 pending_drifts.append(_PendingDrift(
                     drift=drift,
                     p_value=presence_test.p_value if presence_test else None,
@@ -226,6 +242,7 @@ def detect_drift(
                     auto_correctable=False,
                 )
                 drift.tier = classify_drift_tier(drift)
+                _attach_evidence(drift, "binomial_z", presence_test)
                 pending_drifts.append(_PendingDrift(
                     drift=drift,
                     p_value=presence_test.p_value if presence_test else None,
@@ -241,6 +258,7 @@ def detect_drift(
                     tier=DriftTier.TIER_1,
                     auto_correctable=True,
                 )
+                _attach_evidence(drift, "binomial_z", presence_test)
                 pending_drifts.append(_PendingDrift(
                     drift=drift,
                     p_value=presence_test.p_value if presence_test else None,
@@ -337,6 +355,7 @@ def detect_drift(
                         correction_confidence=0.85 if auto else 0.7,
                     )
                     drift.tier = classify_drift_tier(drift)
+                    _attach_evidence(drift, "chi_squared", type_test)
                     pending_drifts.append(_PendingDrift(
                         drift=drift,
                         p_value=type_test.p_value if type_test else None,
@@ -371,6 +390,7 @@ def detect_drift(
                         proposed_correction=f"Add new enum values: {', '.join(sorted(novel_values)[:5])}",
                         correction_confidence=0.9,
                     )
+                    _attach_evidence(drift, "enum_threshold")
                     pending_drifts.append(_PendingDrift(
                         drift=drift,
                         p_value=None,  # Enum test uses threshold, no p-value
@@ -391,6 +411,7 @@ def detect_drift(
                     auto_correctable=False,
                     proposed_correction=f"Review PII handling for {path}: {', '.join(p.value for p in novel_pii)}",
                 )
+                _attach_evidence(drift, "pii_heuristic")
                 pending_drifts.append(_PendingDrift(
                     drift=drift,
                     p_value=None,  # PII detection is deterministic, no p-value
@@ -495,6 +516,10 @@ def detect_drift(
                 "previous_presence": d.previous_presence_rate,
                 "observed_presence": d.observed_presence_rate,
                 "affected_rate": d.affected_event_rate,
+                # Statistical evidence — makes every audited decision explainable.
+                "test_name": d.test_name,
+                "p_value": d.p_value,
+                "effect_size": d.effect_size,
             },
             stream=stream_name,
         )

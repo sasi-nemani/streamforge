@@ -115,6 +115,13 @@ class FieldDrift(BaseModel):
     cluster_id: str | None = None  # sub-schema cluster this drift belongs to; None = flat schema path
     drift_class: DriftClass = DriftClass.DRIFT  # classification: drift | evolution | noise
 
+    # ── Statistical evidence (explainability) ─────────────────────────────────
+    # Populated when a statistical test backed the decision, so every drift can
+    # explain *why* it fired. None for threshold/heuristic checks (e.g. enum).
+    test_name: str | None = None       # "binomial_z" | "chi_squared" | "enum_threshold" | ...
+    p_value: float | None = None       # raw p-value from the test
+    effect_size: float | None = None   # standardized effect size (e.g. Cohen's h, Cramér's V)
+
     def model_post_init(self, __context) -> None:
         """Round all rate fields to 4 decimal places. Eliminates IEEE 754 noise
         like 0.07999999999999999 → 0.08 in audit logs and drift reports."""
@@ -124,6 +131,11 @@ class FieldDrift(BaseModel):
             object.__setattr__(self, "previous_presence_rate", round(self.previous_presence_rate, 4))
         if self.observed_presence_rate is not None:
             object.__setattr__(self, "observed_presence_rate", round(self.observed_presence_rate, 4))
+        # p_value is intentionally NOT rounded — tiny values (e.g. 1e-20) carry
+        # real meaning and would collapse to 0.0 under rounding. The renderer
+        # formats it for display instead.
+        if self.effect_size is not None:
+            object.__setattr__(self, "effect_size", round(self.effect_size, 4))
 
 
 class DriftReport(BaseModel):

@@ -53,3 +53,5 @@ def emit_audit(
         stream.write(event.model_dump_json() + "\n")
     except Exception:
         logger.warning("Failed to write audit event for %s", operation, exc_info=True)
+        from .metrics import AUDIT_FAILURES
+        AUDIT_FAILURES.inc()

@@ -105,6 +105,10 @@ def load_events_resilient(folder_path: str) -> tuple[list[dict], dict]:
         "Resilient load: %d clean, %d partial, %d skipped from %d files",
         stats["parsed_clean"], stats["parsed_partial"], stats["skipped"], len(files),
     )
+    if stats["skipped"]:
+        # Surface dropped/malformed events as a cumulative metric, not just a log.
+        from .metrics import PARSE_FAILURES
+        PARSE_FAILURES.inc(stats["skipped"])
     return events, stats
 
 

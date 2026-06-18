@@ -82,6 +82,29 @@ POLL_CYCLES = Counter(
     "Total poll cycles executed",
 )
 
+# ── Failure counters ──────────────────────────────────────────────────────────
+# Previously-silent failure paths, now counted so the system is honest about
+# what it could NOT process. A non-zero value here is a signal, not a crash.
+PARSE_FAILURES = Counter(
+    "parse_failures_total",
+    "Events that could not be parsed (malformed JSON / read errors), dropped",
+)
+
+DLQ_FAILURES = Counter(
+    "dlq_route_failures_total",
+    "Events that failed to route to the dead-letter queue",
+)
+
+AUDIT_FAILURES = Counter(
+    "audit_write_failures_total",
+    "Audit records that failed to write",
+)
+
+INFERENCE_FAILURES = Counter(
+    "inference_failures_total",
+    "LLM inference attempts that errored and fell back to another path",
+)
+
 
 def metrics_snapshot() -> dict[str, float]:
     """Export all metrics as a flat dict — suitable for health.json or /metrics."""
@@ -91,6 +114,10 @@ def metrics_snapshot() -> dict[str, float]:
         "events_sampled_total": EVENTS_SAMPLED.value,
         "drift_detected_total": DRIFT_DETECTED.value,
         "poll_cycles_total": POLL_CYCLES.value,
+        "parse_failures_total": PARSE_FAILURES.value,
+        "dlq_route_failures_total": DLQ_FAILURES.value,
+        "audit_write_failures_total": AUDIT_FAILURES.value,
+        "inference_failures_total": INFERENCE_FAILURES.value,
     }
 
 

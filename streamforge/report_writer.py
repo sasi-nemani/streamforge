@@ -13,6 +13,34 @@ TIER_LABELS = {
 }
 
 
+_TEST_LABELS = {
+    "binomial_z": "binomial z-test",
+    "chi_squared": "chi-squared test",
+    "enum_threshold": "enum threshold (heuristic)",
+    "pii_heuristic": "PII heuristic (deterministic)",
+}
+
+
+def format_evidence(drift: FieldDrift) -> str:
+    """Human-readable statistical evidence explaining why a drift fired.
+
+    Returns "" when the drift carries no recorded test (older reports / drift
+    types without evidence), so callers can conditionally render the line.
+    """
+    if not drift.test_name:
+        return ""
+    parts = [_TEST_LABELS.get(drift.test_name, drift.test_name)]
+    if drift.p_value is not None:
+        p = drift.p_value
+        if p < 1e-4:
+            parts.append("p<0.0001" if p > 0 else "p≈0 (underflow)")
+        else:
+            parts.append(f"p={p:.4f}")
+    if drift.effect_size is not None:
+        parts.append(f"effect size {drift.effect_size:.2f}")
+    return ", ".join(parts)
+
+
 def format_drift_detail(drift: FieldDrift) -> str:
     lines = [f"### `{drift.field_path}`"]
     lines.append(f"- **Drift type**: `{drift.drift_type}`")
@@ -33,6 +61,10 @@ def format_drift_detail(drift: FieldDrift) -> str:
 
     lines.append(f"- **Tier**: {TIER_LABELS.get(drift.tier, str(drift.tier))}")
     lines.append(f"- **Affected events**: {drift.affected_event_rate:.0%}")
+
+    evidence = format_evidence(drift)
+    if evidence:
+        lines.append(f"- **Evidence**: {evidence}")
 
     if drift.auto_correctable and drift.proposed_correction:
         lines.append(f"- **Proposed correction**: `{drift.proposed_correction}`")

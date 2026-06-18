@@ -58,6 +58,8 @@ class DLQRouter:
             return self._publish(events, violation_type, producer_id)
         except Exception as e:
             logger.warning("DLQ routing failed (non-fatal): %s", e)
+            from .metrics import DLQ_FAILURES
+            DLQ_FAILURES.inc(len(events))
             return 0
 
     def _publish(self, events: list[dict], violation_type: str, producer_id: str | None) -> int:

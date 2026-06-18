@@ -1361,6 +1361,8 @@ def infer_schema(
     # ── 5. Statistical fallback ────────────────────────────────────────────────
     if llm_fields is None:
         logger.warning("All LLM attempts failed, falling back to statistical inference")
+        from .metrics import INFERENCE_FAILURES
+        INFERENCE_FAILURES.inc()
         llm_fields = statistical_inference(remaining_stats, remaining_rates)
         overall_confidence = 0.6
         model = f"{model}(statistical-fallback)"
