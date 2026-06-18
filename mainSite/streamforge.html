@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StreamForge — Data Discovery, Mapping & Drift Detection for Event Streams</title>
+  <title>StreamForge — Cross-Topic Data Mapping & Lineage for Event Streams</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -29,6 +29,22 @@
     .sf-find { display: inline-flex; align-items: center; gap: 8px; background: #fef2f2;
       border: 1px solid #fecaca; color: #b91c1c; border-radius: 8px; padding: 6px 12px;
       font-family: 'JetBrains Mono', monospace; font-size: 13px; margin: 4px; }
+
+    /* ── Feature × airline-use-case grid ── */
+    .sf-feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px; margin-top: 44px; }
+    .sf-feat { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 26px; }
+    .sf-feat__tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: #0f766e; background: #ecfdf5; border: 1px solid #a7f3d0;
+      border-radius: 6px; padding: 3px 9px; margin-bottom: 14px; }
+    .sf-feat h3 { font-size: 19px; color: #0f172a; margin-bottom: 8px; }
+    .sf-feat__what { font-size: 14px; color: #475569; margin-bottom: 16px; line-height: 1.55; }
+    .sf-feat__ba { font-size: 13.5px; color: #334155; background: #f8fafc;
+      border-left: 3px solid #2563eb; border-radius: 0 8px 8px 0; padding: 13px 15px; line-height: 1.6; }
+    .sf-feat__ba-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; color: #1e3a8a; margin-bottom: 5px; }
+    .sf-feat__ba code { font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: #eef2ff; padding: 1px 5px; border-radius: 4px; color: #3730a3; }
   </style>
 </head>
 <body>
@@ -252,6 +268,139 @@ Action: Review required before merge</code></pre>
              alt="StreamForge blast radius panel — currency field breaks 3 consumers across 2 teams in 2 topics" />
       </figure>
       <p class="sf-shot__cap">Click a field → its blast radius: every topic it touches and the downstream consumers (and teams) at risk.</p>
+    </div>
+  </section>
+
+  <!-- ── FEATURES × AIRLINE USE CASES ─────────────────────────────────────── -->
+  <section class="sf-steps" id="sf-features">
+    <div class="sf-container">
+      <div class="sf-section-label">Capabilities · airline operations</div>
+      <h2 class="sf-section-title">
+        What you can do —<br />
+        <span class="sf-gradient-text">across FlightOps, Ground Ops &amp; the AODB.</span>
+      </h2>
+      <p class="sf-section-sub">
+        An airline's operational backbone is event-driven: flight movements, gate and stand changes,
+        turnaround milestones, crew, baggage and DCS — flowing across Kafka and decades of IBM MQ teletype
+        (MVT, LDM, ASM). It's also where a single silent change cascades through the whole operation.
+        Here's what StreamForge does with that estate.
+      </p>
+
+      <div class="sf-feat-grid">
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">Data Map</span>
+          <h3>Cross-topic data map</h3>
+          <p class="sf-feat__what">Map every field to every topic it appears in across all lines of business — one
+            picture of where data lives, with type, presence and PII per topic.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            FlightOps, Ground Ops, the AODB, Crew and Baggage each publish a flight. StreamForge maps
+            <code>flight_number</code>, <code>aircraft_registration</code> (tail), <code>gate</code>/<code>stand</code>
+            and the off-/on-block times across all of them in one view — including the legacy movement feeds no one documented.
+          </p>
+        </div>
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">Inconsistency</span>
+          <h3>Inconsistency detection</h3>
+          <p class="sf-feat__what">Flags where the same concept is modelled differently between teams — the latent
+            integration bugs no schema registry or catalog surfaces.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <code>gate</code> is <code>"A23"</code> (string) in Gate Management but stand <code>23</code> (integer)
+            in the legacy allocator; <code>estimated_off_block_time</code> is UTC in the AODB and local-time in an
+            outstation feed. During a busy bank the boarding board shows the wrong gate. StreamForge catches it before it ships.
+          </p>
+        </div>
+
+        <div class="sf-feat" style="border-color:#a7f3d0;">
+          <span class="sf-feat__tag">Observed Lineage · the moat</span>
+          <h3>Observed lineage at runtime</h3>
+          <p class="sf-feat__what">Sees which services <em>actually read</em> which fields, with real access counts —
+            no manifest, no producer changes. It compounds every day it runs.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            Before Ground Ops changes the gate-change event's <code>gate</code> field, StreamForge shows it was read
+            <strong>8M times yesterday</strong> by the departure boards, 3M by the mobile app, plus baggage-routing,
+            ramp dispatch and catering. You can't quietly change it — and now you know exactly who to tell.
+          </p>
+        </div>
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">Blast Radius</span>
+          <h3>Field-level blast radius</h3>
+          <p class="sf-feat__what">Change a field and instantly see every downstream service and team that breaks —
+            before the pull request merges, not after the incident.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            FlightOps wants to change the type of <code>estimated_off_block_time</code> (EOBT). Blast radius: it breaks
+            slot management, crew rostering, turnaround prediction and the on-time-performance dashboard — four teams, surfaced before merge.
+          </p>
+        </div>
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">PII &amp; Compliance</span>
+          <h3>PII map across the estate</h3>
+          <p class="sf-feat__what">Passport, date-of-birth, loyalty and payment data tracked across every stream —
+            answer "where does PII flow?" instantly, for audit and GDPR.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops &amp; Compliance</span>
+            Where do special-assistance and APIS passport details flow? Instant answer:
+            <code>passengers[].assistance_code</code> and <code>passport_number</code> appear in DCS, the boarding feed
+            and the Border-Force/APIS stream — all flagged PII, with the services that read them and crew IDs in the roster feed.
+          </p>
+        </div>
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">Legacy Discovery</span>
+          <h3>Discovery for legacy estates</h3>
+          <p class="sf-feat__what">Browse-mode, read-only inference on undocumented mainframe and IBM MQ streams —
+            no producer changes, zero risk to delivery.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            The AODB, DCS and IATA Type-B movement messages (MVT, LDM, ASM) on decades-old IBM MQ that nobody documented.
+            StreamForge browses them read-only and produces a full schema + PII report in an afternoon — without touching the producers.
+          </p>
+        </div>
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">Contracts in CI</span>
+          <h3>Data contracts in your pipeline</h3>
+          <p class="sf-feat__what">Block a breaking producer change in the pull request and route it to the consuming
+            teams for sign-off — a type-checker for your event streams.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            A team adds a new <code>flight_status</code> value (<code>DIVERTED_FUEL</code>) to the movement event.
+            The CI gate fails the PR and routes it to the departure boards, the app and Ops Control (OCC) for sign-off before it can merge.
+          </p>
+        </div>
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">Drift</span>
+          <h3>Drift detection with evidence</h3>
+          <p class="sf-feat__what">Statistical, FDR-controlled drift detection where every alert explains itself —
+            the test, the p-value, the effect size — not a vague anomaly.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            A new outstation ground handler starts sending <code>actual_time_of_arrival</code> in local time instead of UTC.
+            StreamForge detects the shift (chi², p&lt;0.0001), classifies it breaking, and shows the evidence — before it corrupts OTP and turnaround metrics.
+          </p>
+        </div>
+
+        <div class="sf-feat">
+          <span class="sf-feat__tag">Trust</span>
+          <h3>Deterministic &amp; private, proven</h3>
+          <p class="sf-feat__what">Runs deterministic with no data leaving your network; the optional LLM can be
+            self-hosted or disabled. Ships a benchmark that scores its own accuracy.</p>
+          <p class="sf-feat__ba">
+            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            Passenger, crew and operational data never leaves BA's network — deterministic mode, on-prem or disabled model.
+            The benchmark shows exactly how accurate inference is (Schema F1 0.93, PII F1 0.86), reproducibly.
+          </p>
+        </div>
+
+      </div>
     </div>
   </section>
 
