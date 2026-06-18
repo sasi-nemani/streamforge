@@ -935,9 +935,18 @@ def quorum_type_inference(
 
 
 def statistical_inference(field_stats: dict, presence_rates: dict) -> list[FieldSchema]:
-    """Fallback: pure statistical type inference without LLM."""
+    """Fallback: pure statistical type inference without LLM.
+
+    Confidence is the Wilson lower bound on type agreement (fraction of non-null
+    values matching the inferred type), so it reflects real statistical evidence
+    — high agreement over a large sample ⇒ high confidence; a split or tiny
+    sample ⇒ low confidence. This is calibrated, not an LLM self-report.
+    """
+    from .confidence import wilson_score_interval
+
     fields = []
     for path, values in field_stats.items():
+        type_agreement = (0, 0)  # (majority_count, non_null_count) — drives confidence
         if not values:
             ft = FieldType.NULL
         else:
@@ -961,16 +970,31 @@ def statistical_inference(field_stats: dict, presence_rates: dict) -> list[Field
 
             # Strip null before deciding mixed — a nullable string is STRING, not MIXED
             non_null_types = {k: v for k, v in type_counts.items() if k != "null"}
+            non_null_count = sum(non_null_types.values())
             if not non_null_types:
                 ft = FieldType.NULL
             elif len(non_null_types) > 1:
                 ft = FieldType.MIXED
+                type_agreement = (max(non_null_types.values()), non_null_count)
             else:
                 majority = max(non_null_types, key=lambda k: non_null_types[k])
                 ft = FieldType(majority) if majority in FieldType._value2member_map_ else FieldType.STRING
+                type_agreement = (non_null_types[majority], non_null_count)
 
         presence = presence_rates.get(path, 0.0)
         pii = detect_pii(path, values[:20])
+
+        # Confidence = Wilson lower bound on type agreement (statistical evidence).
+        # Then discount the catch-all types: STRING/INTEGER frequently turn out to
+        # be a semantic type (uuid/email/timestamp) the statistical path can't see,
+        # so high *agreement* there does not mean high *correctness*. Capping them
+        # keeps confidence honest (and well-calibrated) without an LLM.
+        succ, n = type_agreement
+        confidence = round(wilson_score_interval(succ, n)[0], 4) if n > 0 else 0.3
+        if ft in (FieldType.STRING, FieldType.INTEGER):
+            confidence = min(confidence, 0.7)
+        elif ft == FieldType.MIXED:
+            confidence = min(confidence, 0.5)
 
         fields.append(FieldSchema(
             name=path.split(".")[-1],
@@ -981,7 +1005,7 @@ def statistical_inference(field_stats: dict, presence_rates: dict) -> list[Field
             presence_rate=presence,
             sample_values=values[:5],
             pii_categories=pii,
-            confidence=min(0.7, 0.5 + presence * 0.2),
+            confidence=confidence,
             notes="Statistically inferred (LLM fallback)"
         ))
 
@@ -1495,14 +1519,40 @@ def infer_sub_schema(
             key_counts[k] = key_counts.get(k, 0) + 1
     top_keys = sorted(key_counts, key=lambda k: -key_counts[k])[:15]
 
-    if len(sample) < _min_events_for_llm():
+    # ── Structural-fingerprint cache ──────────────────────────────────────────
+    # A cheap deterministic statistical pass gives us the shape (paths/types).
+    # If we've inferred an identical shape before, reuse it and SKIP the LLM.
+    from . import metrics
+    from .schema_cache import SchemaFingerprintCache, cache_enabled, structural_fingerprint
+
+    stat_fields = statistical_inference(field_stats, presence_rates)
+    fingerprint: str | None = None
+    cache: SchemaFingerprintCache | None = None
+    cached_fields = None
+    if cache_enabled():
+        fingerprint = structural_fingerprint(stat_fields)
+        cache = SchemaFingerprintCache.load()
+        cached_fields = cache.get(fingerprint)
+
+    if cached_fields is not None:
+        logger.info(
+            "Cluster %s: structural-fingerprint cache hit (%s) — skipping LLM",
+            cluster_id, fingerprint,
+        )
+        fields = cached_fields
+        confidence = 0.95  # identical shape to a previously-inferred schema
+        source = "fingerprint_cache"
+        metrics.SCHEMA_CACHE_HITS.inc()
+    elif len(sample) < _min_events_for_llm():
         logger.info(
             "Cluster %s: only %d events — below MIN_EVENTS_FOR_LLM_INFERENCE (%d), "
             "using statistical inference",
             cluster_id, len(sample), _min_events_for_llm(),
         )
-        fields = statistical_inference(field_stats, presence_rates)
+        fields = stat_fields
         confidence = min(0.65, 0.3 + 0.007 * len(sample))
+        source = "statistical"
+        metrics.STATISTICAL_INFERENCES.inc()
     else:
         inferred = infer_schema(
             stream_name=cluster_id,
@@ -1515,6 +1565,12 @@ def infer_sub_schema(
         )
         fields = inferred.fields
         confidence = inferred.inference_confidence
+        source = "llm"
+        metrics.LLM_CALLS.inc()
+        # Remember this shape so an identical one later skips the LLM.
+        if cache is not None and fingerprint is not None:
+            cache.put(fingerprint, fields)
+            cache.save()
 
     # ── Apply quorum overrides: if quorum disagrees with LLM/stat, quorum wins ─
     if quorum_types:
@@ -1558,4 +1614,5 @@ def infer_sub_schema(
         fields=fields,
         inference_confidence=confidence,
         top_keys=top_keys,
+        inference_source=source,
     )

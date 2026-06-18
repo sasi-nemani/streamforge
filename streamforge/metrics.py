@@ -105,6 +105,24 @@ INFERENCE_FAILURES = Counter(
     "LLM inference attempts that errored and fell back to another path",
 )
 
+# ── Inference source split (deterministic vs LLM) ────────────────────────────
+# Quantifies how much inference is deterministic. A high cache-hit ratio is the
+# whole point: in steady state the model is rarely consulted.
+LLM_CALLS = Counter(
+    "inference_llm_calls_total",
+    "Schema inferences that invoked the LLM",
+)
+
+SCHEMA_CACHE_HITS = Counter(
+    "schema_cache_hits_total",
+    "Schema inferences served from the structural-fingerprint cache (no LLM)",
+)
+
+STATISTICAL_INFERENCES = Counter(
+    "inference_statistical_total",
+    "Schema inferences served by the deterministic statistical path (no LLM)",
+)
+
 
 def metrics_snapshot() -> dict[str, float]:
     """Export all metrics as a flat dict — suitable for health.json or /metrics."""
@@ -118,6 +136,9 @@ def metrics_snapshot() -> dict[str, float]:
         "dlq_route_failures_total": DLQ_FAILURES.value,
         "audit_write_failures_total": AUDIT_FAILURES.value,
         "inference_failures_total": INFERENCE_FAILURES.value,
+        "inference_llm_calls_total": LLM_CALLS.value,
+        "schema_cache_hits_total": SCHEMA_CACHE_HITS.value,
+        "inference_statistical_total": STATISTICAL_INFERENCES.value,
     }
 
 

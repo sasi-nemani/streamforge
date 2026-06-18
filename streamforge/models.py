@@ -158,6 +158,7 @@ class SubSchema(BaseModel):
     fields: list[FieldSchema]
     inference_confidence: float
     top_keys: list[str]          # top-level keys seen in this cluster
+    inference_source: str = "llm"  # "llm" | "statistical" | "fingerprint_cache"
 
 
 class StreamProfile(BaseModel):
