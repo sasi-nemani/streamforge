@@ -28,7 +28,7 @@ class CsvParser(FormatParser):
         # Heuristic: multiple lines with consistent delimiter count
         try:
             text = content[:2000].decode("utf-8", errors="ignore")
-            lines = [l for l in text.splitlines() if l.strip()][:5]
+            lines = [line for line in text.splitlines() if line.strip()][:5]
             if len(lines) < 2:
                 return False
             # Check for consistent comma/tab/semicolon counts

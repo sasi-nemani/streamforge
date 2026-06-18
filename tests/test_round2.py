@@ -6,23 +6,18 @@ Tests for Round 2 Kubernetes-scale fixes:
   - Cluster routing regression detection in detect_drift_multi_schema()
   - Canonical contract: watch_stream rebuilds baseline from profile primary cluster
 """
-import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from streamforge.drift_detector import (
     EventWindow,
     _load_checkpoint,
-    _route_event_to_cluster,
     _save_checkpoint,
     _sub_schema_to_inferred_schema,
     detect_drift_multi_schema,
 )
-from streamforge.models import DriftTier, FieldType, InferredSchema
+from streamforge.models import DriftTier, FieldType
 from streamforge.profiler import get_routing_field
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -98,8 +93,8 @@ class TestGetRoutingField:
 class TestRoutingFieldRoundtrip:
     def test_routing_field_preserved_in_profile_yaml(self, tmp_path):
         """routing_field written to profile.yaml is read back correctly."""
-        from streamforge.models import StreamProfile, SubSchema, FieldSchema, FieldType
-        from streamforge.schema_writer import write_profile, load_profile
+        from streamforge.models import FieldSchema, FieldType, StreamProfile, SubSchema
+        from streamforge.schema_writer import load_profile, write_profile
 
         sub = SubSchema(
             cluster_id="purchase",
@@ -129,8 +124,8 @@ class TestRoutingFieldRoundtrip:
         assert loaded["routing_field"] == "event_type"
 
     def test_none_routing_field_preserved(self, tmp_path):
-        from streamforge.models import StreamProfile, SubSchema, FieldSchema, FieldType
-        from streamforge.schema_writer import write_profile, load_profile
+        from streamforge.models import FieldSchema, FieldType, StreamProfile, SubSchema
+        from streamforge.schema_writer import load_profile, write_profile
 
         sub = SubSchema(
             cluster_id="struct:aabb1122",

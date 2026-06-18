@@ -15,14 +15,14 @@ To add a new format, create a parser in connectors/file/parsers/
 and register it in parsers/__init__.py.
 """
 from .connector import FileConnector, ModularFileConnector
-from .scanner import FileScanner, ScannedFile, ScanState
 from .parsers import (
+    PARSER_REGISTRY,
     FormatParser,
     ParseResult,
-    PARSER_REGISTRY,
     parse_file,
     supported_extensions,
 )
+from .scanner import FileScanner, ScannedFile, ScanState
 
 __all__ = [
     "FileConnector",

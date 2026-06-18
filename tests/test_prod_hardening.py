@@ -10,14 +10,11 @@ Covers:
 5. Startup config validation
 """
 
-import json
 import logging
 import os
-import re
 from unittest.mock import patch
 
 import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. AUDIT TRAIL ON BY DEFAULT
@@ -31,7 +28,6 @@ class TestAuditDefaultOn:
         env = {k: v for k, v in os.environ.items() if k != "STREAMFORGE_AUDIT"}
         with patch.dict(os.environ, env, clear=True):
             # Force re-evaluation
-            import importlib
             from streamforge import audit
             audit._configured = False
             audit._ensure_configured()
@@ -221,7 +217,7 @@ class TestStartupConfigValidation:
 
     def test_validate_missing_kafka_brokers_raises(self):
         """Must raise if KAFKA_BOOTSTRAP_SERVERS is empty/missing for kafka:// URIs."""
-        from streamforge.config import validate_config, ConfigValidationError
+        from streamforge.config import ConfigValidationError, validate_config
 
         with pytest.raises(ConfigValidationError, match="[Kk]afka.*broker"):
             validate_config(kafka_brokers="", stream_uri="kafka://events.payments")
@@ -248,7 +244,7 @@ class TestStartupConfigValidation:
 
     def test_validate_schemas_dir_writable(self):
         """Must verify the schemas output directory is writable."""
-        from streamforge.config import validate_config, ConfigValidationError
+        from streamforge.config import ConfigValidationError, validate_config
 
         with pytest.raises(ConfigValidationError, match="[Ss]chemas.*writ"):
             validate_config(
@@ -267,7 +263,6 @@ class TestRegistryUpdateAudit:
 
     def test_record_emits_audit_update_event(self):
         """record() must call audit.log_registry_event('update', ...)."""
-        from unittest.mock import MagicMock
 
         from streamforge import audit
         from streamforge.field_registry import FieldTypeRegistry
@@ -292,7 +287,6 @@ class TestRegistryUpdateAudit:
 
     def test_record_audit_includes_observation_count(self):
         """Audit event must include the new observation_count after the bump."""
-        from unittest.mock import MagicMock
 
         from streamforge import audit
         from streamforge.field_registry import FieldTypeRegistry

@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from ..base import ConnectorError, StreamConnector
-from .scanner import FileScanner
 from .parsers import parse_file, supported_extensions
+from .scanner import FileScanner
 
 logger = logging.getLogger(__name__)
 

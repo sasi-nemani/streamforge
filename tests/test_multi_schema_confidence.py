@@ -13,23 +13,17 @@ Tests verify:
 from __future__ import annotations
 
 import json
-import math
-from datetime import datetime, UTC
 from io import StringIO
 from typing import Any
 
 import pytest
 
 from streamforge.models import (
-    DiscriminatorInfo,
     DiscriminatorMethod,
     MultiSchemaAuditEvent,
     MultiSchemaConfidence,
-    SamplingReport,
     TypeConfidence,
-    TypeDistribution,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test Fixtures
@@ -172,7 +166,6 @@ class TestDiscriminatorDetection:
 
     def test_entropy_ranking(self, mixed_events):
         """Lower cardinality fields with good entropy are preferred."""
-        from streamforge.discriminator import calculate_entropy
 
         # 'type' has 4 values with distribution 45/30/20/5 - moderate entropy
         # A field with too high cardinality is not a good discriminator
@@ -195,7 +188,7 @@ class TestDiscriminatorDetection:
         """Audit event is emitted during detection."""
         from streamforge.discriminator import detect_discriminator
 
-        result = detect_discriminator(
+        detect_discriminator(
             mixed_events,
             audit_stream=audit_stream,
         )
@@ -488,8 +481,8 @@ class TestMultiSchemaConfidenceIntegration:
 
         # Verify audit events were emitted
         audit_stream.seek(0)
-        audit_lines = [l for l in audit_stream.read().strip().split("\n") if l]
-        operations = [json.loads(l)["operation"] for l in audit_lines]
+        audit_lines = [line for line in audit_stream.read().strip().split("\n") if line]
+        operations = [json.loads(line)["operation"] for line in audit_lines]
         assert "discriminator_detection" in operations
         assert "stratified_sampling" in operations
 

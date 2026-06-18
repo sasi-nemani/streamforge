@@ -8,8 +8,9 @@ Core principle: NEVER touch or modify messages. NEVER alter queue state.
 Phase 1: Core Models & Protocol
 """
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
 from pydantic import ValidationError
 
 
@@ -112,8 +113,11 @@ class TestTelemetryEvent:
         """Only read-only operations allowed — no consume, delete, ack."""
         from streamforge.sidecar.models import TelemetryOperation
 
-        read_only_ops = {TelemetryOperation.PEEK, TelemetryOperation.BROWSE,
-                         TelemetryOperation.COUNT, TelemetryOperation.HEALTH_CHECK}
+        # Read-only operations must exist
+        assert TelemetryOperation.PEEK is not None
+        assert TelemetryOperation.BROWSE is not None
+        assert TelemetryOperation.COUNT is not None
+        assert TelemetryOperation.HEALTH_CHECK is not None
 
         # These should NOT exist
         assert not hasattr(TelemetryOperation, "CONSUME")
@@ -158,8 +162,8 @@ class TestSidecarProtocol:
 
     def test_protocol_is_runtime_checkable(self):
         """Protocol must be runtime checkable for duck typing."""
+
         from streamforge.sidecar.protocol import QueueSidecar
-        from typing import runtime_checkable, Protocol
 
         # Should be decorated with @runtime_checkable
         assert hasattr(QueueSidecar, "__protocol_attrs__") or \
@@ -203,8 +207,9 @@ class TestQueueConfig:
 
     def test_config_rejects_destructive_settings(self):
         """Config must not allow settings that would alter queue state."""
-        from streamforge.sidecar.models import SQSConfig
         from pydantic import ValidationError
+
+        from streamforge.sidecar.models import SQSConfig
 
         # Attempting to set visibility timeout > 0 should fail or warn
         # because it would hide messages from other consumers
@@ -221,8 +226,9 @@ class TestObservationBatch:
 
     def test_batch_tracks_statistics(self):
         """Batch must track observation statistics."""
+        from datetime import UTC, datetime
+
         from streamforge.sidecar.models import ObservationBatch, ObservationEvent
-        from datetime import datetime, UTC
 
         events = [
             ObservationEvent(
@@ -247,8 +253,9 @@ class TestObservationBatch:
 
     def test_batch_is_immutable(self):
         """Batch must be immutable after creation."""
+        from datetime import UTC, datetime
+
         from streamforge.sidecar.models import ObservationBatch
-        from datetime import datetime, UTC
 
         batch = ObservationBatch(
             queue_name="orders",

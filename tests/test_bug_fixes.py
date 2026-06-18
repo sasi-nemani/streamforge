@@ -13,8 +13,6 @@ Bugs covered:
 
 from __future__ import annotations
 
-import importlib
-import os
 import sys
 import unittest.mock as mock
 from pathlib import Path
@@ -224,11 +222,6 @@ def test_partial_routing_regression_suppressed_below_floor(monkeypatch: pytest.M
     # Sample: 90 type_0 events + 10 other (that would normally be unknown)
     # Observed rate for type_0 = 90/100 = 0.90 → actually higher... let me adjust
     # baseline=0.50, observed=0.45 → drop=0.05 which is 10% relative drop
-    sample = (
-        [{"event_type": "type_0", "id": str(i)} for i in range(45)]
-        + [{"event_type": "type_0", "id": str(i)} for i in range(45)]  # total=90
-        + [{"event_type": "unknown_x", "id": str(i)} for i in range(10)]
-    )
     # Observed type_0 rate = 90/100 = 0.90 (way above baseline=0.50)
     # Actually we want observed < baseline. Let's make baseline=0.90, observed=0.81 (10% relative)
     profile["sub_schemas"][0]["sample_rate"] = 0.90
@@ -334,8 +327,8 @@ def test_new_cluster_not_fired_below_threshold(monkeypatch: pytest.MonkeyPatch):
 
 def test_ticket_number_not_passport_pii():
     """ticket_number is a booking reference, not a travel document — must not be passport PII."""
-    from streamforge.pii_detector import detect_pii
     from streamforge.models import PIICategory
+    from streamforge.pii_detector import detect_pii
 
     # A field named ticket_number with a booking-style value
     categories = detect_pii("ticket_number", ["TKT-2345678", "TKT-8901234"])
@@ -346,8 +339,8 @@ def test_ticket_number_not_passport_pii():
 
 def test_passport_number_still_detected():
     """Regression: actual passport_number field must still be detected as PII."""
-    from streamforge.pii_detector import detect_pii
     from streamforge.models import PIICategory
+    from streamforge.pii_detector import detect_pii
 
     categories = detect_pii("passport_number", ["A1234567", "B9876543"])
     assert PIICategory.PASSPORT in categories
@@ -356,8 +349,9 @@ def test_passport_number_still_detected():
 def test_load_schema_survives_invalid_pii_category(tmp_path):
     """H1 regression: invalid PII category in schema.yaml must not crash load_schema."""
     import yaml
-    from streamforge.schema_writer import load_schema
+
     from streamforge.models import PIICategory
+    from streamforge.schema_writer import load_schema
 
     schema_path = tmp_path / "schema.yaml"
     doc = {
@@ -401,6 +395,7 @@ def test_load_schema_survives_invalid_pii_category(tmp_path):
 def test_field_schema_clamps_nan_to_zero():
     """H5 regression: NaN in presence_rate or confidence must not propagate."""
     import math
+
     from streamforge.models import FieldSchema, FieldType
 
     f = FieldSchema(
@@ -440,7 +435,8 @@ def test_field_schema_clamps_out_of_range():
 def test_inferred_schema_clamps_confidence():
     """H5 regression: InferredSchema.inference_confidence is bounded."""
     import math
-    from streamforge.models import FieldSchema, FieldType, InferredSchema
+
+    from streamforge.models import InferredSchema
 
     schema = InferredSchema(
         stream_name="test", inferred_at="now", event_count_sampled=10,
@@ -453,6 +449,7 @@ def test_inferred_schema_clamps_confidence():
 def test_load_schema_survives_invalid_field_type(tmp_path):
     """H6 regression: invalid field type in schema.yaml must not crash load_schema."""
     import yaml
+
     from streamforge.schema_writer import load_schema
 
     schema_path = tmp_path / "schema.yaml"
@@ -483,6 +480,7 @@ def test_load_schema_survives_invalid_field_type(tmp_path):
 def test_load_schema_survives_missing_path_key(tmp_path):
     """H6 regression: field missing 'path' key must not crash load_schema."""
     import yaml
+
     from streamforge.schema_writer import load_schema
 
     schema_path = tmp_path / "schema.yaml"

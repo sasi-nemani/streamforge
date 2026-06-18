@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 
 from streamforge.consumer_registry import discover_consumers_from_kafka
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _make_member(topic: str) -> MagicMock:

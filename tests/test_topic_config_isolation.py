@@ -7,14 +7,10 @@ to pass config_root as a parameter to _resolve_raw instead of mutating the globa
 
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
-
-import pytest
 
 import streamforge.topic_config as tc_module
 from streamforge.topic_config import load_topic_config
-
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 

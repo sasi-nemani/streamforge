@@ -1,7 +1,8 @@
 """Tests for the streamforge demo command."""
 import time
-import pytest
+
 from typer.testing import CliRunner
+
 from streamforge.__main__ import app
 
 

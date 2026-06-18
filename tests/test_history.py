@@ -15,15 +15,13 @@ Covers:
   - write_diff_report / write_velocity_report / write_proposal_report (smoke tests)
 """
 
-import math
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 import yaml
 
 from streamforge.history import (
-    REMOVAL_THRESHOLD,
     _classify_significance,
     _compute_enum_growth_rate,
     _compute_trend,
@@ -46,7 +44,6 @@ from streamforge.models import (
     ProposalAction,
     TrendStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -215,7 +212,7 @@ class TestFlattenProfile:
     def test_all_leaf_fields_present(self):
         profile = _make_profile()
         flat = _flatten_profile(profile)
-        paths = {path for _, path in flat.keys()}
+        paths = {path for _, path in flat}
         assert "event_id" in paths
         assert "amount" in paths
         assert "user.email" in paths
@@ -227,7 +224,7 @@ class TestFlattenProfile:
         ]
         profile = _make_profile(fields=fields)
         flat = _flatten_profile(profile)
-        paths = {path for _, path in flat.keys()}
+        paths = {path for _, path in flat}
         assert "user.email" in paths
         assert "user" not in paths  # pure parent skipped
 
@@ -725,7 +722,7 @@ class TestProposeBaselineUpdates:
     def test_auto_appliable_subset_of_all(self, tmp_schema_dir):
         output_dir = str(tmp_schema_dir)
         profile = _make_profile(stream_name="test")
-        for i, date in enumerate(["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01"]):
+        for _i, date in enumerate(["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01"]):
             write_snapshot(profile, "test", output_dir, date=date)
         report = propose_baseline_updates(output_dir, "test")
         # auto_appliable ⊆ proposals

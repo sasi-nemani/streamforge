@@ -7,9 +7,10 @@ Tests for sidecar orchestration and lifecycle management.
 Phase 5: Integration & Orchestration
 """
 
+from datetime import UTC, datetime
+from unittest.mock import patch
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, patch, AsyncMock
 
 
 class TestSidecarFactory:
@@ -32,8 +33,8 @@ class TestSidecarFactory:
     def test_factory_creates_ibmmq_sidecar(self):
         """Factory must create IBM MQ sidecar from config."""
         from streamforge.sidecar.factory import create_sidecar
-        from streamforge.sidecar.models import IBMMQConfig
         from streamforge.sidecar.ibmmq import IBMMQSidecar
+        from streamforge.sidecar.models import IBMMQConfig
 
         config = IBMMQConfig(
             host="mq.company.com",
@@ -115,7 +116,7 @@ class TestSidecarManager:
     async def test_manager_collects_observations(self):
         """Manager must collect observations from sidecar."""
         from streamforge.sidecar.manager import SidecarManager
-        from streamforge.sidecar.models import SQSConfig, ObservationBatch
+        from streamforge.sidecar.models import ObservationBatch, SQSConfig
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -197,7 +198,7 @@ class TestSidecarSafety:
     async def test_observations_are_immutable(self):
         """Observations from manager must be immutable."""
         from streamforge.sidecar.manager import SidecarManager
-        from streamforge.sidecar.models import SQSConfig, ObservationBatch
+        from streamforge.sidecar.models import ObservationBatch, SQSConfig
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",

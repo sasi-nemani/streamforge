@@ -12,10 +12,10 @@ Core principle: NEVER touch or modify messages. NEVER alter queue state.
 Phase 3: SQS Sidecar Connector
 """
 
-import pytest
 import json
-from datetime import datetime, UTC
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 class TestSQSSidecarInit:
@@ -23,8 +23,8 @@ class TestSQSSidecarInit:
 
     def test_sidecar_requires_config(self):
         """Sidecar must require valid config."""
-        from streamforge.sidecar.sqs import SQSSidecar
         from streamforge.sidecar.models import SQSConfig
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -37,8 +37,8 @@ class TestSQSSidecarInit:
 
     def test_sidecar_enforces_visibility_timeout_zero(self):
         """Sidecar must enforce VisibilityTimeout=0 in all API calls."""
-        from streamforge.sidecar.sqs import SQSSidecar
         from streamforge.sidecar.models import SQSConfig
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -56,8 +56,8 @@ class TestSQSSidecarPeek:
     @pytest.mark.asyncio
     async def test_peek_returns_observation_batch(self):
         """Peek must return an ObservationBatch."""
+        from streamforge.sidecar.models import ObservationBatch, SQSConfig
         from streamforge.sidecar.sqs import SQSSidecar
-        from streamforge.sidecar.models import SQSConfig, ObservationBatch
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -89,8 +89,8 @@ class TestSQSSidecarPeek:
     @pytest.mark.asyncio
     async def test_peek_uses_visibility_timeout_zero(self):
         """Peek must use VisibilityTimeout=0 to avoid hiding messages."""
-        from streamforge.sidecar.sqs import SQSSidecar
         from streamforge.sidecar.models import SQSConfig
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -112,8 +112,8 @@ class TestSQSSidecarPeek:
     @pytest.mark.asyncio
     async def test_peek_never_deletes_messages(self):
         """Peek must NEVER call delete_message."""
-        from streamforge.sidecar.sqs import SQSSidecar
         from streamforge.sidecar.models import SQSConfig
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -136,10 +136,10 @@ class TestSQSSidecarPeek:
     @pytest.mark.asyncio
     async def test_peek_emits_telemetry(self):
         """Peek must emit telemetry events."""
-        from streamforge.sidecar.sqs import SQSSidecar
-        from streamforge.sidecar.models import SQSConfig
         from io import StringIO
-        import json
+
+        from streamforge.sidecar.models import SQSConfig
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -171,8 +171,8 @@ class TestSQSSidecarBrowse:
     @pytest.mark.asyncio
     async def test_browse_returns_batch_and_cursor(self):
         """Browse must return batch and next cursor."""
-        from streamforge.sidecar.sqs import SQSSidecar
         from streamforge.sidecar.models import SQSConfig
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -200,8 +200,8 @@ class TestSQSSidecarQueueDepth:
     @pytest.mark.asyncio
     async def test_get_queue_depth_returns_count(self):
         """get_queue_depth must return approximate message count."""
-        from streamforge.sidecar.sqs import SQSSidecar
         from streamforge.sidecar.models import SQSConfig
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",
@@ -227,8 +227,8 @@ class TestSQSSidecarHealthCheck:
     @pytest.mark.asyncio
     async def test_health_check_verifies_connectivity(self):
         """Health check must verify queue is accessible."""
-        from streamforge.sidecar.sqs import SQSSidecar
         from streamforge.sidecar.models import SQSConfig, TelemetryOperation
+        from streamforge.sidecar.sqs import SQSSidecar
 
         config = SQSConfig(
             queue_url="https://sqs.us-east-1.amazonaws.com/123456789/orders",

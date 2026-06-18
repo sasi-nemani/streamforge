@@ -1,0 +1,24 @@
+# Ground-truth schema for the bookings stream (events/bookings/stream).
+# PII-heavy: passenger names, DOB, passport numbers, contact email/phone.
+# Array-of-objects fields use the sampler's [] notation (passengers[].first_name).
+# The legacy flat `passenger_name` (≈2% presence) is intentionally excluded — it
+# is a drift artifact, not part of the canonical schema.
+stream_name: bookings
+fields:
+  - { path: event_id,                      field_type: uuid,               required: true }
+  - { path: event_type,                    field_type: string,             required: true }
+  - { path: booking_reference,             field_type: string,             required: true }
+  - { path: created_at,                    field_type: timestamp_epoch_ms, required: true }
+  - { path: total_price,                   field_type: float,              required: true }
+  - { path: currency,                      field_type: string,             required: true }
+  - { path: cabin_class,                   field_type: string,             required: true }
+  - { path: loyalty_number,                field_type: string,             required: true }
+  - { path: contact_email,                 field_type: email,              required: true,  pii: [email] }
+  - { path: contact_phone,                 field_type: phone,              required: true,  pii: [phone] }
+  - { path: flights,                       field_type: array,              required: true }
+  - { path: passengers,                    field_type: array,              required: true }
+  - { path: "passengers[].title",           field_type: string,             required: true }
+  - { path: "passengers[].first_name",      field_type: string,             required: true,  pii: [name] }
+  - { path: "passengers[].last_name",       field_type: string,             required: true,  pii: [name] }
+  - { path: "passengers[].date_of_birth",   field_type: date,               required: true,  pii: [date_of_birth] }
+  - { path: "passengers[].passport_number", field_type: string,             required: false, pii: [passport] }

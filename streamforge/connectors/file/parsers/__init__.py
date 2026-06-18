@@ -11,8 +11,8 @@ Order matters: more specific formats (NDJSON) before generic (CSV).
 from __future__ import annotations
 
 from .base import FormatParser, ParseResult
-from .ndjson import NdjsonParser
 from .csv import CsvParser
+from .ndjson import NdjsonParser
 
 # Registry: ordered list of parsers to try
 PARSER_REGISTRY: list[FormatParser] = [

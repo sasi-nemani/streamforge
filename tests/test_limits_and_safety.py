@@ -1,11 +1,7 @@
 """Tests for field limits, pathological input, and thread-safety fixes."""
 import json
 import logging
-import os
 import threading
-from pathlib import Path
-
-import pytest
 
 
 class TestFieldRegistryThreadSafety:
@@ -107,6 +103,7 @@ class TestFlattenLimits:
         monkeypatch.setenv("STREAMFORGE_MAX_FLATTEN_KEYS", "50")
         # Re-import to pick up env var
         import importlib
+
         import streamforge.sampler as smod
         importlib.reload(smod)
         event = {f"f{i}": i for i in range(100)}
@@ -121,8 +118,8 @@ class TestKafkaPayloadGuard:
     """Oversized Kafka messages must be rejected, not parsed."""
 
     def test_oversized_message_rejected(self):
-        from streamforge.connectors.kafka import KafkaConnector
         from streamforge.config import KafkaConfig
+        from streamforge.connectors.kafka import KafkaConnector
         conn = KafkaConnector("test", KafkaConfig(bootstrap_servers=["localhost:9092"]))
         # 6MB message (over 5MB default limit)
         big = json.dumps({"data": "x" * 6_000_000}).encode()
@@ -130,16 +127,16 @@ class TestKafkaPayloadGuard:
         assert result is None, "Oversized message must be rejected"
 
     def test_normal_message_still_parsed(self):
-        from streamforge.connectors.kafka import KafkaConnector
         from streamforge.config import KafkaConfig
+        from streamforge.connectors.kafka import KafkaConnector
         conn = KafkaConnector("test", KafkaConfig(bootstrap_servers=["localhost:9092"]))
         normal = json.dumps({"id": 1, "name": "test"}).encode()
         result = conn._parse_message(normal)
         assert result == {"id": 1, "name": "test"}
 
     def test_exactly_at_limit_still_parsed(self):
-        from streamforge.connectors.kafka import KafkaConnector
         from streamforge.config import KafkaConfig
+        from streamforge.connectors.kafka import KafkaConnector
         conn = KafkaConnector("test", KafkaConfig(bootstrap_servers=["localhost:9092"]))
         # Just under 5MB
         msg = json.dumps({"data": "x" * 4_999_000}).encode()

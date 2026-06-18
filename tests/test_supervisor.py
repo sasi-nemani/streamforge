@@ -1,9 +1,4 @@
 """Tests for multi-stream supervisor and dynamic cluster discovery."""
-import time
-import multiprocessing
-from pathlib import Path
-from unittest.mock import patch
-import pytest
 from streamforge.models import StreamAssignment, SupervisorConfig
 
 

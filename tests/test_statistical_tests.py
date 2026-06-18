@@ -10,19 +10,15 @@ Design principles:
     differs slightly from the analytic answer (due to approximation).
 """
 
-import math
-import pytest
 
 from streamforge.statistical_tests import (
-    psi,
+    PSI_SLIGHT,
+    TestResult,
     binomial_z_test,
     chi_squared_test,
+    psi,
     summarise_field_tests,
-    TestResult,
-    PSI_STABLE,
-    PSI_SLIGHT,
 )
-
 
 # ---------------------------------------------------------------------------
 # PSI tests

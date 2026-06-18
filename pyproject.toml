@@ -116,6 +116,15 @@ ignore = [
     "SIM108", # ternary operator — sometimes less readable
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# CLI package imports command modules after `app` is created and the logging
+# bootstrap has run, then registers them — an intentional inline-registration
+# pattern, so module-level imports cannot all sit at the top of the file.
+"streamforge/cli/__init__.py" = ["E402"]
+# Phase is a (str, Enum) for stable string serialization in schema/report output.
+# Switching to StrEnum would risk changing that serialization behavior.
+"streamforge/detector/phase.py" = ["UP042"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["streamforge"]
 

@@ -8,12 +8,10 @@ All tests here must pass GREEN after Phase 0 implementation is complete.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 import yaml
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +68,7 @@ class TestStabilityConfigDefaults:
     def test_stability_config_is_dataclass(self):
         """StabilityConfig must be a dataclass (not a Pydantic model or plain class)."""
         import dataclasses
+
         from streamforge.topic_config import StabilityConfig
         assert dataclasses.is_dataclass(StabilityConfig)
 
@@ -97,7 +96,7 @@ class TestTopicConfigHasStabilityField:
     """TopicConfig must expose a .stability attribute of type StabilityConfig."""
 
     def test_topic_config_has_stability_field(self, tmp_path):
-        from streamforge.topic_config import TopicConfig, load_topic_config
+        from streamforge.topic_config import load_topic_config
         root = _make_config_root(tmp_path, default={"watch": {"interval_seconds": 30}})
         cfg = load_topic_config(config_root=root)
         assert hasattr(cfg, "stability")

@@ -4,17 +4,15 @@ These tests run the real watch_stream() and verify that all components
 (window, drift detection, health, metrics, checkpoint) work together.
 """
 import json
-import os
 import signal
 import threading
 import time
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 import yaml
 
-from streamforge.metrics import _reset_for_testing, POLL_CYCLES, EVENTS_SAMPLED
+from streamforge.metrics import EVENTS_SAMPLED, POLL_CYCLES, _reset_for_testing
 from streamforge.models import FieldSchema, FieldType, InferredSchema
 
 

@@ -3,8 +3,7 @@
 All tests use mocks — no real Kafka broker required.
 """
 import json
-import time
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -80,9 +79,9 @@ class TestOffsetCommit:
         conn._consumer.commit = MagicMock(side_effect=RuntimeError("commit failed"))
 
         with patch("streamforge.connectors.kafka._CONFLUENT_AVAILABLE", False), \
-             patch("streamforge.connectors.kafka._KAFKA_PYTHON_AVAILABLE", True):
-            with pytest.raises(KafkaConnectorError, match="commit failed"):
-                await conn.ack()
+             patch("streamforge.connectors.kafka._KAFKA_PYTHON_AVAILABLE", True), \
+             pytest.raises(KafkaConnectorError, match="commit failed"):
+            await conn.ack()
 
     @pytest.mark.asyncio
     async def test_ack_noop_when_no_batch(self):

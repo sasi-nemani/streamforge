@@ -1,10 +1,6 @@
 """Tests for audit log compliance: rotation, syslog, extended PII redaction."""
 import logging
 import logging.handlers
-import os
-from pathlib import Path
-from unittest.mock import patch
-import pytest
 
 
 class TestRotatingFileHandler:

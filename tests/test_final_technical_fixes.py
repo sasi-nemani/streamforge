@@ -3,11 +3,7 @@
 Fix 1: Pre-drift trending — add EWMA + minimum decline magnitude + confidence
 Fix 2: Supervisor — exponential backoff on restarts
 """
-import math
 import time
-
-import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fix 1: Pre-drift trending — statistical robustness
@@ -69,8 +65,8 @@ class TestSupervisorExponentialBackoff:
 
     def test_backoff_delay_increases(self):
         """Each consecutive restart must have longer delay."""
-        from streamforge.supervisor import WorkerState
         from streamforge.models import StreamAssignment
+        from streamforge.supervisor import WorkerState
         ws = WorkerState(StreamAssignment(
             stream_uri="test", schema_path="s.yaml",
         ))
@@ -89,8 +85,8 @@ class TestSupervisorExponentialBackoff:
 
     def test_backoff_capped_at_max(self):
         """Backoff must not exceed max_backoff_seconds."""
-        from streamforge.supervisor import WorkerState
         from streamforge.models import StreamAssignment
+        from streamforge.supervisor import WorkerState
         ws = WorkerState(StreamAssignment(
             stream_uri="test", schema_path="s.yaml",
         ))
@@ -99,8 +95,8 @@ class TestSupervisorExponentialBackoff:
 
     def test_backoff_resets_after_stable_period(self):
         """If worker runs stable for 10+ minutes, backoff resets."""
-        from streamforge.supervisor import WorkerState
         from streamforge.models import StreamAssignment
+        from streamforge.supervisor import WorkerState
         ws = WorkerState(StreamAssignment(
             stream_uri="test", schema_path="s.yaml",
         ))

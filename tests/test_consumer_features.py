@@ -4,13 +4,8 @@ Stripe data engineering validation: can consumers get meaningful,
 simple-to-read outputs from this system?
 """
 
-import json
 import time
-from collections import deque
 from pathlib import Path
-
-import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. MARKDOWN DATA DICTIONARY
@@ -177,7 +172,6 @@ class TestTimeSlidingWindow:
 
     def test_sample_does_not_materialize_full_window(self):
         """sample(200) from a 10K window should NOT allocate 10K elements."""
-        import sys
         from streamforge.detector.window import EventWindow
 
         w = EventWindow(capacity=10000)
@@ -195,6 +189,7 @@ class TestTimeSlidingWindow:
     def test_sample_uniform_distribution(self):
         """Reservoir sampling must give uniform probability to all events."""
         from collections import Counter
+
         from streamforge.detector.window import EventWindow
 
         w = EventWindow(capacity=1000)

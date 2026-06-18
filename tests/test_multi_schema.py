@@ -3,11 +3,7 @@ Tests for P1-A (multi-schema drift detection) and P1-B (rolling EventWindow).
 
 All tests are purely in-memory — no API calls, no filesystem writes.
 """
-import json
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from streamforge.drift_detector import (
     EventWindow,
@@ -16,9 +12,7 @@ from streamforge.drift_detector import (
     _sub_schema_to_inferred_schema,
     detect_drift_multi_schema,
 )
-from streamforge.models import DriftTier, FieldDrift, FieldSchema, FieldType, InferredSchema
-from streamforge.sampler import reservoir_sample
-
+from streamforge.models import DriftTier, FieldDrift
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 

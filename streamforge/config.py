@@ -475,9 +475,13 @@ def validate_config(
             )
 
     # Kafka security: reject PLAINTEXT in production
-    if is_kafka and kafka_security_protocol.upper() == "PLAINTEXT":
-        if effective_env and effective_env not in ("dev", "development", "local", "test"):
-            raise ConfigValidationError(
-                "PLAINTEXT Kafka is not allowed in production. "
-                "Set KAFKA_SECURITY_PROTOCOL=SASL_SSL or STREAMFORGE_ENV=dev."
-            )
+    if (
+        is_kafka
+        and kafka_security_protocol.upper() == "PLAINTEXT"
+        and effective_env
+        and effective_env not in ("dev", "development", "local", "test")
+    ):
+        raise ConfigValidationError(
+            "PLAINTEXT Kafka is not allowed in production. "
+            "Set KAFKA_SECURITY_PROTOCOL=SASL_SSL or STREAMFORGE_ENV=dev."
+        )

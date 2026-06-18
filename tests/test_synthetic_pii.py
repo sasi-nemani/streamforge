@@ -13,8 +13,6 @@ Every synthetic value must:
 
 import re
 
-import pytest
-
 
 class TestSyntheticPiiGenerator:
     """Each PII category must produce a format-valid synthetic value."""
@@ -189,7 +187,7 @@ class TestScrubEventUsesSynthetic:
         presence = {"email": 1.0}
         events = [{"email": "alice@stripe.com"}]
         prompt = build_inference_prompt(field_stats, presence, events)
-        assert "[REDACTED]" not in prompt, f"Prompt should not contain [REDACTED]"
-        assert "alice@stripe.com" not in prompt, f"Prompt must not contain real email"
+        assert "[REDACTED]" not in prompt, "Prompt should not contain [REDACTED]"
+        assert "alice@stripe.com" not in prompt, "Prompt must not contain real email"
         # Should contain a synthetic email-like value
-        assert "@" in prompt, f"Prompt must contain synthetic email with @"
+        assert "@" in prompt, "Prompt must contain synthetic email with @"

@@ -68,24 +68,19 @@ def plan(
     if is_kafka:
         import asyncio
 
-        from ..config import KafkaConfig
-        from ..connectors.kafka import KafkaConnector, KafkaConnectorError
+        from ..connectors.kafka import KafkaConnectorError
 
         broker_list = (
             [b.strip() for b in brokers.split(",") if b.strip()]
             if brokers
             else ["localhost:9092"]
         )
-        kafka_cfg = KafkaConfig(
-            bootstrap_servers=broker_list,
-            auto_offset_reset="earliest",
-            consumer_group=f"streamforge-plan-{topic}-{int(_time.time())}",
-        )
         console.print(f"Consuming up to {sample_size} events from [cyan]{topic}[/cyan] (Kafka)...")
 
         async def _consume_plan() -> list[dict]:
             """Read the LATEST sample_size events from the topic tail."""
-            from kafka import KafkaConsumer as _KC, TopicPartition as _TP
+            from kafka import KafkaConsumer as _KC
+            from kafka import TopicPartition as _TP
             _c = _KC(
                 bootstrap_servers=broker_list,
                 value_deserializer=lambda m: __import__("json").loads(m),

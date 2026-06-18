@@ -1,7 +1,6 @@
 """Tests for WatchState persistence and phase transitions."""
 import json
-import pytest
-from pathlib import Path
+
 from streamforge.watch_state import WatchState, _slug
 
 

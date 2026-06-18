@@ -13,10 +13,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-import yaml
 
-from streamforge.metrics import _reset_for_testing, POLL_CYCLES, EVENTS_SAMPLED
-
+from streamforge.metrics import POLL_CYCLES, _reset_for_testing
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FIX 1: Source-agnostic factory pattern (replaces string-based Kafka dispatch)
@@ -45,6 +43,7 @@ class TestSourceFactory:
     def test_supervisor_uses_factory(self):
         """supervisor._worker_main must use resolve_stream_source, not hardcoded string check."""
         import inspect
+
         from streamforge.supervisor import _worker_main
         source = inspect.getsource(_worker_main)
         assert "resolve_stream_source" in source, \
@@ -106,13 +105,13 @@ class TestAuditSampling:
         audit_mod._audit_logger.setLevel(logging.DEBUG)
 
         try:
-            for i in range(25):
+            for _i in range(25):
                 audit_mod.log_poll_heartbeat(
                     stream="test", events_sampled=500,
                     window_size=2000, drift_count=0,
                 )
             # With every=10, should log on cycles 0, 10, 20 = 3 logs
-            heartbeat_logs = [l for l in logged if "poll_heartbeat" in l]
+            heartbeat_logs = [line for line in logged if "poll_heartbeat" in line]
             assert len(heartbeat_logs) <= 5, \
                 f"Expected ~3 heartbeat logs with every=10, got {len(heartbeat_logs)}"
         finally:
@@ -134,12 +133,12 @@ class TestAuditSampling:
         audit_mod._audit_logger.setLevel(logging.DEBUG)
 
         try:
-            for i in range(5):
+            for _i in range(5):
                 audit_mod.log_drift_check(
                     field_path="amount", check_type="presence",
                     verdict="drift", stream="test",
                 )
-            drift_logs = [l for l in logged if "drift_check" in l]
+            drift_logs = [line for line in logged if "drift_check" in line]
             assert len(drift_logs) == 5, "Drift events must always be logged"
         finally:
             audit_mod._audit_logger.log = original_log
@@ -153,8 +152,8 @@ class TestSupervisorHA:
     """Supervisor must write PID file and support systemd Type=notify."""
 
     def test_supervisor_writes_pid_file(self, tmp_path):
+        from streamforge.models import SupervisorConfig
         from streamforge.supervisor import Supervisor
-        from streamforge.models import SupervisorConfig, StreamAssignment
         cfg = SupervisorConfig(
             assignments=[],  # no workers — just test PID file
             pid_file=str(tmp_path / "supervisor.pid"),
@@ -166,8 +165,8 @@ class TestSupervisorHA:
         assert int(pid_path.read_text().strip()) == os.getpid()
 
     def test_supervisor_cleans_pid_on_shutdown(self, tmp_path):
-        from streamforge.supervisor import Supervisor
         from streamforge.models import SupervisorConfig
+        from streamforge.supervisor import Supervisor
         cfg = SupervisorConfig(
             assignments=[],
             pid_file=str(tmp_path / "supervisor.pid"),
@@ -179,8 +178,8 @@ class TestSupervisorHA:
 
     def test_supervisor_detects_stale_pid(self, tmp_path):
         """If PID file exists with a dead PID, supervisor should start anyway."""
-        from streamforge.supervisor import Supervisor
         from streamforge.models import SupervisorConfig
+        from streamforge.supervisor import Supervisor
         pid_path = tmp_path / "supervisor.pid"
         pid_path.write_text("99999999")  # dead PID
         cfg = SupervisorConfig(

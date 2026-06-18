@@ -13,7 +13,6 @@ Requires: Docker + pip install streamforge-cli[integration]
 
 from __future__ import annotations
 
-import asyncio
 import json
 
 import pytest
@@ -57,7 +56,6 @@ class TestSQSPeekBehavior:
 
         # Monkey-patch to use LocalStack endpoint
         sidecar = SQSSidecar(config)
-        original_get_client = sidecar._get_client
 
         def patched_get_client():
             if sidecar._client is None:
@@ -234,8 +232,9 @@ class TestSQSTelemetry:
     @pytest.mark.asyncio
     async def test_peek_emits_audit_events(self, localstack_container, sqs_queue_url):
         """Peek operations emit structured audit events."""
-        import boto3
         from io import StringIO
+
+        import boto3
 
         from streamforge.sidecar.models import SQSConfig
         from streamforge.sidecar.sqs import SQSSidecar

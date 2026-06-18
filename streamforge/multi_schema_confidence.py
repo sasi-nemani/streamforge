@@ -18,7 +18,6 @@ import logging
 import time
 from typing import Any, TextIO
 
-from .multi_schema_audit import emit_audit
 from .confidence import (
     calculate_overall_confidence,
     calculate_type_confidence,
@@ -29,13 +28,11 @@ from .distribution import calculate_distribution
 from .models import (
     DiscriminatorInfo,
     DiscriminatorMethod,
-    MultiSchemaAuditEvent,
     MultiSchemaConfidence,
     SamplingReport,
-    TypeConfidence,
-    TypeDistribution,
 )
-from .stratified_sampler import stratified_sample, uniform_sample
+from .multi_schema_audit import emit_audit
+from .stratified_sampler import stratified_sample
 
 logger = logging.getLogger(__name__)
 

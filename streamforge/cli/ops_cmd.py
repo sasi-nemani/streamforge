@@ -1,5 +1,6 @@
 """Commands: generate, status, accept, suppress, consumers, demo, incident_report, roi."""
 
+import contextlib
 import logging
 import time
 from datetime import UTC
@@ -279,8 +280,8 @@ def accept(
 
     if dry_run:
         console.print(
-            f"\n[dim]--dry-run: Would update schema.yaml and bump version. "
-            f"No files will be written.[/dim]"
+            "\n[dim]--dry-run: Would update schema.yaml and bump version. "
+            "No files will be written.[/dim]"
         )
         raise typer.Exit(0)
 
@@ -514,7 +515,7 @@ def demo(
 
     from ..connectors.generators import drifted_payment_events, payment_events
     from ..drift_detector import detect_drift
-    from ..models import FieldSchema, FieldType, InferredSchema, PIICategory
+    from ..models import InferredSchema
     from ..report_writer import write_drift_report
     from ..sampler import reservoir_sample
     from ..schema_writer import write_schema
@@ -699,13 +700,12 @@ def _run_eng_demo(baseline_size, drift_size, output_dir):
     type inference pipeline, registry cache, drift detection math, and
     output artifacts.
     """
-    import json as _json
-    import math
+    import shutil
     import time as _t
     from datetime import datetime
     from pathlib import Path as _Path
 
-    from ..connectors.generators import drifted_payment_events, payment_events
+    from ..connectors.generators import drifted_payment_events
     from ..drift_detector import detect_drift
     from ..field_registry import FieldTypeRegistry, RegistryConfig
     from ..models import InferredSchema
@@ -716,8 +716,6 @@ def _run_eng_demo(baseline_size, drift_size, output_dir):
         streaming_resilient_sample_from_folder,
     )
     from ..schema_writer import write_schema
-
-    import shutil
     for d in ["schemas", "drift_reports", ".streamforge"]:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -803,7 +801,6 @@ def _run_eng_demo(baseline_size, drift_size, output_dir):
 
     sorted_fields = sorted(presence_rates.items(), key=lambda x: -x[1])
     for path, rate in sorted_fields[:8]:
-        vals = field_values.get(path, [])
         count = int(round(rate * len(sample)))
         formula = f"{count}/{len(sample)} = {rate:.2%}"
         verdict = "[green]required[/green]" if rate >= 0.8 else "[yellow]optional[/yellow]" if rate >= 0.1 else "[dim]rare[/dim]"
@@ -885,7 +882,6 @@ def _run_eng_demo(baseline_size, drift_size, output_dir):
     )
     write_schema(baseline_schema, output_dir)
 
-    baseline = payment_events(n=baseline_size, seed=42)
     drifted = drifted_payment_events(n=drift_size, seed=99)
 
     console.print(
@@ -979,7 +975,7 @@ def _run_eng_demo(baseline_size, drift_size, output_dir):
         console.print(f"  [dim]  ... ({len(demo_fields)} fields total)[/dim]")
 
     # Show exports
-    console.print(f"\n  [bold cyan]2. Export formats[/bold cyan] — generated from schema.yaml\n")
+    console.print("\n  [bold cyan]2. Export formats[/bold cyan] — generated from schema.yaml\n")
 
     from ..exporters.protobuf import schema_to_proto
 
@@ -1003,7 +999,7 @@ def _run_eng_demo(baseline_size, drift_size, output_dir):
     # Show drift report snippet
     reports = sorted(_Path("drift_reports").rglob("*.md"))
     if reports:
-        console.print(f"\n  [bold cyan]3. Drift reports[/bold cyan] — human-readable incident log\n")
+        console.print("\n  [bold cyan]3. Drift reports[/bold cyan] — human-readable incident log\n")
         rpt_text = reports[0].read_text().splitlines()
         for line in rpt_text[:12]:
             console.print(f"  [dim]{line}[/dim]")
@@ -1070,7 +1066,8 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
 
     from click.exceptions import Exit as ClickExit
 
-    from .schema_cmd import plan as _plan_cmd, profile as _profile_cmd
+    from .schema_cmd import plan as _plan_cmd
+    from .schema_cmd import profile as _profile_cmd
 
     # ── Resolve events dir ────────────────────────────────────────────────
     events_dir = _Path("events")
@@ -1118,13 +1115,11 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
     _t.sleep(1.5)
 
     # Call the real profile command
-    try:
+    with contextlib.suppress(SystemExit):
         _profile_cmd(
             stream_path=str(events_dir / "payments" / "stream_v1"),
             sample_size=200, top=12, show_values=False,
         )
-    except SystemExit:
-        pass
     console.print()
     _t.sleep(2.0)
 
@@ -1147,11 +1142,9 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
         spath = str(events_dir / rel_path)
         if not _Path(spath).exists():
             continue
-        try:
+        with contextlib.suppress(SystemExit, ClickExit):
             # top=0 shows header panels only (no field tables) for compact fleet view
             _profile_cmd(stream_path=spath, sample_size=100, top=0, show_values=False)
-        except (SystemExit, ClickExit):
-            pass
         console.print()
     fleet_elapsed = (_t.monotonic() - fleet_t0) * 1000
 
@@ -1217,7 +1210,8 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
     schema_file = f"{output_dir}/payments.demo/schema.yaml"
     plan_stream = str(events_dir / "payments" / "stream_v2_drift")
     if _Path(schema_file).exists() and _Path(plan_stream).exists():
-        try:
+        # plan exits 1 on drift — expected
+        with contextlib.suppress(SystemExit, ClickExit):
             _plan_cmd(
                 stream_path=plan_stream,
                 schema_path=schema_file,
@@ -1228,8 +1222,6 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
                 base_url="",
                 brokers=None,
             )
-        except (SystemExit, ClickExit):
-            pass  # plan exits 1 on drift — expected
     _t.sleep(2.0)
 
     # =====================================================================

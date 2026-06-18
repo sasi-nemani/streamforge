@@ -3,12 +3,6 @@
 RED phase — these tests must fail before implementation, pass after.
 """
 import json
-import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Item 1: _write_health() must be called from watch loops
@@ -20,6 +14,7 @@ class TestHealthWiredIntoPollLoops:
     def test_write_health_called_in_file_watch_loop(self):
         """Verify _write_health is referenced in watch_stream function body."""
         import inspect
+
         from streamforge.detector.watch import watch_stream
         source = inspect.getsource(watch_stream)
         assert "_write_health(" in source, \
@@ -28,6 +23,7 @@ class TestHealthWiredIntoPollLoops:
     def test_write_health_called_in_kafka_watch_loop(self):
         """Verify _write_health is referenced in _watch_kafka_async function body."""
         import inspect
+
         from streamforge.detector.watch import _watch_kafka_async
         source = inspect.getsource(_watch_kafka_async)
         assert "_write_health(" in source, \
@@ -36,6 +32,7 @@ class TestHealthWiredIntoPollLoops:
     def test_sd_notify_called_in_kafka_watch_loop(self):
         """Verify _sd_notify is referenced in _watch_kafka_async function body."""
         import inspect
+
         from streamforge.detector.watch import _watch_kafka_async
         source = inspect.getsource(_watch_kafka_async)
         assert "_sd_notify(" in source, \
@@ -52,6 +49,7 @@ class TestNoDeadCode:
     def test_is_retryable_used_in_kafka_connector(self):
         """_is_retryable must be called somewhere in kafka.py, or removed."""
         import inspect
+
         import streamforge.connectors.kafka as kafka_mod
         # Get all function/method source code in the module
         module_source = inspect.getsource(kafka_mod)
@@ -136,6 +134,7 @@ class TestKafkaLoopTimingAndMetrics:
 
     def test_kafka_loop_has_kpoll_start_timing(self):
         import inspect
+
         from streamforge.detector.watch import _watch_kafka_async
         source = inspect.getsource(_watch_kafka_async)
         assert "_kpoll_start = _time.monotonic()" in source, \
@@ -143,6 +142,7 @@ class TestKafkaLoopTimingAndMetrics:
 
     def test_kafka_loop_learning_has_poll_duration(self):
         import inspect
+
         from streamforge.detector.watch import _watch_kafka_async
         source = inspect.getsource(_watch_kafka_async)
         assert "_kpoll_ms = (_time.monotonic() - _kpoll_start)" in source, \
@@ -150,6 +150,7 @@ class TestKafkaLoopTimingAndMetrics:
 
     def test_kafka_loop_has_no_hardcoded_zero_duration(self):
         import inspect
+
         from streamforge.detector.watch import _watch_kafka_async
         source = inspect.getsource(_watch_kafka_async)
         assert "poll_duration_ms=0" not in source, \
@@ -157,6 +158,7 @@ class TestKafkaLoopTimingAndMetrics:
 
     def test_kafka_loop_increments_poll_duration_metric(self):
         import inspect
+
         from streamforge.detector.watch import _watch_kafka_async
         source = inspect.getsource(_watch_kafka_async)
         assert "POLL_DURATION.observe(" in source, \
@@ -169,6 +171,7 @@ class TestMetricsWiredIntoWatchLoops:
     def test_metrics_import_in_watch_module(self):
         """watch.py must import metrics for counter increments."""
         import inspect
+
         from streamforge.detector import watch as watch_mod
         source = inspect.getsource(watch_mod)
         assert "POLL_CYCLES" in source, "POLL_CYCLES counter must be used in watch.py"

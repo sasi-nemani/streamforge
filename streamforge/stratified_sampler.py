@@ -19,9 +19,9 @@ import time
 from collections import defaultdict
 from typing import Any, TextIO
 
-from .multi_schema_audit import emit_audit
 from .discriminator import get_nested_value
 from .models import SamplingReport
+from .multi_schema_audit import emit_audit
 
 logger = logging.getLogger(__name__)
 

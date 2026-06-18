@@ -11,11 +11,12 @@ Run with: pytest tests/integration/ -v
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
-import sys
 
 import pytest
+
 
 # Check Docker availability before importing testcontainers
 def _docker_available() -> bool:
@@ -37,8 +38,8 @@ SKIP_REASON = "Docker not available - skipping integration tests"
 # Conditional imports
 if DOCKER_AVAILABLE:
     try:
-        from testcontainers.localstack import LocalStackContainer
         from testcontainers.kafka import KafkaContainer
+        from testcontainers.localstack import LocalStackContainer
         TESTCONTAINERS_AVAILABLE = True
     except ImportError:
         TESTCONTAINERS_AVAILABLE = False
@@ -112,10 +113,8 @@ def sqs_queue_url(localstack_container):
     yield queue_url
 
     # Cleanup
-    try:
+    with contextlib.suppress(Exception):
         client.delete_queue(QueueUrl=queue_url)
-    except Exception:
-        pass
 
 
 @pytest.fixture
@@ -135,10 +134,9 @@ def kafka_topic(kafka_container) -> str:
     admin = KafkaAdminClient(bootstrap_servers=bootstrap)
     topic = NewTopic(name=topic_name, num_partitions=2, replication_factor=1)
 
-    try:
+    # Topic may already exist
+    with contextlib.suppress(Exception):
         admin.create_topics([topic])
-    except Exception:
-        pass  # Topic may already exist
 
     admin.close()
 

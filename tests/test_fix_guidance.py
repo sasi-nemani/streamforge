@@ -14,7 +14,6 @@ from streamforge.models import (
 )
 from streamforge.report_writer import format_drift_detail
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _make_schema(fields: list[FieldSchema]) -> InferredSchema:

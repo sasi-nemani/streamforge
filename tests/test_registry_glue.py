@@ -60,7 +60,7 @@ def mock_glue_client(mock_boto3) -> MagicMock:
 
 
 @pytest.fixture()
-def backend(mock_glue_client) -> "GlueRegistryBackend":  # noqa: F821
+def backend(mock_glue_client) -> GlueRegistryBackend:  # noqa: F821
     """GlueRegistryBackend with fully mocked boto3."""
     from streamforge.registries.glue import GlueRegistryBackend
     return GlueRegistryBackend(registry_name="StreamForge")
@@ -435,9 +435,9 @@ class TestGlueRegistryInit:
 
 class TestGlueMissingBoto3:
     def test_import_error_raised_with_helpful_message(self):
-        from streamforge.registries.glue import GlueRegistryBackend
-
         import builtins
+
+        from streamforge.registries.glue import GlueRegistryBackend
         real_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
@@ -446,15 +446,15 @@ class TestGlueMissingBoto3:
             return real_import(name, *args, **kwargs)
 
         # Remove boto3 from sys.modules to ensure the import runs
-        with patch.dict(sys.modules, {"boto3": None}):
-            with patch("builtins.__import__", side_effect=mock_import):
-                with pytest.raises(ImportError, match="boto3 is required"):
-                    GlueRegistryBackend()
+        with patch.dict(sys.modules, {"boto3": None}), \
+             patch("builtins.__import__", side_effect=mock_import), \
+             pytest.raises(ImportError, match="boto3 is required"):
+            GlueRegistryBackend()
 
     def test_error_message_includes_install_hint(self):
-        from streamforge.registries.glue import GlueRegistryBackend
-
         import builtins
+
+        from streamforge.registries.glue import GlueRegistryBackend
         real_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
@@ -462,10 +462,10 @@ class TestGlueMissingBoto3:
                 raise ImportError("No module named 'boto3'")
             return real_import(name, *args, **kwargs)
 
-        with patch.dict(sys.modules, {"boto3": None}):
-            with patch("builtins.__import__", side_effect=mock_import):
-                with pytest.raises(ImportError, match="pip install"):
-                    GlueRegistryBackend()
+        with patch.dict(sys.modules, {"boto3": None}), \
+             patch("builtins.__import__", side_effect=mock_import), \
+             pytest.raises(ImportError, match="pip install"):
+            GlueRegistryBackend()
 
 
 # ── from_env ──────────────────────────────────────────────────────────────────

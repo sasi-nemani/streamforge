@@ -21,13 +21,12 @@ IBM MQ Browse Mode:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import threading
 import time
 import uuid
 from collections import deque
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from io import StringIO
@@ -40,9 +39,8 @@ from .models import (
     TelemetryEvent,
     TelemetryOperation,
 )
-from .protocol import QueueSidecar, SidecarError
+from .protocol import SidecarError
 from .telemetry import SidecarAudit
-
 
 # Try to import pymqi, will be None if not available
 try:
@@ -467,17 +465,13 @@ class IBMMQSidecar:
     async def close(self) -> None:
         """Release resources."""
         if self._queue is not None:
-            try:
+            with suppress(Exception):
                 self._queue.close()
-            except Exception:
-                pass
             self._queue = None
 
         if self._connection is not None:
-            try:
+            with suppress(Exception):
                 self._connection.disconnect()
-            except Exception:
-                pass
             self._connection = None
 
     def _parse_body(self, body: bytes | str) -> dict[str, Any]:

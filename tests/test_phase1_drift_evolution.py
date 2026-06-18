@@ -14,16 +14,10 @@ Scope:
 
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from streamforge.models import DriftTier, FieldDrift, FieldType
 from streamforge.topic_config import StabilityConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,13 +25,13 @@ from streamforge.topic_config import StabilityConfig
 
 def _make_field_drift(**kwargs) -> FieldDrift:
     """Return a FieldDrift with sane defaults — callers override what they need."""
-    defaults = dict(
-        field_path="test.field",
-        drift_type="field_added",
-        affected_event_rate=0.10,
-        tier=DriftTier.TIER_1,
-        auto_correctable=True,
-    )
+    defaults = {
+        "field_path": "test.field",
+        "drift_type": "field_added",
+        "affected_event_rate": 0.10,
+        "tier": DriftTier.TIER_1,
+        "auto_correctable": True,
+    }
     defaults.update(kwargs)
     return FieldDrift(**defaults)
 
@@ -70,6 +64,7 @@ class TestDriftClassEnum:
 
     def test_drift_class_is_str_enum(self):
         from enum import StrEnum
+
         from streamforge.models import DriftClass
         assert issubclass(DriftClass, StrEnum)
 
@@ -82,7 +77,6 @@ class TestFieldDriftHasDriftClass:
     """FieldDrift model must carry a drift_class field, defaulting to DRIFT."""
 
     def test_field_drift_has_drift_class_field(self):
-        from streamforge.models import DriftClass
         d = _make_field_drift()
         assert hasattr(d, "drift_class")
 
@@ -110,7 +104,7 @@ class TestDriftReportCounts:
     """DriftReport must expose evolution_count and noise_count integer fields."""
 
     def test_drift_report_has_evolution_count(self):
-        from streamforge.models import DriftClass, DriftReport
+        from streamforge.models import DriftReport
         report = DriftReport(
             stream_name="s",
             detected_at="2026-01-01T00:00:00Z",
@@ -173,8 +167,8 @@ class TestClassifyDriftClassNewCluster:
     """new_cluster → EVOLUTION when new_cluster_is_evolution=True, else DRIFT."""
 
     def test_new_cluster_is_evolution_when_flag_true(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             field_path="__cluster__",
@@ -187,8 +181,8 @@ class TestClassifyDriftClassNewCluster:
         assert result == DriftClass.EVOLUTION
 
     def test_new_cluster_is_drift_when_flag_false(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             field_path="__cluster__",
@@ -201,8 +195,8 @@ class TestClassifyDriftClassNewCluster:
         assert result == DriftClass.DRIFT
 
     def test_new_cluster_defaults_to_drift_when_stability_cfg_none(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             field_path="__cluster__",
@@ -223,8 +217,8 @@ class TestClassifyDriftClassFieldAdded:
     """field_added: low presence → EVOLUTION, high presence → DRIFT."""
 
     def test_field_added_low_presence_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="field_added",
@@ -235,8 +229,8 @@ class TestClassifyDriftClassFieldAdded:
         assert result == DriftClass.EVOLUTION
 
     def test_field_added_high_presence_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="field_added",
@@ -247,8 +241,8 @@ class TestClassifyDriftClassFieldAdded:
         assert result == DriftClass.DRIFT
 
     def test_field_added_exactly_half_presence_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="field_added",
@@ -259,8 +253,8 @@ class TestClassifyDriftClassFieldAdded:
         assert result == DriftClass.DRIFT
 
     def test_field_added_zero_presence_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="field_added",
@@ -279,8 +273,8 @@ class TestClassifyDriftClassFieldRemoved:
     """field_removed where field was required → always DRIFT."""
 
     def test_field_removed_required_field_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             field_path="amount",
@@ -295,8 +289,8 @@ class TestClassifyDriftClassFieldRemoved:
         assert result == DriftClass.DRIFT
 
     def test_field_removed_optional_field_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="field_removed",
@@ -318,8 +312,8 @@ class TestClassifyDriftClassTypeChanged:
     """Type widening → EVOLUTION. Type narrowing → DRIFT. Timestamp-to-timestamp → EVOLUTION."""
 
     def test_type_widening_int_to_float_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="type_changed",
@@ -331,8 +325,8 @@ class TestClassifyDriftClassTypeChanged:
         assert result == DriftClass.EVOLUTION
 
     def test_type_widening_int_to_mixed_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="type_changed",
@@ -344,8 +338,8 @@ class TestClassifyDriftClassTypeChanged:
         assert result == DriftClass.EVOLUTION
 
     def test_type_widening_any_to_string_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         # string to mixed also is widening
         d = _make_field_drift(
@@ -358,8 +352,8 @@ class TestClassifyDriftClassTypeChanged:
         assert result == DriftClass.EVOLUTION
 
     def test_type_narrowing_string_to_int_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="type_changed",
@@ -371,8 +365,8 @@ class TestClassifyDriftClassTypeChanged:
         assert result == DriftClass.DRIFT
 
     def test_type_narrowing_mixed_to_string_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="type_changed",
@@ -384,8 +378,8 @@ class TestClassifyDriftClassTypeChanged:
         assert result == DriftClass.DRIFT
 
     def test_type_narrowing_float_to_int_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="type_changed",
@@ -398,8 +392,8 @@ class TestClassifyDriftClassTypeChanged:
 
     def test_timestamp_format_change_is_evolution(self):
         """Timestamp-to-timestamp format changes are semantically equivalent — EVOLUTION."""
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="type_changed",
@@ -419,8 +413,8 @@ class TestClassifyDriftClassEnumChanged:
     """enum_changed: new values only → EVOLUTION. Removed values → DRIFT."""
 
     def test_enum_expansion_only_new_values_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="enum_changed",
@@ -432,8 +426,8 @@ class TestClassifyDriftClassEnumChanged:
         assert result == DriftClass.EVOLUTION
 
     def test_enum_shrinkage_values_removed_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="enum_changed",
@@ -445,8 +439,8 @@ class TestClassifyDriftClassEnumChanged:
         assert result == DriftClass.DRIFT
 
     def test_enum_changed_no_removal_but_new_values_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="enum_changed",
@@ -458,8 +452,8 @@ class TestClassifyDriftClassEnumChanged:
         assert result == DriftClass.EVOLUTION
 
     def test_enum_changed_with_removal_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         # Both added and removed
         d = _make_field_drift(
@@ -480,8 +474,8 @@ class TestClassifyDriftClassPresenceRateChanged:
     """presence rate rising → EVOLUTION. Rate dropping → DRIFT."""
 
     def test_presence_increase_is_evolution(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="presence_increase",
@@ -493,8 +487,8 @@ class TestClassifyDriftClassPresenceRateChanged:
         assert result == DriftClass.EVOLUTION
 
     def test_presence_drop_is_drift(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="presence_drop",
@@ -514,8 +508,8 @@ class TestClassifyDriftClassNoise:
     """Any drift with correction_confidence < 0.50 → NOISE. Uses a proxy field."""
 
     def test_low_confidence_field_is_noise(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         # Simulate a low-confidence signal by using correction_confidence as the proxy
         d = _make_field_drift(
@@ -529,8 +523,8 @@ class TestClassifyDriftClassNoise:
         assert result == DriftClass.NOISE
 
     def test_high_confidence_field_not_noise(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="field_added",
@@ -544,8 +538,8 @@ class TestClassifyDriftClassNoise:
         assert result == DriftClass.EVOLUTION
 
     def test_exactly_half_confidence_is_not_noise(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
 
         d = _make_field_drift(
             drift_type="field_added",
@@ -566,7 +560,7 @@ class TestDetectDriftWiresDriftClass:
     """detect_drift() must set drift_class on every FieldDrift it produces."""
 
     def _make_schema(self, fields):
-        from streamforge.models import FieldSchema, InferredSchema
+        from streamforge.models import InferredSchema
         return InferredSchema(
             stream_name="test.stream",
             inferred_at="2026-01-01T00:00:00Z",
@@ -577,8 +571,8 @@ class TestDetectDriftWiresDriftClass:
         )
 
     def test_detect_drift_sets_drift_class_on_each_field_drift(self):
-        from streamforge.models import DriftClass, FieldSchema, InferredSchema
         from streamforge.drift_detector import detect_drift
+        from streamforge.models import DriftClass, FieldSchema
 
         schema = self._make_schema([
             FieldSchema(
@@ -598,8 +592,8 @@ class TestDetectDriftWiresDriftClass:
             assert d.drift_class in list(DriftClass)
 
     def test_detect_drift_drift_class_is_not_none(self):
-        from streamforge.models import DriftClass, FieldSchema
         from streamforge.drift_detector import detect_drift
+        from streamforge.models import FieldSchema
 
         schema = self._make_schema([
             FieldSchema(
@@ -617,8 +611,8 @@ class TestDetectDriftWiresDriftClass:
             assert d.drift_class is not None
 
     def test_detect_drift_field_removed_has_drift_class(self):
-        from streamforge.models import DriftClass, FieldSchema
         from streamforge.drift_detector import detect_drift
+        from streamforge.models import DriftClass, FieldSchema
 
         schema = self._make_schema([
             FieldSchema(
@@ -638,8 +632,8 @@ class TestDetectDriftWiresDriftClass:
 
     def test_detect_drift_new_optional_field_is_evolution(self):
         """A new field with low presence should be classified as EVOLUTION."""
-        from streamforge.models import DriftClass, FieldSchema
         from streamforge.drift_detector import detect_drift
+        from streamforge.models import DriftClass, FieldSchema
 
         schema = self._make_schema([
             FieldSchema(
@@ -668,8 +662,8 @@ class TestDriftReportCountsFilled:
     """detect_drift() must populate evolution_count and noise_count on DriftReport."""
 
     def test_detect_drift_report_has_evolution_count_filled(self):
-        from streamforge.models import FieldSchema
         from streamforge.drift_detector import detect_drift
+        from streamforge.models import FieldSchema
 
         schema_fields = [
             FieldSchema(
@@ -710,8 +704,8 @@ class TestEventsAllConfig:
 
     def test_events_all_new_cluster_classified_as_evolution(self):
         """With events.all config, a new_cluster drift should be EVOLUTION."""
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import classify_drift_class
+        from streamforge.models import DriftClass
         from streamforge.topic_config import load_topic_config
 
         cfg = load_topic_config("events.all")
@@ -737,8 +731,8 @@ class TestHandleEvolution:
         from streamforge.drift_detector import _handle_evolution  # noqa: F401
 
     def test_handle_evolution_does_not_raise(self):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import _handle_evolution
+        from streamforge.models import DriftClass
 
         signals = [
             _make_field_drift(
@@ -751,8 +745,8 @@ class TestHandleEvolution:
         _handle_evolution(signals, "test.stream", None, None)
 
     def test_handle_evolution_prints_evolution_message(self, capsys):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import _handle_evolution
+        from streamforge.models import DriftClass
 
         signals = [
             _make_field_drift(
@@ -768,8 +762,8 @@ class TestHandleEvolution:
         assert "my.stream" in captured.out
 
     def test_handle_evolution_prints_count(self, capsys):
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import _handle_evolution
+        from streamforge.models import DriftClass
 
         signals = [
             _make_field_drift(
@@ -786,8 +780,8 @@ class TestHandleEvolution:
 
     def test_handle_evolution_with_broken_vcs_does_not_raise(self):
         """Even when VCS is configured but fails, _handle_evolution must not raise."""
-        from streamforge.models import DriftClass
         from streamforge.drift_detector import _handle_evolution
+        from streamforge.models import DriftClass
         from streamforge.topic_config import TopicConfig
 
         # Create a topic_cfg with vcs_enabled=True but no real backend
@@ -828,6 +822,7 @@ class TestDLQConfig:
 
     def test_dlq_config_is_dataclass(self):
         import dataclasses
+
         from streamforge.dlq import DLQConfig
         assert dataclasses.is_dataclass(DLQConfig)
 
@@ -906,7 +901,7 @@ class TestExistingDriftPathUnchanged:
     """Existing DRIFT-class signals must still produce reports via the alert path."""
 
     def _make_schema(self, fields):
-        from streamforge.models import FieldSchema, InferredSchema
+        from streamforge.models import InferredSchema
         return InferredSchema(
             stream_name="test.stream",
             inferred_at="2026-01-01T00:00:00Z",
@@ -917,8 +912,8 @@ class TestExistingDriftPathUnchanged:
         )
 
     def test_field_removed_still_produces_drift_report(self):
-        from streamforge.models import DriftClass, FieldSchema
         from streamforge.drift_detector import detect_drift
+        from streamforge.models import DriftClass, FieldSchema
 
         schema = self._make_schema([
             FieldSchema(

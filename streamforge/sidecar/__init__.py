@@ -18,20 +18,20 @@ Design:
 - Full telemetry baked into every operation
 """
 
+from .factory import create_sidecar
+from .ibmmq import IBMMQSidecar
+from .manager import SidecarManager
 from .models import (
-    ObservationEvent,
+    IBMMQConfig,
     ObservationBatch,
+    ObservationEvent,
+    SQSConfig,
     TelemetryEvent,
     TelemetryOperation,
-    SQSConfig,
-    IBMMQConfig,
 )
 from .protocol import QueueSidecar, SidecarError
 from .sqs import SQSSidecar
-from .ibmmq import IBMMQSidecar
-from .factory import create_sidecar
-from .manager import SidecarManager
-from .telemetry import SidecarAudit, MetricsCollector, telemetry_context
+from .telemetry import MetricsCollector, SidecarAudit, telemetry_context
 
 __all__ = [
     # Models

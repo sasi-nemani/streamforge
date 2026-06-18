@@ -1,8 +1,6 @@
 """Tests for the kafka-ping CLI command."""
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from streamforge.__main__ import app

@@ -7,10 +7,6 @@
 import logging
 import os
 import threading
-from pathlib import Path
-
-import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FIX 1: ClusterWindowMap — configurable max_clusters + warning log
@@ -69,8 +65,8 @@ class TestClusterWindowMapOverflow:
         # The env var should be read — test the mechanism exists
 
     def test_warning_includes_cluster_id(self):
-        from streamforge.detector.window import ClusterWindowMap
         import streamforge.detector.window as wmod
+        from streamforge.detector.window import ClusterWindowMap
         cwm = ClusterWindowMap(
             cluster_ids=["a"], routing_field="type",
             capacity=50, max_clusters=1,
@@ -140,6 +136,7 @@ class TestPidFileAtomicCreation:
     def test_pid_file_uses_atomic_creation(self):
         """_write_pid_file must use os.open with O_CREAT|O_EXCL or fcntl.flock."""
         import inspect
+
         from streamforge.supervisor import Supervisor
         source = inspect.getsource(Supervisor._write_pid_file)
         has_excl = "O_EXCL" in source
@@ -149,8 +146,8 @@ class TestPidFileAtomicCreation:
 
     def test_stale_pid_overwritten(self, tmp_path):
         """Dead PID file must be cleaned up and overwritten."""
-        from streamforge.supervisor import Supervisor
         from streamforge.models import SupervisorConfig
+        from streamforge.supervisor import Supervisor
         pid_path = tmp_path / "test.pid"
         pid_path.write_text("99999999")  # dead PID
         cfg = SupervisorConfig(assignments=[], pid_file=str(pid_path))
@@ -160,8 +157,8 @@ class TestPidFileAtomicCreation:
 
     def test_live_pid_raises_or_warns(self, tmp_path):
         """If PID file has a LIVE process, must raise or log critical."""
-        from streamforge.supervisor import Supervisor
         from streamforge.models import SupervisorConfig
+        from streamforge.supervisor import Supervisor
         pid_path = tmp_path / "test.pid"
         pid_path.write_text(str(os.getpid()))  # our own PID = alive
         cfg = SupervisorConfig(assignments=[], pid_file=str(pid_path))
@@ -171,8 +168,8 @@ class TestPidFileAtomicCreation:
         assert int(pid_path.read_text().strip()) == os.getpid()
 
     def test_pid_file_cleanup_on_remove(self, tmp_path):
-        from streamforge.supervisor import Supervisor
         from streamforge.models import SupervisorConfig
+        from streamforge.supervisor import Supervisor
         pid_path = tmp_path / "test.pid"
         cfg = SupervisorConfig(assignments=[], pid_file=str(pid_path))
         sup = Supervisor(cfg)

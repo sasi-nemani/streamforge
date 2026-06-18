@@ -1,5 +1,6 @@
 """Tests for prompt injection defense in schema_hints.yaml processing."""
 import re
+
 import pytest
 
 

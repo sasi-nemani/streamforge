@@ -1,10 +1,6 @@
 """Tests for PII hygiene: audit log scrubbing + secure file permissions."""
-import json
 import logging
-import os
 from pathlib import Path
-
-import pytest
 
 
 class TestAuditPromptScrubbing:
@@ -106,8 +102,8 @@ class TestSecureWriteAllPaths:
         self._check_perms(tmp_path / "perm_test3" / ".samples" / "latest.json")
 
     def test_drift_state_permissions(self, tmp_path):
-        from streamforge.schema_writer import save_drift_state
         from streamforge.models import DriftState
+        from streamforge.schema_writer import save_drift_state
         state = DriftState(stream_name="test", updated_at="2026-04-03", incidents=[])
         save_drift_state(tmp_path, state)
         self._check_perms(tmp_path / "drift_state.yaml")

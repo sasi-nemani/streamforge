@@ -11,7 +11,6 @@ import multiprocessing
 import os
 import signal
 import time as _time
-from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -64,8 +63,8 @@ def _worker_main(assignment: StreamAssignment) -> None:
     source_type, parsed_id = resolve_stream_source(assignment.stream_uri)
 
     if source_type == "kafka":
-        from .detector.watch import watch_stream_kafka
         from .config import load as load_config
+        from .detector.watch import watch_stream_kafka
         cfg = load_config()
         cfg.namespace = assignment.namespace
         watch_stream_kafka(
@@ -152,7 +151,7 @@ class Supervisor:
         signal.signal(signal.SIGINT, self._handle_signal)
 
         # Spawn all workers
-        for uri, ws in self.workers.items():
+        for _uri, ws in self.workers.items():
             self._spawn_worker(ws)
 
         # Monitor loop

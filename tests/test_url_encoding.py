@@ -10,11 +10,9 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from streamforge.models import FieldSchema, FieldType, InferredSchema
-from streamforge.registries.confluent import ConfluentRegistryBackend
 from streamforge.registries.apicurio import ApicurioRegistryBackend
+from streamforge.registries.confluent import ConfluentRegistryBackend
 
 # ── shared fixtures ────────────────────────────────────────────────────────────
 

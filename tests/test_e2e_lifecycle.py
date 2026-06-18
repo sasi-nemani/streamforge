@@ -5,9 +5,6 @@ A Stripe engineer will ask: "does it actually work end-to-end?"
 """
 
 import json
-import os
-import shutil
-from pathlib import Path
 
 import pytest
 
@@ -67,7 +64,6 @@ class TestE2ELifecycle:
         from streamforge.cli.schema_cmd import profile
 
         stream_path = str(workspace / "events" / "payments" / "stream")
-        output_dir = str(workspace / "schemas")
 
         # Profile (no LLM needed)
         profile(
@@ -79,7 +75,8 @@ class TestE2ELifecycle:
 
         # Verify init can run (uses statistical inference)
         from streamforge.inference import infer_sub_schema
-        from streamforge.sampler import get_all_field_paths, load_events_resilient as load_events
+        from streamforge.sampler import get_all_field_paths
+        from streamforge.sampler import load_events_resilient as load_events
 
         events, _ = load_events(stream_path)
         field_stats, presence = get_all_field_paths(events[:100])
@@ -104,7 +101,8 @@ class TestE2ELifecycle:
         from streamforge.drift_detector import detect_drift
         from streamforge.inference import infer_sub_schema
         from streamforge.models import InferredSchema
-        from streamforge.sampler import load_events_resilient as load_events, reservoir_sample
+        from streamforge.sampler import load_events_resilient as load_events
+        from streamforge.sampler import reservoir_sample
 
         events, _ = load_events(str(workspace / "events" / "payments" / "stream"))
         sub = infer_sub_schema(
@@ -141,7 +139,7 @@ class TestE2ELifecycle:
         from streamforge.drift_detector import detect_drift
         from streamforge.inference import infer_sub_schema
         from streamforge.models import InferredSchema
-        from streamforge.sampler import load_events_resilient as load_events, reservoir_sample
+        from streamforge.sampler import load_events_resilient as load_events
 
         # Build baseline from clean data
         clean_events, _ = load_events(str(workspace / "events" / "payments" / "stream"))

@@ -60,9 +60,7 @@ def _is_rfc1918_or_special(octets: list[int]) -> bool:
         return True
     if a == 127:            # loopback
         return True
-    if a == 169 and octets[1] == 254:       # link-local
-        return True
-    return False
+    return a == 169 and octets[1] == 254       # link-local
 
 
 def _is_uuid(val: str) -> bool:
@@ -170,9 +168,12 @@ def _check_patterns(str_values: list[str], segments: list[str]) -> set[PIICatego
                     matched.add(category)
 
         # DOB: only flag if field name also suggests date-of-birth
-        if PIICategory.DATE_OF_BIRTH not in matched and DOB_PATTERN.search(val):
-            if any(h in seg for seg in segments for h in _DOB_FIELD_HINTS):
-                matched.add(PIICategory.DATE_OF_BIRTH)
+        if (
+            PIICategory.DATE_OF_BIRTH not in matched
+            and DOB_PATTERN.search(val)
+            and any(h in seg for seg in segments for h in _DOB_FIELD_HINTS)
+        ):
+            matched.add(PIICategory.DATE_OF_BIRTH)
 
     return matched
 

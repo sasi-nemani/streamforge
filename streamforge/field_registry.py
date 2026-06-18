@@ -7,6 +7,7 @@ Only sends unknown/ambiguous fields to LLM, reducing API calls by 60-80%.
 Persistence: .streamforge/field_registry.json
 """
 
+import contextlib
 import json
 import logging
 import os
@@ -543,10 +544,8 @@ class FieldTypeRegistry:
 
         pii_cats = []
         for cat_str in obs.pii_categories:
-            try:
+            with contextlib.suppress(ValueError):
                 pii_cats.append(PIICategory(cat_str))
-            except ValueError:
-                pass
 
         return FieldSchema(
             name=name,
@@ -603,7 +602,7 @@ class FieldTypeRegistry:
         target.parent.mkdir(parents=True, exist_ok=True)
 
         lock_path = target.with_suffix(".lock")
-        lock_fd = open(lock_path, "w")
+        lock_fd = open(lock_path, "w")  # noqa: SIM115 — flock fd held across locked region, closed in finally
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)  # exclusive lock
 
@@ -646,7 +645,7 @@ class FieldTypeRegistry:
         if target.exists():
             try:
                 lock_path = target.with_suffix(".lock")
-                lock_fd = open(lock_path, "w")
+                lock_fd = open(lock_path, "w")  # noqa: SIM115 — flock fd held across locked region, closed in finally
                 try:
                     fcntl.flock(lock_fd, fcntl.LOCK_SH)  # shared lock during read
                     data = json.loads(target.read_text(encoding="utf-8"))
@@ -693,7 +692,7 @@ class FieldTypeRegistry:
             "lookup_misses": self._misses,
             "hit_rate": self._hits / total if total > 0 else 0.0,
             "streams_covered": len(
-                set(s for obs in self._observations.values() for s in obs.stream_names)
+                {s for obs in self._observations.values() for s in obs.stream_names}
             ),
         }
 

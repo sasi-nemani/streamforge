@@ -1,12 +1,13 @@
 """Tests for Prometheus metrics export and HTTP server."""
 import json
 import urllib.request
+
 import pytest
 
 
 class TestPrometheusTextFormat:
     def test_format_contains_help_and_type(self):
-        from streamforge.metrics import prometheus_text, _reset_for_testing, POLL_DURATION
+        from streamforge.metrics import POLL_DURATION, _reset_for_testing, prometheus_text
         _reset_for_testing()
         POLL_DURATION.observe(1.5)
         text = prometheus_text()
@@ -15,7 +16,7 @@ class TestPrometheusTextFormat:
         assert "poll_duration_seconds_count 1" in text
 
     def test_format_contains_counters(self):
-        from streamforge.metrics import prometheus_text, _reset_for_testing, EVENTS_SAMPLED
+        from streamforge.metrics import EVENTS_SAMPLED, _reset_for_testing, prometheus_text
         _reset_for_testing()
         EVENTS_SAMPLED.inc(500)
         text = prometheus_text()
@@ -56,6 +57,7 @@ class TestMetricsHttpServer:
 
     def test_shutdown_releases_port(self):
         import time
+
         from streamforge.metrics_server import MetricsServer
         server = MetricsServer(port=0)
         port = server.port

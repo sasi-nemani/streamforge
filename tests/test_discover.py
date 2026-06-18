@@ -1,7 +1,4 @@
 """Tests for the discover CLI command."""
-import json
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
@@ -48,14 +45,14 @@ def test_discover_lists_monitored_and_unmonitored(tmp_path):
 
     mock_admin_cls = _make_admin_mock(all_topics)
 
-    with patch("streamforge.__main__.AdminClient", mock_admin_cls, create=True):
-        # Also patch the import inside the function
-        with patch.dict("sys.modules", {"confluent_kafka.admin": MagicMock(AdminClient=mock_admin_cls)}):
-            result = runner.invoke(app, [
-                "discover",
-                "--brokers", "localhost:9092",
-                "--output", str(schema_dir),
-            ])
+    # Also patch the import inside the function
+    with patch("streamforge.__main__.AdminClient", mock_admin_cls, create=True), \
+         patch.dict("sys.modules", {"confluent_kafka.admin": MagicMock(AdminClient=mock_admin_cls)}):
+        result = runner.invoke(app, [
+            "discover",
+            "--brokers", "localhost:9092",
+            "--output", str(schema_dir),
+        ])
 
     assert result.exit_code == 0, result.output
     assert "events.payments" in result.output

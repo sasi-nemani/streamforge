@@ -22,14 +22,11 @@ import sys
 import unittest.mock as mock
 from pathlib import Path
 
-import pytest
-
 # Make sure project root is importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from streamforge.vcs import VCSConfig, get_vcs_backend
 from streamforge.vcs.base import SchemaCommitContext, VCSResult
-
 
 # ---------------------------------------------------------------------------
 # 1. VCSConfig parses correctly from config via topic_config

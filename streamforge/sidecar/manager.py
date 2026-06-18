@@ -11,13 +11,12 @@ The manager orchestrates sidecars but provides NO destructive operations.
 
 from __future__ import annotations
 
-from typing import Any, TextIO, Union
+from typing import Any, TextIO
 
-from .factory import create_sidecar, SidecarConfig
-from .models import ObservationBatch, TelemetryEvent
-from .protocol import QueueSidecar
-from .sqs import SQSSidecar
+from .factory import SidecarConfig, create_sidecar
 from .ibmmq import IBMMQSidecar
+from .models import ObservationBatch, TelemetryEvent
+from .sqs import SQSSidecar
 
 
 class SidecarManager:

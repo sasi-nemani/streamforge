@@ -1,5 +1,4 @@
 """Tests for multi-tenant namespace isolation."""
-import pytest
 from streamforge.config import Config
 
 

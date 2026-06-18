@@ -7,8 +7,6 @@ property tests follow to document individual type-mapping and formatting rules.
 
 from __future__ import annotations
 
-import pytest
-
 from streamforge.exporters.ksqldb import schema_to_ksqldb
 from streamforge.models import FieldSchema, FieldType, InferredSchema, PIICategory
 
@@ -450,7 +448,7 @@ class TestKsqlDBStatementStructure:
         out = schema_to_ksqldb(_minimal_schema())
         lines = out.splitlines()
         # First non-comment line should be blank, then CREATE STREAM
-        create_line = next(l for l in lines if l.startswith("CREATE"))
+        create_line = next(line for line in lines if line.startswith("CREATE"))
         assert create_line.startswith("CREATE STREAM")
 
     def test_column_list_inside_parentheses(self):
@@ -461,6 +459,6 @@ class TestKsqlDBStatementStructure:
     def test_statement_ends_with_semicolon(self):
         out = schema_to_ksqldb(_no_timestamp_schema())
         # Last statement-level line is ");"
-        lines = [l for l in out.splitlines() if not l.startswith("--")]
-        non_empty = [l for l in lines if l.strip()]
+        lines = [line for line in out.splitlines() if not line.startswith("--")]
+        non_empty = [line for line in lines if line.strip()]
         assert non_empty[-1] == ");"

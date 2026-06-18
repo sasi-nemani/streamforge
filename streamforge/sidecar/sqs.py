@@ -33,13 +33,13 @@ from .models import (
     TelemetryEvent,
     TelemetryOperation,
 )
-from .protocol import QueueSidecar, SidecarError
+from .protocol import SidecarError
 from .telemetry import SidecarAudit
 
 # Detect async AWS SDK availability
 _AIOBOTO3_AVAILABLE = False
 try:
-    import aioboto3
+    import aioboto3  # noqa: F401 — import is an availability probe only
     _AIOBOTO3_AVAILABLE = True
 except ImportError:
     pass

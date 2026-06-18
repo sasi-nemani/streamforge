@@ -11,7 +11,6 @@ import json
 from unittest.mock import MagicMock, patch
 
 import httpx
-import pytest
 
 from streamforge.models import FieldSchema, FieldType, InferredSchema
 from streamforge.registries.apicurio import ApicurioRegistryBackend, from_env

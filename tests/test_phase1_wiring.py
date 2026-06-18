@@ -18,26 +18,23 @@ Missing wire 2:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
-
-from streamforge.models import DriftClass, DriftReport, DriftTier, FieldDrift, FieldType
+from streamforge.models import DriftClass, DriftReport, DriftTier, FieldDrift
 from streamforge.topic_config import StabilityConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _make_field_drift(**kwargs) -> FieldDrift:
-    defaults = dict(
-        field_path="test.field",
-        drift_type="field_added",
-        affected_event_rate=0.10,
-        tier=DriftTier.TIER_1,
-        auto_correctable=True,
-    )
+    defaults = {
+        "field_path": "test.field",
+        "drift_type": "field_added",
+        "affected_event_rate": 0.10,
+        "tier": DriftTier.TIER_1,
+        "auto_correctable": True,
+    }
     defaults.update(kwargs)
     return FieldDrift(**defaults)
 
@@ -795,7 +792,6 @@ class TestWire2StableDispatchDriftClassSplit:
         the fixed dispatch must call _handle_evolution for EVOLUTION drifts
         and NOT call _print_drift_report.
         """
-        from streamforge.drift_detector import _handle_evolution
 
         report = self._make_evolution_only_report()
 
@@ -806,7 +802,7 @@ class TestWire2StableDispatchDriftClassSplit:
         for r in [report]:
             drift_drifts = [d for d in r.drifts if d.drift_class == DriftClass.DRIFT]
             evolution_drifts = [d for d in r.drifts if d.drift_class == DriftClass.EVOLUTION]
-            noise_drifts = [d for d in r.drifts if d.drift_class == DriftClass.NOISE]
+            # noise drifts are suppressed (no handler call)
 
             if drift_drifts:
                 mock_print_drift_report(r, None, None)

@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import os
@@ -865,7 +866,6 @@ def quorum_type_inference(
     """
     from collections import Counter
 
-
     from .detector.classify import _infer_field_type_from_values
     from .sampler import get_all_field_paths, reservoir_sample
 
@@ -1483,7 +1483,6 @@ def infer_sub_schema(
         )
     else:
         quorum_types = {}
-        quorum_presence = {}
 
     field_stats, presence_rates = get_all_field_paths(sample)
 
@@ -1536,13 +1535,12 @@ def infer_sub_schema(
                         reason=f"quorum override (agreement={agreement:.0%}, {n_votes} votes)",
                         stream=cluster_id,
                     )
-                    try:
+                    # quorum type not in FieldType enum
+                    with contextlib.suppress(ValueError):
                         f = f.model_copy(update={
                             "field_type": FieldType(quorum_winner),
                             "confidence": max(f.confidence, agreement),
                         })
-                    except ValueError:
-                        pass  # quorum type not in FieldType enum
                 elif current == quorum_winner and agreement > f.confidence:
                     f = f.model_copy(update={"confidence": agreement})
             corrected_fields.append(f)

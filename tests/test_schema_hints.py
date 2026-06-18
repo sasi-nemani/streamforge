@@ -3,10 +3,8 @@ TDD tests for schema_hints.yaml + _apply_schema_hints() + small-cluster threshol
 
 RED phase: these tests are written before implementation and must FAIL first.
 """
-import pytest
 
 from streamforge.models import FieldSchema, FieldType, PIICategory
-
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 

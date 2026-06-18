@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import health, sources, metrics, drift, pii, streams, search, connectors
+from .routes import connectors, drift, health, metrics, pii, search, sources, streams
 
 app = FastAPI(
     title="StreamForge Cockpit",

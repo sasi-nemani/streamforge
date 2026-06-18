@@ -62,11 +62,11 @@ class TestIBMMQConnectionPool:
 
         # First acquire
         with pool.acquire() as (conn1, _):
-            first_conn = conn1
+            assert conn1 is not None
 
         # Second acquire should reuse
         with pool.acquire() as (conn2, _):
-            second_conn = conn2
+            assert conn2 is not None
 
         # Should only create one connection
         assert pool.stats["total_created"] == 1

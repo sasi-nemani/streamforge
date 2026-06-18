@@ -6,9 +6,9 @@ This gives operators 3-10 cycles of lead time to investigate before a Tier-2/3 a
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -110,12 +110,10 @@ class PresenceTrendTracker:
             logger.warning("Failed to save trend history: %s", e)
 
     @staticmethod
-    def load(path: Path) -> "PresenceTrendTracker":
+    def load(path: Path) -> PresenceTrendTracker:
         """Load trend history from JSON."""
         tracker = PresenceTrendTracker()
         if path.exists():
-            try:
+            with contextlib.suppress(json.JSONDecodeError, OSError):
                 tracker._history = json.loads(path.read_text())
-            except (json.JSONDecodeError, OSError):
-                pass
         return tracker

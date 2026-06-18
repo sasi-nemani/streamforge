@@ -1,0 +1,22 @@
+# Ground-truth schema for the payments stream (events/payments/stream_v1).
+# Hand-labeled by inspecting actual event payloads. Types reflect the value as
+# DELIVERED on the wire (e.g. amount arrives as a JSON string "126.03"), not the
+# semantic intent — this keeps the benchmark objective. PII is marked per field.
+# Paths use the sampler's flattened dot/[] notation so they line up exactly with
+# what inference and drift detection see (streamforge.sampler.get_all_field_paths).
+stream_name: payments
+fields:
+  - { path: event_id,            field_type: uuid,                required: true }
+  - { path: event_type,          field_type: string,              required: true }
+  - { path: timestamp,           field_type: timestamp_epoch_ms,  required: true }
+  - { path: transaction_id,      field_type: string,              required: true }
+  - { path: amount,              field_type: string,              required: true }
+  - { path: currency,            field_type: string,              required: true }
+  - { path: status,              field_type: string,              required: true }
+  - { path: payment_method,      field_type: string,              required: true }
+  - { path: user.user_id,        field_type: string,              required: true }
+  - { path: user.email,          field_type: email,               required: true,  pii: [email] }
+  - { path: user.name,           field_type: string,              required: true,  pii: [name] }
+  - { path: metadata.ip_address, field_type: string,              required: false, pii: [ip_address] }
+  - { path: metadata.user_agent, field_type: string,              required: false }
+  - { path: metadata.region,     field_type: string,              required: false }

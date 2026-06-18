@@ -10,14 +10,9 @@ Covers:
 5. Line length guard before ReDoS regex (HIGH-025)
 """
 
-import os
-import re
 import stat
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. PII SCRUBBING IN LLM PROMPTS
@@ -140,7 +135,7 @@ class TestEventSizeGuard:
         flat = flatten_nested(obj)
         # Should not recurse all 20 levels — capped at MAX_DEPTH
         if flat:
-            max_dots = max(k.count(".") for k in flat.keys())
+            max_dots = max(k.count(".") for k in flat)
             assert max_dots <= 10, f"Recursion depth {max_dots} exceeds max 10"
         # Empty result is also acceptable (capped before first key)
 

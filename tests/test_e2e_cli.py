@@ -9,8 +9,6 @@ Test data: home/claude/streamforge-mvp/events/payments/{stream_v1, stream_v2_dri
 """
 
 import json
-import os
-import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

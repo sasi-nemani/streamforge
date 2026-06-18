@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -131,7 +130,7 @@ class Store:
                     "stream": schema_path.parent.name,
                     "report": report_path.name,
                     "detected_at": datetime.fromtimestamp(
-                        report_path.stat().st_mtime, tz=timezone.utc
+                        report_path.stat().st_mtime, tz=UTC
                     ).isoformat(),
                 })
         return drifts
@@ -157,7 +156,7 @@ class Store:
 
     def check_health(self, component: str) -> dict:
         """Check health of a specific component."""
-        start = datetime.now(timezone.utc)
+        start = datetime.now(UTC)
         status = "ok"
         error = None
 
@@ -171,12 +170,11 @@ class Store:
             else:
                 status = "unavailable"
                 error = "Redis not configured"
-        elif component == "schemas":
-            if not self._schema_dir.exists():
-                status = "error"
-                error = f"Schema dir not found: {self._schema_dir}"
+        elif component == "schemas" and not self._schema_dir.exists():
+            status = "error"
+            error = f"Schema dir not found: {self._schema_dir}"
 
-        latency = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+        latency = (datetime.now(UTC) - start).total_seconds() * 1000
         return {"name": component, "status": status, "latency_ms": round(latency, 2), "error": error}
 
 

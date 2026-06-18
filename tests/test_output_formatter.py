@@ -1,18 +1,16 @@
 """Tests for human-readable output formatting."""
-import pytest
 from streamforge.output_formatter import (
-    describe_drift,
     _humanize_type,
-    format_watch_tick,
-    format_drift_alert,
+    describe_drift,
     format_discover_panel,
     format_init_success,
+    format_watch_tick,
 )
 
 
 def test_describe_drift_field_removed():
     result = describe_drift("field_removed", "amount")
-    assert "'amount' field was removed" == result
+    assert result == "'amount' field was removed"
     # No technical jargon
     assert "field_removed" not in result
 
@@ -47,7 +45,7 @@ def test_humanize_type_known():
 
 def test_humanize_type_unknown_falls_back():
     result = _humanize_type("some_custom_type")
-    assert "some custom type" == result  # underscores → spaces
+    assert result == "some custom type"  # underscores → spaces
 
 
 def test_format_watch_tick_clean():

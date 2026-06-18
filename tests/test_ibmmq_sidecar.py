@@ -12,10 +12,9 @@ Core principle: NEVER touch or modify messages. NEVER alter queue state.
 Phase 4: IBM MQ Sidecar Connector
 """
 
-import pytest
-import json
-from datetime import datetime, UTC
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 class TestIBMMQSidecarInit:
@@ -117,10 +116,10 @@ class TestIBMMQSidecarPeek:
     @pytest.mark.asyncio
     async def test_peek_emits_telemetry(self):
         """Peek must emit telemetry events."""
+        from io import StringIO
+
         from streamforge.sidecar.ibmmq import IBMMQSidecar
         from streamforge.sidecar.models import IBMMQConfig
-        from io import StringIO
-        import json
 
         config = IBMMQConfig(
             host="mq.company.com",

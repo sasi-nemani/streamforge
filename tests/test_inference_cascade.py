@@ -17,7 +17,6 @@ from streamforge.inference import (
     _is_ollama_available,
     infer_schema,
 )
-from streamforge.models import FieldType
 
 
 @pytest.fixture(autouse=True)
@@ -186,7 +185,7 @@ def test_ollama_unavailable_goes_to_groq():
         mock_openai_cls.return_value = groq_client
         groq_client.chat.completions.create.return_value = _make_tool_response(confidence=0.88)
 
-        result = infer_schema(
+        infer_schema(
             stream_name="test",
             field_stats=FIELD_STATS,
             sample_events=SAMPLE_EVENTS,

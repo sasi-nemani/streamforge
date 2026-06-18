@@ -3,14 +3,7 @@
 These tests cover the failure modes that matter at Tier-1 scale but were
 previously untested: threading, corrupt data, and provider cascading.
 """
-import json
 import threading
-import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Concurrent Registry Access
@@ -22,7 +15,6 @@ class TestConcurrentRegistryAccess:
     def test_concurrent_record_no_data_loss(self, tmp_path):
         """10 threads each recording different fields — all must be present after."""
         from streamforge.field_registry import FieldTypeRegistry
-        from streamforge.models import FieldType
 
         registry = FieldTypeRegistry()
         errors = []
@@ -54,7 +46,6 @@ class TestConcurrentRegistryAccess:
     def test_concurrent_lookup_during_record(self, tmp_path):
         """Reader threads doing lookup while writers do record — no crash."""
         from streamforge.field_registry import FieldTypeRegistry
-        from streamforge.models import FieldType
 
         registry = FieldTypeRegistry()
         # Pre-seed some fields
@@ -95,7 +86,6 @@ class TestConcurrentRegistryAccess:
     def test_concurrent_record_same_field(self):
         """5 threads recording the same field — observation_count must reflect all."""
         from streamforge.field_registry import FieldTypeRegistry
-        from streamforge.models import FieldType
 
         registry = FieldTypeRegistry()
         errors = []

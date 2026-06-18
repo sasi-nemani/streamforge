@@ -5,10 +5,7 @@ existing toolsets (Confluent SR, dbt, Spark, BigQuery) out of the box?
 """
 
 import json
-import os
-from pathlib import Path
 
-import pytest
 import yaml
 
 

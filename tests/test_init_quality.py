@@ -4,14 +4,11 @@ Ingest Quality section in inference reports.
 
 No API calls — all tests are purely in-memory or use tempfiles.
 """
-import tempfile
 from pathlib import Path
 
-import pytest
-
-from streamforge.sampler import split_by_quality, load_events_resilient
-from streamforge.schema_writer import write_inference_report
 from streamforge.models import FieldSchema, FieldType, InferredSchema
+from streamforge.sampler import load_events_resilient, split_by_quality
+from streamforge.schema_writer import write_inference_report
 
 
 def _make_schema(n_fields: int = 3) -> InferredSchema:

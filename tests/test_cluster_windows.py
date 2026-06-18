@@ -4,11 +4,6 @@ Citadel design: undiluted samples, automatic mode, source-agnostic, hands-off.
 """
 
 import json
-from pathlib import Path
-from typing import Any
-
-import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PHASE 1: Per-cluster EventWindow map
@@ -161,7 +156,7 @@ class TestAutoExportOnInit:
             ],
             inference_model="test", inference_confidence=0.9,
         )
-        paths = write_schema_with_exports(schema, str(tmp_path))
+        write_schema_with_exports(schema, str(tmp_path))
 
         assert (tmp_path / "test" / "schema.yaml").exists()
         assert (tmp_path / "test" / "schema.json").exists()

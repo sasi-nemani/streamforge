@@ -1,5 +1,6 @@
 """Rolling event window and checkpoint persistence."""
 
+import contextlib
 import json as _json
 import logging
 import random
@@ -7,8 +8,6 @@ import time as _time
 from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
-
-from ..sampler import reservoir_sample
 
 logger = logging.getLogger(__name__)
 
@@ -271,10 +270,8 @@ def _save_checkpoint(window: EventWindow, checkpoint_path: Path) -> None:
         logger.debug("Checkpoint saved: %d events → %s", len(window), checkpoint_path)
     except OSError as e:
         logger.warning("Could not save window checkpoint (%s): %s", checkpoint_path, e)
-        try:
+        with contextlib.suppress(OSError):
             tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
 
 
 def _load_checkpoint(checkpoint_path: Path) -> list[dict]:

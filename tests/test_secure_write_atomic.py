@@ -1,10 +1,7 @@
 """Tests for _secure_write() atomic permission handling."""
 import os
 import stat
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 
 class TestSecureWriteAtomic:

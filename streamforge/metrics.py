@@ -12,10 +12,8 @@ as native Prometheus objects for /metrics scraping.
 from __future__ import annotations
 
 import threading
-import time
 
-
-_ALL_METRICS: list["Counter | Summary"] = []
+_ALL_METRICS: list[Counter | Summary] = []
 
 
 class Counter:

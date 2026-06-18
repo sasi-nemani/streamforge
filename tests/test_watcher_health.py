@@ -1,12 +1,8 @@
 """Tests for watcher self-monitoring: health.json, lag detection, systemd watchdog."""
 import json
-import logging
-import time
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 
 class TestWriteHealth:
@@ -83,7 +79,6 @@ class TestSdNotify:
         _sd_notify("READY=1")
 
     def test_sd_notify_calls_notifier_when_available(self):
-        from streamforge.detector.watch import _sd_notify
         with patch("streamforge.detector.watch._sd_notify") as mock_notify:
             mock_notify("READY=1")
             mock_notify.assert_called_once_with("READY=1")

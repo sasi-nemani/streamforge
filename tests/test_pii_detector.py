@@ -1,7 +1,6 @@
-import pytest
 
 from streamforge.models import PIICategory
-from streamforge.pii_detector import PIIDetection, detect_pii, detect_pii_scored
+from streamforge.pii_detector import detect_pii, detect_pii_scored
 
 
 def test_detects_email_by_value():

@@ -9,8 +9,6 @@ not clearly communicate on its own.
 
 from __future__ import annotations
 
-import pytest
-
 from streamforge.exporters.flink_ddl import schema_to_flink_ddl
 from streamforge.models import FieldSchema, FieldType, InferredSchema, PIICategory
 

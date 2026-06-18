@@ -75,6 +75,13 @@ from .history_cmd import history_app
 app.add_typer(history_app, name="history")
 
 # ---------------------------------------------------------------------------
+# Register the eval command (benchmark scorecard)
+# ---------------------------------------------------------------------------
+from .eval_cmd import evaluate
+
+app.command(name="eval")(evaluate)
+
+# ---------------------------------------------------------------------------
 # ui command (kept inline — tiny)
 # ---------------------------------------------------------------------------
 

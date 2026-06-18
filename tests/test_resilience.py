@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -31,7 +30,7 @@ class TestCircuitBreakerBasics:
 
     def test_circuit_opens_after_fail_max(self):
         """Circuit opens after fail_max consecutive failures."""
-        from streamforge.resilience import CircuitBreaker, CircuitBreakerOpen
+        from streamforge.resilience import CircuitBreaker
 
         breaker = CircuitBreaker(name="test", fail_max=3, reset_timeout=10)
 
@@ -64,7 +63,7 @@ class TestCircuitBreakerBasics:
             raise Exception("fail")
 
         # Open the circuit
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="fail"):
             breaker.call(counting_func)
 
         assert breaker.state == "open"
@@ -89,7 +88,7 @@ class TestCircuitBreakerBasics:
         assert breaker.failure_count == 0
 
         for i in range(3):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception, match="fail"):
                 breaker.call(failing_func)
             assert breaker.failure_count == i + 1
 
@@ -111,7 +110,7 @@ class TestCircuitBreakerRecovery:
 
         # Accumulate failures
         for _ in range(3):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception, match="fail"):
                 breaker.call(failing_func)
 
         assert breaker.failure_count == 3
@@ -131,7 +130,7 @@ class TestCircuitBreakerRecovery:
             raise Exception("fail")
 
         # Open the circuit
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="fail"):
             breaker.call(failing_func)
 
         assert breaker.state == "open"
@@ -156,7 +155,7 @@ class TestCircuitBreakerRecovery:
             return "success"
 
         # Open the circuit
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="fail"):
             breaker.call(conditional_func)
 
         assert breaker.state == "open"
@@ -181,7 +180,7 @@ class TestCircuitBreakerRecovery:
             raise Exception("fail")
 
         # Open the circuit
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="fail"):
             breaker.call(failing_func)
 
         # Wait for half-open
@@ -189,7 +188,7 @@ class TestCircuitBreakerRecovery:
         assert breaker.state == "half-open"
 
         # Fail again
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="fail"):
             breaker.call(failing_func)
 
         # Back to open
@@ -259,7 +258,7 @@ class TestCircuitBreakerHealthExport:
         def failing_func():
             raise Exception("fail")
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="fail"):
             breaker.call(failing_func)
 
         health = breaker.to_health_dict()

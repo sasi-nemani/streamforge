@@ -7,9 +7,7 @@ property tests follow to document individual type-mapping and formatting rules.
 
 from __future__ import annotations
 
-import pytest
-
-from streamforge.exporters.protobuf import schema_to_proto, _to_pascal_case
+from streamforge.exporters.protobuf import _to_pascal_case, schema_to_proto
 from streamforge.models import FieldSchema, FieldType, InferredSchema, PIICategory
 
 # ── canonical test schemas ────────────────────────────────────────────────────
@@ -388,19 +386,19 @@ class TestProtobufFieldOrdering:
         """Field numbers are assigned alphabetically by path — not by required status.
         This guarantees wire-format stability when a field's required status changes."""
         out = schema_to_proto(_payments_schema())
-        lines = [l for l in out.splitlines() if "=" in l and ";" in l]
+        lines = [line for line in out.splitlines() if "=" in line and ";" in line]
         # email comes before id alphabetically, so email gets a lower number
-        email_line = next(l for l in lines if "email" in l)
+        email_line = next(line for line in lines if "email" in line)
         email_num = int(email_line.split("=")[1].split(";")[0].strip())
-        id_line = next(l for l in lines if " id " in l)
+        id_line = next(line for line in lines if " id " in line)
         id_num = int(id_line.split("=")[1].split(";")[0].strip())
         assert email_num < id_num  # alphabetical: email before id
 
     def test_required_fields_sorted_alphabetically_by_path(self):
         """Within required: sorted alphabetically by path for stable field numbers."""
         out = schema_to_proto(_minimal_schema())
-        lines = [l.strip() for l in out.splitlines() if l.strip().startswith(("string", "double", "google", "bool", "int64", "repeated", "bytes"))]
-        field_names = [l.split()[-3] for l in lines]  # e.g. "id", "amount", "created_at"
+        lines = [line.strip() for line in out.splitlines() if line.strip().startswith(("string", "double", "google", "bool", "int64", "repeated", "bytes"))]
+        field_names = [line.split()[-3] for line in lines]  # e.g. "id", "amount", "created_at"
         # Alphabetical order: amount(1), created_at(2), id(3)
         assert field_names == ["amount", "created_at", "id"]
 
@@ -496,12 +494,12 @@ class TestProtobufInlineComments:
     def test_required_field_without_notes_has_no_comment(self):
         out = schema_to_proto(_minimal_schema())
         # amount is required, no notes, no PII → no trailing comment
-        amount_line = next(l for l in out.splitlines() if "double amount" in l)
+        amount_line = next(line for line in out.splitlines() if "double amount" in line)
         assert "//" not in amount_line
 
     def test_pii_annotation_in_nested_schema(self):
         out = schema_to_proto(_nested_schema())
-        email_line = next(l for l in out.splitlines() if "user_email" in l)
+        email_line = next(line for line in out.splitlines() if "user_email" in line)
         assert "PII:email" in email_line
 
 

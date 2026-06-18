@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from streamforge.drift_detector import classify_drift_tier, detect_drift
 from streamforge.models import (
     DriftTier,
@@ -9,7 +7,6 @@ from streamforge.models import (
     FieldSchema,
     FieldType,
     InferredSchema,
-    PIICategory,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"

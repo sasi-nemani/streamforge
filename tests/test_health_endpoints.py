@@ -10,6 +10,7 @@ Tests verify:
 
 from __future__ import annotations
 
+import contextlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -139,7 +140,7 @@ class TestSidecarHealthEndpoint:
         # First, create some circuit breakers
         from streamforge.resilience import get_or_create_breaker
 
-        breaker = get_or_create_breaker("test-queue", fail_max=3)
+        get_or_create_breaker("test-queue", fail_max=3)
 
         result = await sidecar_health()
 
@@ -159,10 +160,8 @@ class TestSidecarHealthEndpoint:
         def failing():
             raise Exception("fail")
 
-        try:
+        with contextlib.suppress(Exception):
             breaker.call(failing)
-        except Exception:
-            pass
 
         result = await sidecar_health()
 

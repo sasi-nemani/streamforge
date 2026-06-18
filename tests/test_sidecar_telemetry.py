@@ -11,11 +11,10 @@ Every sidecar operation must be fully auditable with:
 Phase 2: Telemetry Infrastructure
 """
 
-import pytest
 import json
-from datetime import datetime, UTC
-from unittest.mock import patch, MagicMock
 from io import StringIO
+
+import pytest
 
 
 class TestSidecarAudit:
@@ -23,8 +22,8 @@ class TestSidecarAudit:
 
     def test_audit_emits_structured_json(self):
         """Audit events must be structured JSON for machine parsing."""
-        from streamforge.sidecar.telemetry import SidecarAudit
         from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import SidecarAudit
 
         output = StringIO()
         audit = SidecarAudit(output_stream=output)
@@ -51,8 +50,8 @@ class TestSidecarAudit:
 
     def test_audit_captures_failures(self):
         """Audit must capture error details for debugging."""
-        from streamforge.sidecar.telemetry import SidecarAudit
         from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import SidecarAudit
 
         output = StringIO()
         audit = SidecarAudit(output_stream=output)
@@ -77,7 +76,6 @@ class TestSidecarAudit:
     def test_audit_captures_what_when_how(self):
         """Every audit event must answer: what, when, how."""
         from streamforge.sidecar.telemetry import SidecarAudit
-        from streamforge.sidecar.models import TelemetryOperation
 
         output = StringIO()
         audit = SidecarAudit(output_stream=output)
@@ -149,9 +147,10 @@ class TestSidecarAudit:
 
     def test_audit_is_thread_safe(self):
         """Audit must be safe for concurrent writes."""
-        from streamforge.sidecar.telemetry import SidecarAudit
-        from streamforge.sidecar.models import TelemetryOperation
         import threading
+
+        from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import SidecarAudit
 
         output = StringIO()
         audit = SidecarAudit(output_stream=output)
@@ -187,8 +186,8 @@ class TestMetricsCollector:
 
     def test_metrics_tracks_operation_count(self):
         """Metrics must count operations by type."""
-        from streamforge.sidecar.telemetry import MetricsCollector
         from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import MetricsCollector
 
         metrics = MetricsCollector()
 
@@ -205,8 +204,8 @@ class TestMetricsCollector:
 
     def test_metrics_tracks_latency_histogram(self):
         """Metrics must track latency distribution."""
-        from streamforge.sidecar.telemetry import MetricsCollector
         from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import MetricsCollector
 
         metrics = MetricsCollector()
 
@@ -236,8 +235,8 @@ class TestMetricsCollector:
 
     def test_metrics_exports_prometheus_format(self):
         """Metrics must export in Prometheus format."""
-        from streamforge.sidecar.telemetry import MetricsCollector
         from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import MetricsCollector
 
         metrics = MetricsCollector()
         metrics.record_operation(TelemetryOperation.PEEK, success=True)
@@ -256,9 +255,10 @@ class TestTelemetryContext:
 
     def test_context_provides_timing(self):
         """Context manager must provide automatic timing."""
-        from streamforge.sidecar.telemetry import telemetry_context
-        from streamforge.sidecar.models import TelemetryOperation
         import time
+
+        from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import telemetry_context
 
         with telemetry_context(TelemetryOperation.PEEK, "test-queue") as ctx:
             time.sleep(0.01)  # 10ms
@@ -269,21 +269,20 @@ class TestTelemetryContext:
 
     def test_context_captures_exceptions(self):
         """Context must capture exception details."""
-        from streamforge.sidecar.telemetry import telemetry_context
         from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import telemetry_context
 
-        ctx = None
-        with pytest.raises(ValueError):
-            with telemetry_context(TelemetryOperation.PEEK, "test-queue") as ctx:
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), \
+             telemetry_context(TelemetryOperation.PEEK, "test-queue") as ctx:
+            raise ValueError("Test error")
 
         assert ctx.success is False
         assert ctx.error_message == "Test error"
 
     def test_context_marks_success(self):
         """Context must mark success when no exception."""
-        from streamforge.sidecar.telemetry import telemetry_context
         from streamforge.sidecar.models import TelemetryOperation
+        from streamforge.sidecar.telemetry import telemetry_context
 
         with telemetry_context(TelemetryOperation.PEEK, "test-queue") as ctx:
             ctx.messages_observed = 5

@@ -1,8 +1,5 @@
 """Tests for log rotation configuration (production bug fix)."""
 import logging
-import os
-
-import pytest
 
 
 def test_log_file_uses_rotating_handler(tmp_path, monkeypatch):

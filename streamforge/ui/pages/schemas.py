@@ -10,11 +10,10 @@ Shows all auto-inferred schemas in an easy-to-understand format:
 from __future__ import annotations
 
 from datetime import datetime as _dt
-from pathlib import Path
 
 import streamlit as st
 
-from ..components import _type_badge, _pii_badge
+from ..components import _type_badge
 from ..data import load_profile
 from ..styling import (
     _BLUE,
@@ -23,13 +22,10 @@ from ..styling import (
     _GREEN,
     _ORANGE,
     _RED,
-    _SURF,
     _SURF2,
-    _SURF3,
     _TEXT,
     _TEXT2,
     _TEXT3,
-    SCHEMAS_DIR,
 )
 
 
@@ -259,7 +255,6 @@ def render_schemas_overview():
 
                 for sub in sub_schemas[:5]:
                     cluster_id = sub.get("cluster_id", "unknown")
-                    event_count = sub.get("event_count", 0)
                     sample_rate = sub.get("sample_rate", 0)
                     sub_fields = len(sub.get("fields", []))
 

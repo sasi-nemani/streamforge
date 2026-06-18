@@ -3,14 +3,12 @@ Tests for Feature 1 (nested structure tagging) and Feature 2 (example event gene
 All in-memory — no API calls, no filesystem writes.
 """
 import json
-from pathlib import Path
 
 import pytest
 
 from streamforge.generator import _random_value, _set_nested, generate_events
 from streamforge.models import FieldSchema, FieldType, InferredSchema, PIICategory
 from streamforge.schema_writer import _inject_parent_objects
-
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -213,7 +211,6 @@ class TestRandomValue:
         assert 1_000_000_000_000 <= v <= 9_999_999_999_999
 
     def test_timestamp_iso8601_parseable(self):
-        from datetime import datetime
         v = _random_value(FieldType.TIMESTAMP_ISO8601)
         assert isinstance(v, str)
         # Should be parseable — ends with Z
@@ -303,7 +300,7 @@ class TestGenerateEvents:
         a = generate_events(schema, count=5, seed=1)
         b = generate_events(schema, count=5, seed=2)
         # With different seeds, at least some events should differ
-        assert any(json.dumps(ea) != json.dumps(eb) for ea, eb in zip(a, b))
+        assert any(json.dumps(ea) != json.dumps(eb) for ea, eb in zip(a, b, strict=False))
 
     def test_array_fields_reconstructed(self):
         schema = _make_schema([

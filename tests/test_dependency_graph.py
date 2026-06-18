@@ -2,18 +2,13 @@
 
 Covers: build, query, persistence, enrichment, edge cases, thread safety.
 """
-import json
 import os
 import stat
 import threading
 from datetime import UTC, datetime
-from pathlib import Path
-
-import pytest
 
 from streamforge.dependency_graph import SchemaGraph
 from streamforge.models import (
-    CrossTopicImpact,
     DependencyGraphMeta,
     DriftReport,
     DriftTier,

@@ -9,14 +9,13 @@ Core principle: NEVER touch or modify messages. NEVER alter queue state.
 
 from __future__ import annotations
 
-from typing import Any, TextIO, Union
+from typing import Any, TextIO
 
-from .models import IBMMQConfig, SQSConfig
 from .ibmmq import IBMMQSidecar
+from .models import IBMMQConfig, SQSConfig
 from .sqs import SQSSidecar
 
-
-SidecarConfig = Union[SQSConfig, IBMMQConfig]
+SidecarConfig = SQSConfig | IBMMQConfig
 
 
 def create_sidecar(
@@ -44,8 +43,8 @@ def create_sidecar(
 
     if isinstance(config, dict):
         raise ValueError(
-            f"Unsupported config type: dict. "
-            f"Use SQSConfig or IBMMQConfig instead."
+            "Unsupported config type: dict. "
+            "Use SQSConfig or IBMMQConfig instead."
         )
 
     raise ValueError(f"Unsupported config type: {type(config).__name__}")

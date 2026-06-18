@@ -3,16 +3,12 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 from streamforge.field_registry import (
-    DEFAULT_REGISTRY_PATH,
     FieldTypeObservation,
     FieldTypeRegistry,
     RegistryConfig,
 )
 from streamforge.models import FieldSchema, FieldType, PIICategory
-
 
 # ---------------------------------------------------------------------------
 # Observation dataclass

@@ -90,7 +90,7 @@ class SchemaGraph:
                 ))
                 edge_count += 1
 
-            types_seen = set(u.field_type for u in usages)
+            types_seen = {u.field_type for u in usages}
             nodes[field_path] = FieldNode(
                 field_path=field_path, usages=usages,
                 is_inconsistent=len(types_seen) > 1,
@@ -203,7 +203,7 @@ class SchemaGraph:
         }
         lock_path = target.with_suffix(".lock")
         try:
-            lock_fd = open(lock_path, "w")
+            lock_fd = open(lock_path, "w")  # noqa: SIM115 — flock fd held across locked region, closed in finally
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             try:
                 tmp = target.with_suffix(".tmp")
@@ -226,7 +226,7 @@ class SchemaGraph:
             return None
         lock_path = target.with_suffix(".lock")
         try:
-            lock_fd = open(lock_path, "w")
+            lock_fd = open(lock_path, "w")  # noqa: SIM115 — flock fd held across locked region, closed in finally
             fcntl.flock(lock_fd, fcntl.LOCK_SH)
             try:
                 raw = json.loads(target.read_text(encoding="utf-8"))

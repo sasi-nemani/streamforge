@@ -9,12 +9,10 @@ Covers _archive_schema() behaviour:
 """
 from pathlib import Path
 
-import pytest
 import yaml
 
 from streamforge.models import FieldSchema, FieldType, InferredSchema
-from streamforge.schema_writer import _archive_schema, write_schema
-
+from streamforge.schema_writer import _archive_schema
 
 # ---------------------------------------------------------------------------
 # Helpers

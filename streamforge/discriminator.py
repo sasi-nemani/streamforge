@@ -20,8 +20,8 @@ import time
 from collections import Counter
 from typing import Any, TextIO
 
-from .multi_schema_audit import emit_audit
 from .models import DiscriminatorInfo, DiscriminatorMethod
+from .multi_schema_audit import emit_audit
 
 logger = logging.getLogger(__name__)
 

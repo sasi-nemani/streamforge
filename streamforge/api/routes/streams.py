@@ -1,9 +1,9 @@
 """Stream detail endpoints."""
 from __future__ import annotations
 
+import contextlib
 import json
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
 import yaml
@@ -70,10 +70,8 @@ def get_stream_detail(stream_name: str) -> dict:
     samples_path = store._schema_dir / stream_name / ".samples" / "latest.json"
     samples: list[dict] = []
     if samples_path.exists():
-        try:
+        with contextlib.suppress(Exception):
             samples = json.loads(samples_path.read_text())
-        except Exception:
-            pass
 
     # Enrich fields with stats
     fields = []

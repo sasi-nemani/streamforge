@@ -27,8 +27,8 @@ All tests in this file must FAIL before the fix and PASS after it.
 from __future__ import annotations
 
 import pytest
-from streamforge.topic_config import StabilityConfig
 
+from streamforge.topic_config import StabilityConfig
 
 # ---------------------------------------------------------------------------
 # Helpers

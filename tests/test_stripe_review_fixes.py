@@ -5,16 +5,8 @@ These tests cover: security, correctness, performance, and resilience.
 """
 
 import hashlib
-import json
-import logging
-import os
 import re
 import time
-from pathlib import Path
-from unittest.mock import patch
-
-import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BUG 1: Regex recompilation in classify.py
@@ -42,6 +34,7 @@ class TestRegexModuleLevel:
     def test_no_regex_import_inside_function(self):
         """_infer_field_type_from_values must NOT import re inside the function."""
         import inspect
+
         from streamforge.detector.classify import _infer_field_type_from_values
         source = inspect.getsource(_infer_field_type_from_values)
         assert "import re" not in source, "re must not be imported inside the function"
@@ -179,6 +172,7 @@ class TestRoutingHashStrength:
     def test_routing_uses_sha256_not_md5(self):
         """_route_event_to_cluster must use sha256, not md5 for hashing."""
         import inspect
+
         from streamforge.detector.routing import _route_event_to_cluster
         source = inspect.getsource(_route_event_to_cluster)
         # Must not call hashlib.md5() — comments mentioning MD5 are OK
@@ -250,8 +244,8 @@ class TestIPDetection:
 
     def test_pii_detector_finds_private_ip_in_values(self):
         """End-to-end: detect_pii must flag 10.x private IPs."""
-        from streamforge.pii_detector import detect_pii
         from streamforge.models import PIICategory
+        from streamforge.pii_detector import detect_pii
         result = detect_pii("client_ip", ["10.0.0.50", "10.1.2.3"])
         assert PIICategory.IP_ADDRESS in result
 
@@ -417,7 +411,7 @@ class TestRegressionAfterFixes:
 
     def test_tier_classification_still_works(self):
         from streamforge.detector.classify import classify_drift_tier
-        from streamforge.models import DriftTier, FieldDrift, FieldType
+        from streamforge.models import DriftTier, FieldDrift
         drift = FieldDrift(
             field_path="amount", drift_type="field_removed",
             affected_event_rate=1.0, previous_presence_rate=1.0,

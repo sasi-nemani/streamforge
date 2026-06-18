@@ -2,9 +2,11 @@
 
 import logging
 import os
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from .. import audit
+from ..fdr import FDRCorrectionReport, benjamini_hochberg
 from ..models import (
     DriftClass,
     DriftReport,
@@ -39,6 +41,75 @@ _STAT_ALPHA = float(os.environ.get("STREAMFORGE_STAT_ALPHA", "0.01"))
 # Minimum sample size to trust the binomial normal approximation
 _MIN_SAMPLE_FOR_STAT = 30
 
+# FDR (False Discovery Rate) correction — CRITICAL for scale
+# At 100 fields × 3 tests, expected false positives = 3 per cycle without FDR.
+# BH correction controls FDR, reducing alert fatigue at enterprise scale.
+_FDR_ENABLED = os.environ.get("STREAMFORGE_FDR_ENABLED", "true").lower() in ("true", "1", "yes")
+_FDR_THRESHOLD = float(os.environ.get("STREAMFORGE_FDR_THRESHOLD", str(_STAT_ALPHA)))
+
+
+@dataclass
+class _PendingDrift:
+    """Internal: drift candidate awaiting FDR filtering."""
+    drift: FieldDrift
+    p_value: float | None  # None = threshold-based (no p-value), always kept
+    test_type: str  # "presence", "type", "enum", "pii", "field_added", "field_removed"
+
+
+def _apply_fdr_filtering(
+    pending: list[_PendingDrift],
+    stream_name: str,
+) -> tuple[list[FieldDrift], FDRCorrectionReport | None]:
+    """
+    Apply FDR correction to pending drifts and filter.
+
+    Returns:
+        Tuple of (filtered_drifts, fdr_report).
+        fdr_report is None if FDR is disabled or no p-values available.
+    """
+    if not _FDR_ENABLED:
+        return [p.drift for p in pending], None
+
+    # Separate: drifts with p-values (statistical) vs without (threshold/heuristic)
+    with_pvalue = [(p.drift.field_path, p.test_type, p.p_value) for p in pending if p.p_value is not None]
+
+    if not with_pvalue:
+        # All drifts are threshold-based (small samples), no FDR to apply
+        return [p.drift for p in pending], None
+
+    # Apply Benjamini-Hochberg FDR correction
+    fdr_report = benjamini_hochberg(with_pvalue, alpha=_FDR_THRESHOLD)
+
+    # Build set of (field_path, test_type) that survive FDR
+    significant_keys = {(r.field_path, r.test_type) for r in fdr_report.results if r.is_significant}
+
+    # Filter drifts
+    filtered = []
+    suppressed_count = 0
+
+    for p in pending:
+        if p.p_value is None:
+            # No p-value: keep (threshold-based, can't apply FDR)
+            filtered.append(p.drift)
+        elif (p.drift.field_path, p.test_type) in significant_keys:
+            # Survives FDR: keep
+            filtered.append(p.drift)
+        else:
+            # Suppressed by FDR
+            suppressed_count += 1
+            logger.debug(
+                "FDR suppressed: %s %s (stream=%s)",
+                p.drift.field_path, p.test_type, stream_name
+            )
+
+    if suppressed_count > 0:
+        logger.info(
+            "FDR correction suppressed %d/%d drift alerts for stream %s",
+            suppressed_count, len(pending), stream_name
+        )
+
+    return filtered, fdr_report
+
 
 def detect_drift(
     baseline_schema: InferredSchema,
@@ -59,7 +130,8 @@ def detect_drift(
     new_field_values, new_presence_rates = get_all_field_paths(clean_sample)
     baseline_by_path = {f.path: f for f in baseline_schema.fields}
 
-    drifts: list[FieldDrift] = []
+    # Collect pending drifts with p-values for FDR correction
+    pending_drifts: list[_PendingDrift] = []
 
     # 1. Check each baseline field
     for path, baseline_field in baseline_by_path.items():
@@ -130,7 +202,11 @@ def detect_drift(
                     correction_confidence=0.9,
                 )
                 drift.tier = classify_drift_tier(drift)
-                drifts.append(drift)
+                pending_drifts.append(_PendingDrift(
+                    drift=drift,
+                    p_value=presence_test.p_value if presence_test else None,
+                    test_type="field_removed",
+                ))
                 if presence_test:
                     logger.debug(
                         "field_removed %s: z=%.2f p=%.4f effect=%.3f",
@@ -150,7 +226,11 @@ def detect_drift(
                     auto_correctable=False,
                 )
                 drift.tier = classify_drift_tier(drift)
-                drifts.append(drift)
+                pending_drifts.append(_PendingDrift(
+                    drift=drift,
+                    p_value=presence_test.p_value if presence_test else None,
+                    test_type="presence",
+                ))
             else:
                 drift = FieldDrift(
                     field_path=path,
@@ -161,7 +241,11 @@ def detect_drift(
                     tier=DriftTier.TIER_1,
                     auto_correctable=True,
                 )
-                drifts.append(drift)
+                pending_drifts.append(_PendingDrift(
+                    drift=drift,
+                    p_value=presence_test.p_value if presence_test else None,
+                    test_type="presence",
+                ))
 
             if presence_test:
                 logger.debug(
@@ -253,7 +337,11 @@ def detect_drift(
                         correction_confidence=0.85 if auto else 0.7,
                     )
                     drift.tier = classify_drift_tier(drift)
-                    drifts.append(drift)
+                    pending_drifts.append(_PendingDrift(
+                        drift=drift,
+                        p_value=type_test.p_value if type_test else None,
+                        test_type="type",
+                    ))
 
                     if type_test:
                         logger.debug(
@@ -283,7 +371,11 @@ def detect_drift(
                         proposed_correction=f"Add new enum values: {', '.join(sorted(novel_values)[:5])}",
                         correction_confidence=0.9,
                     )
-                    drifts.append(drift)
+                    pending_drifts.append(_PendingDrift(
+                        drift=drift,
+                        p_value=None,  # Enum test uses threshold, no p-value
+                        test_type="enum",
+                    ))
 
         # New PII on existing field
         if new_values:
@@ -299,7 +391,11 @@ def detect_drift(
                     auto_correctable=False,
                     proposed_correction=f"Review PII handling for {path}: {', '.join(p.value for p in novel_pii)}",
                 )
-                drifts.append(drift)
+                pending_drifts.append(_PendingDrift(
+                    drift=drift,
+                    p_value=None,  # PII detection is deterministic, no p-value
+                    test_type="pii",
+                ))
 
     # 2. Check for new fields
     baseline_paths = set(baseline_by_path.keys())
@@ -323,7 +419,11 @@ def detect_drift(
                 auto_correctable=False,
                 proposed_correction=f"New PII field detected: {', '.join(p.value for p in new_pii)}. Ensure GDPR/compliance review.",
             )
-            drifts.append(drift)
+            pending_drifts.append(_PendingDrift(
+                drift=drift,
+                p_value=None,  # New field detection has no p-value
+                test_type="new_pii",
+            ))
         else:
             drift = FieldDrift(
                 field_path=path,
@@ -336,7 +436,16 @@ def detect_drift(
                 correction_confidence=0.9,
             )
             drift.tier = classify_drift_tier(drift)
-            drifts.append(drift)
+            pending_drifts.append(_PendingDrift(
+                drift=drift,
+                p_value=None,  # New field detection has no p-value
+                test_type="field_added",
+            ))
+
+    # ---------------------------------------------------------------
+    # Apply FDR correction to filter false positives at scale
+    # ---------------------------------------------------------------
+    drifts, fdr_report = _apply_fdr_filtering(pending_drifts, stream_name)
 
     # Stream-level heartbeat — fires on every poll cycle, even when clean.
     # Suppressed when called from detect_drift_multi_schema (routing.py

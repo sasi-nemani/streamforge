@@ -1,16 +1,12 @@
 """Tests for self-healing features: stale eviction, remediation hints, pre-drift trending."""
-import json
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
-
-import pytest
 
 
 class TestRegistryStaleEviction:
     """Registry must self-clean stale entries."""
 
     def test_evict_stale_removes_old_entries(self):
-        from streamforge.field_registry import FieldTypeRegistry, FieldTypeObservation
+        from streamforge.field_registry import FieldTypeObservation, FieldTypeRegistry
         reg = FieldTypeRegistry()
         old_date = (datetime.now(UTC) - timedelta(days=100)).isoformat()
         fresh_date = datetime.now(UTC).isoformat()
@@ -30,7 +26,7 @@ class TestRegistryStaleEviction:
         assert "fresh_field" in reg._observations
 
     def test_evict_stale_returns_zero_when_nothing_stale(self):
-        from streamforge.field_registry import FieldTypeRegistry, FieldTypeObservation
+        from streamforge.field_registry import FieldTypeObservation, FieldTypeRegistry
         reg = FieldTypeRegistry()
         reg._observations["recent"] = FieldTypeObservation(
             field_path="recent", field_type="string", confidence=0.9,
@@ -121,7 +117,7 @@ class TestPreDriftTrending:
         # Simulate declining presence: 0.95, 0.90, 0.85, 0.80, 0.75
         for rate in [0.95, 0.90, 0.85, 0.80, 0.75]:
             tracker.record("amount", rate)
-        warnings = tracker.check_trends(
+        tracker.check_trends(
             baseline_rates={"amount": 0.95},
             threshold=0.15,  # drift at 0.95 - 0.15 = 0.80
         )

@@ -7,8 +7,6 @@ audit verbosity is configurable.
 import os
 from unittest.mock import patch
 
-import pytest
-
 
 class TestMultiSchemaAuditCoverage:
     """Multi-schema drift detection must emit audit events."""
@@ -104,7 +102,7 @@ class TestMultiSchemaAuditCoverage:
                 "routing_field": "event_type",
             }
             events = [{"event_type": "booking.created", "id": str(i)} for i in range(50)]
-            reports = detect_drift_multi_schema(profile, events, "events.bookings")
+            detect_drift_multi_schema(profile, events, "events.bookings")
 
         routing_audits = [c for c in calls if c.get("check_type") == "cluster_routing_regression"]
         assert len(routing_audits) > 0, f"Routing regression should emit audit event, got: {calls}"
@@ -138,8 +136,9 @@ class TestAuditVerbosity:
 
     def test_clean_field_checks_use_debug_level(self):
         """Clean drift checks should log at DEBUG, not INFO."""
-        from streamforge import audit
         import logging
+
+        from streamforge import audit
 
         # Capture log records
         records = []
@@ -169,6 +168,7 @@ class TestLlmCallAudit:
     def test_log_llm_request_captures_essentials(self):
         """Must log provider, model, stream, field count, response, latency."""
         import logging
+
         from streamforge import audit
 
         records = []
@@ -210,6 +210,7 @@ class TestLlmCallAudit:
     def test_log_llm_request_captures_failure(self):
         """Failed LLM calls must also be logged."""
         import logging
+
         from streamforge import audit
 
         records = []
@@ -243,6 +244,7 @@ class TestLlmCallAudit:
     def test_log_llm_request_includes_prompt_preview(self):
         """Audit must capture the actual scrubbed prompt sent to the LLM."""
         import logging
+
         from streamforge import audit
 
         records = []
@@ -282,6 +284,7 @@ class TestLlmCallAudit:
     def test_prompt_preview_is_truncated(self):
         """Prompt preview must be capped to prevent log bloat."""
         import logging
+
         from streamforge import audit
 
         records = []

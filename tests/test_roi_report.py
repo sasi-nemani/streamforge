@@ -4,12 +4,8 @@ tests/test_roi_report.py — Phase 3: Tests for ROI report calculations and CLI 
 TDD cycle: tests written FIRST and must FAIL before implementation.
 """
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
-
-import pytest
 
 from streamforge.models import DriftIncident, DriftIncidentStatus, DriftState
-
 
 # ── We import the roi calculation helpers once they exist ─────────────────────
 

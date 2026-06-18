@@ -17,9 +17,6 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from streamforge.models import FieldSchema, FieldType, InferredSchema
-
-
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 
@@ -35,7 +32,7 @@ def _mock_response(status: int, body=None) -> MagicMock:
 
 
 class TestConfluentPing:
-    def _make(self) -> "ConfluentRegistryBackend":  # noqa: F821
+    def _make(self) -> ConfluentRegistryBackend:  # noqa: F821
         from streamforge.registries.confluent import ConfluentRegistryBackend
         b = ConfluentRegistryBackend(url="http://localhost:8081")
         b._client = MagicMock()
@@ -110,7 +107,7 @@ class TestConfluentPing:
 
 
 class TestApicurioPing:
-    def _make(self) -> "ApicurioRegistryBackend":  # noqa: F821
+    def _make(self) -> ApicurioRegistryBackend:  # noqa: F821
         from streamforge.registries.apicurio import ApicurioRegistryBackend
         b = ApicurioRegistryBackend(url="http://localhost:8080")
         b._client = MagicMock()

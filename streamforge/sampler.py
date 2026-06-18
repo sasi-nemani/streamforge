@@ -391,7 +391,7 @@ def compute_value_stats(values: list, field_type: str = "") -> dict:
         return {"cardinality": 0}
 
     non_null = [v for v in values if v is not None]
-    distinct = len(set(str(v) for v in non_null))
+    distinct = len({str(v) for v in non_null})
     stats: dict = {"cardinality": distinct}
 
     # Numeric min/max

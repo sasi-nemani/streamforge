@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ..metrics import DRIFT_DETECTED, EVENTS_SAMPLED, POLL_CYCLES, POLL_DURATION
 from ..models import (
     DriftClass,
     DriftReport,
@@ -29,8 +30,6 @@ from .window import (
     _save_checkpoint,
     _write_poll_state,
 )
-
-from ..metrics import DRIFT_DETECTED, EVENTS_SAMPLED, POLL_CYCLES, POLL_DURATION
 
 logger = logging.getLogger(__name__)
 
@@ -924,15 +923,15 @@ def watch_stream_kafka(
         webhook_url:           Optional webhook for drift notifications.
     """
     import asyncio
+    import contextlib
     import sys
 
     # Ensure logger output appears immediately even when stdout is redirected
     # to a file (e.g. in demo.sh). Python uses block buffering for non-ttys;
     # reconfigure() switches to line-buffered mode for the duration of watch.
-    try:
+    # reconfigure() not available in all environments
+    with contextlib.suppress(AttributeError):
         sys.stdout.reconfigure(line_buffering=True)
-    except AttributeError:
-        pass  # not available in all environments
 
     asyncio.run(_watch_kafka_async(
         topic, kafka_cfg, schema_path,
