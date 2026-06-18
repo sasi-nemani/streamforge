@@ -3,379 +3,186 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StreamForge — Preview</title>
-  <!--
-    LOCAL PREVIEW WRAPPER
-    ─────────────────────
-    This <head> block is only for local preview.
-    When integrating into loonlabs.io, drop everything inside
-    <div id="sf-page"> directly into your page template.
-    Link assets/css/streamforge.css in your site's <head>.
-  -->
+  <title>StreamForge — Data Discovery, Mapping & Drift Detection for Event Streams</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/streamforge.css" />
   <style>
-    /* Preview-only body reset — remove when integrating */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #ffffff; font-family: 'Inter', sans-serif; }
+
+    /* ── Screenshot figures + proof strip (scoped, no external CSS dep) ── */
+    .sf-shot { margin: 40px auto 8px; max-width: 1040px; border-radius: 14px;
+      overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 24px 60px -28px rgba(15,23,42,.35); }
+    .sf-shot img { display: block; width: 100%; height: auto; }
+    .sf-shot__cap { max-width: 1040px; margin: 0 auto 8px; font-size: 13px; color: #6b7280;
+      font-family: 'JetBrains Mono', monospace; text-align: center; }
+
+    .sf-proof { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 36px; }
+    .sf-proof__stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 20px 26px; min-width: 150px; text-align: center; }
+    .sf-proof__num { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 700;
+      color: #0f766e; line-height: 1; }
+    .sf-proof__lbl { font-size: 12px; color: #6b7280; margin-top: 8px; text-transform: uppercase; letter-spacing: .04em; }
+
+    .sf-find { display: inline-flex; align-items: center; gap: 8px; background: #fef2f2;
+      border: 1px solid #fecaca; color: #b91c1c; border-radius: 8px; padding: 6px 12px;
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; margin: 4px; }
   </style>
 </head>
 <body>
 
-<!--
-  ╔══════════════════════════════════════════════════════════════════════╗
-  ║  INTEGRATION POINT                                                   ║
-  ║  Drop everything below (div#sf-page) into your loonlabs.io template ║
-  ║  and link assets/css/streamforge.css in your site <head>.           ║
-  ║  All classes are namespaced with "sf-" — zero global bleed.         ║
-  ╚══════════════════════════════════════════════════════════════════════╝
--->
 <div id="sf-page">
 
   <!-- ── HERO ─────────────────────────────────────────────────────────── -->
   <section class="sf-hero">
     <canvas class="sf-hero__canvas" id="sfCanvas"></canvas>
     <div class="sf-container sf-hero__inner">
-      <div class="sf-badge">
-        <span class="sf-badge__dot"></span>
-        Schema discovery for legacy Kafka clusters &mdash; demo ready
-      </div>
       <h1 class="sf-hero__headline">
-        Discover, document, and protect<br />
-        <span class="sf-gradient-text">your event streams.</span>
+        Automatic schema discovery<br />
+        <span class="sf-gradient-text">for Kafka, SQS, RabbitMQ, IBM MQ.</span>
       </h1>
       <p class="sf-hero__sub">
-        Legacy Kafka clusters with hundreds of undocumented topics? StreamForge discovers what's flowing,
-        infers schemas automatically using statistical analysis, and catches breaking changes before they hit production.
-        Finally bring governance to the streams nobody owns.
-      </p>
-      <p class="sf-hero__sub sf-hero__sub--strategic">
-        <strong>Data is at the heart of every transformation.</strong> Whether you're consolidating systems after an acquisition,
-        planning an integration strategy, or modernizing legacy infrastructure — you need to understand what data you actually have.
-        StreamForge gives you a lens into your enterprise data landscape in hours, not months. Accelerate M&A due diligence,
-        de-risk migration projects, and make informed architectural decisions with complete visibility into your event streams.
+        StreamForge reads your messages, infers the schema, and maps every field across the business —
+        where the same field is modelled inconsistently between teams, and exactly which consumers break
+        when it changes. No producer changes. No schema registry. Works with undocumented legacy systems.
       </p>
       <div class="sf-hero__actions">
-        <a href="#sf-how-it-works" class="sf-btn sf-btn--primary">See how it works</a>
-        <a href="#sf-contact" class="sf-btn sf-btn--ghost">Request early access &rarr;</a>
-      </div>
-      <div class="sf-hero__stats">
-        <div class="sf-stat">
-          <span class="sf-stat__num">&lt;100ms</span>
-          <span class="sf-stat__label">drift detection per cycle</span>
-        </div>
-        <div class="sf-stat__divider"></div>
-        <div class="sf-stat">
-          <span class="sf-stat__num">14</span>
-          <span class="sf-stat__label">field types detected</span>
-        </div>
-        <div class="sf-stat__divider"></div>
-        <div class="sf-stat">
-          <span class="sf-stat__num">5</span>
-          <span class="sf-stat__label">statistical tests</span>
-        </div>
-        <div class="sf-stat__divider"></div>
-        <div class="sf-stat">
-          <span class="sf-stat__num">1000+</span>
-          <span class="sf-stat__label">passing tests</span>
-        </div>
+        <a href="#sf-blast-radius" class="sf-btn sf-btn--primary">See the data map</a>
+        <a href="#sf-contact" class="sf-btn sf-btn--ghost">Book a demo</a>
       </div>
     </div>
     <div class="sf-hero__scroll-hint"></div>
   </section>
 
-  <!-- ── ENTERPRISE STRATEGY ────────────────────────────────────────────── -->
-  <section class="sf-strategy" id="sf-strategy">
+  <!-- ── ENTERPRISE PROBLEM ─────────────────────────────────────────────── -->
+  <section class="sf-strategy" id="sf-problem">
     <div class="sf-container">
-      <div class="sf-section-label">For Engineering Leadership & Architects</div>
+      <div class="sf-section-label">The Problem</div>
       <h2 class="sf-section-title">
-        You can't integrate what<br />
-        <span class="sf-gradient-text">you don't understand.</span>
+        Undocumented event streams.
       </h2>
       <p class="sf-strategy__intro">
-        Every enterprise integration project starts the same way: weeks of discovery meetings,
-        tribal knowledge interviews, and spreadsheet archaeology. StreamForge automates that first phase
-        and gives your architects the complete picture in hours.
+        Most organizations have message queues and event streams that are undocumented.
+        Teams that built them have moved on. Wikis are outdated. Schemas exist only in code.
+        When something breaks, nobody knows what depends on what.
       </p>
 
       <div class="sf-strategy__grid">
         <div class="sf-strategy__card">
-          <div class="sf-strategy__icon">🔍</div>
-          <h3>Discovery & Current State</h3>
-          <p>Point StreamForge at your clusters. Within hours, you'll have a complete inventory: every topic,
-             every field, every type, every PII risk. No more "ask Dave, he built that system in 2019."</p>
-          <div class="sf-strategy__outcome">
-            <strong>Outcome:</strong> Authoritative data catalog generated automatically
-          </div>
+          <h3>No one knows what data exists</h3>
+          <p>Hundreds of queues. Different field names for the same thing. Duplicate sources.
+             Every project starts with weeks of asking around to understand what's there.</p>
         </div>
 
         <div class="sf-strategy__card">
-          <div class="sf-strategy__icon">🏗️</div>
-          <h3>Integration Planning</h3>
-          <p>Before writing a single line of integration code, understand what you're connecting.
-             Identify field overlaps, type mismatches, semantic conflicts. Know exactly what transformations
-             you'll need between System A and System B.</p>
-          <div class="sf-strategy__outcome">
-            <strong>Outcome:</strong> Integration specs based on reality, not assumptions
-          </div>
+          <h3>Changes break things silently</h3>
+          <p>Someone renames a field. No one is notified. Downstream systems fail hours later.
+             Debugging takes forever because no one documented the dependency.</p>
         </div>
 
         <div class="sf-strategy__card">
-          <div class="sf-strategy__icon">🤝</div>
-          <h3>M&A Due Diligence</h3>
-          <p>Acquiring a company? Merging platforms? You need to understand their data landscape fast.
-             StreamForge maps their event streams in days, not quarters. Surface incompatibilities
-             before they become integration nightmares.</p>
-          <div class="sf-strategy__outcome">
-            <strong>Outcome:</strong> Data integration risk assessment in days
-          </div>
+          <h3>PII is everywhere (untracked)</h3>
+          <p>Email addresses, phone numbers, customer IDs flowing through queues nobody monitors.
+             Audit asks "where does PII flow?" — no one can answer.</p>
         </div>
 
         <div class="sf-strategy__card">
-          <div class="sf-strategy__icon">🎯</div>
-          <h3>Migration & Modernization</h3>
-          <p>Moving to a new platform? Retiring legacy systems? You can't migrate what you don't understand.
-             StreamForge documents the current state so you can design the future state with confidence.
-             No hidden dependencies. No surprise breakages.</p>
-          <div class="sf-strategy__outcome">
-            <strong>Outcome:</strong> Migration plans grounded in actual data contracts
-          </div>
-        </div>
-
-        <div class="sf-strategy__card">
-          <div class="sf-strategy__icon">📋</div>
-          <h3>Governance & Ownership</h3>
-          <p>Establish data contracts where none existed. Assign ownership to orphaned streams.
-             Create accountability for schema changes. Turn "nobody knows who owns this" into
-             clear, documented, enforceable contracts.</p>
-          <div class="sf-strategy__outcome">
-            <strong>Outcome:</strong> Data ownership model with automated enforcement
-          </div>
-        </div>
-
-        <div class="sf-strategy__card">
-          <div class="sf-strategy__icon">🛡️</div>
-          <h3>Change Impact Analysis</h3>
-          <p>Before any schema change reaches production, know exactly what will break.
-             StreamForge tracks consumer dependencies and calculates blast radius.
-             "If we change this field, these 7 downstream systems will be affected."</p>
-          <div class="sf-strategy__outcome">
-            <strong>Outcome:</strong> Zero-surprise deployments across the enterprise
-          </div>
-        </div>
-      </div>
-
-      <div class="sf-strategy__quote">
-        <blockquote>
-          "Data strategy without data visibility is just guessing. You can't govern what you can't see,
-          you can't integrate what you don't understand, and you can't migrate what you haven't mapped."
-        </blockquote>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── LEGACY DISCOVERY ───────────────────────────────────────────────── -->
-  <section class="sf-legacy">
-    <div class="sf-container">
-      <div class="sf-legacy__grid">
-        <div class="sf-legacy__content">
-          <div class="sf-section-label">The Legacy Problem</div>
-          <h2 class="sf-section-title">
-            Hundreds of Kafka topics.<br />
-            <span class="sf-gradient-text">Zero documentation.</span>
-          </h2>
-          <p class="sf-legacy__desc">
-            Every enterprise has them: Kafka clusters grown over years, topics created by teams long gone,
-            producers nobody remembers, consumers that silently break. The original engineers left.
-            The docs were never written. The schemas exist only in code scattered across dozens of repos.
-          </p>
-          <p class="sf-legacy__desc">
-            <strong>StreamForge discovers what you have.</strong> Point it at your cluster, and within minutes
-            you'll know every topic, every field, every type — with PII flagged and schemas ready to commit.
-          </p>
-          <div class="sf-legacy__sources">
-            <span class="sf-source">Kafka</span>
-            <span class="sf-source">Amazon SQS</span>
-            <span class="sf-source">IBM MQ</span>
-            <span class="sf-source">NDJSON Files</span>
-            <span class="sf-source">CSV/Parquet</span>
-          </div>
-        </div>
-        <div class="sf-legacy__stats">
-          <div class="sf-legacy__stat">
-            <span class="sf-legacy__stat-num">47</span>
-            <span class="sf-legacy__stat-label">topics discovered</span>
-          </div>
-          <div class="sf-legacy__stat">
-            <span class="sf-legacy__stat-num">3</span>
-            <span class="sf-legacy__stat-label">had schemas</span>
-          </div>
-          <div class="sf-legacy__stat">
-            <span class="sf-legacy__stat-num">44</span>
-            <span class="sf-legacy__stat-label">governance gaps</span>
-          </div>
-          <div class="sf-legacy__stat sf-legacy__stat--highlight">
-            <span class="sf-legacy__stat-num">~2 hrs</span>
-            <span class="sf-legacy__stat-label">to full coverage</span>
-          </div>
+          <h3>Tribal knowledge walks out the door</h3>
+          <p>"Ask Dave, he built that in 2019." Dave left. The docs were never written.
+             Now nobody knows how the system works.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── INCIDENT STORY ────────────────────────────────────────────────── -->
-  <section class="sf-incident">
-    <div class="sf-container">
-      <div class="sf-incident__card">
-        <div class="sf-incident__label">A real story. Every week, at every scale-up.</div>
-        <blockquote class="sf-incident__quote">
-          A fintech team lost <strong>4 hours</strong> to a field rename. A producer
-          changed <code>"amount"</code> to <code>"amount_minor_units"</code> without
-          telling anyone. No schema contract existed. No alert fired. The fraud model
-          silently degraded for <strong>6 hours</strong> before a customer complaint
-          surfaced the issue.
-        </blockquote>
-        <div class="sf-incident__resolution">
-          <span class="sf-incident__badge">StreamForge</span>
-          would have caught it in <strong>30 seconds</strong> and blocked the deployment.
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── PROBLEM ───────────────────────────────────────────────────────── -->
-  <section class="sf-problem" id="sf-problem">
-    <div class="sf-container">
-      <div class="sf-section-label">The Problem</div>
-      <h2 class="sf-section-title">
-        Your data pipelines have no<br />
-        <span class="sf-gradient-text">contract enforcement.</span>
-      </h2>
-
-      <div class="sf-dual">
-        <div class="sf-dual__card">
-          <div class="sf-dual__icon">✈️</div>
-          <div class="sf-dual__tag">For Everyone</div>
-          <h3>An airport without inspectors</h3>
-          <p>Imagine hundreds of flight status updates flowing through your systems every second — powering departure boards, baggage systems, crew scheduling, passenger apps.</p>
-          <p>Now imagine someone quietly changes the format. Instead of <code>245</code> passengers, they start sending <code>245.0</code>. Or they rename <code>passengers</code> to <code>pax_count</code>. Or they stop sending it entirely.</p>
-          <p>Your baggage system breaks. Crew scheduling goes wrong. Hundreds of passengers are affected — before anyone notices. <strong>This happens every week at every company with more than 3 engineering teams.</strong></p>
-        </div>
-
-        <div class="sf-dual__card sf-dual__card--tech">
-          <div class="sf-dual__icon">⚙️</div>
-          <div class="sf-dual__tag">For Engineers</div>
-          <h3>The current "solutions" are broken</h3>
-          <div class="sf-problem-list">
-            <div class="sf-problem-item">
-              <span class="sf-problem-item__x">✗</span>
-              <div>
-                <strong>Confluent Schema Registry + Avro</strong>
-                <p>Brittle, dev-unfriendly. Teams abandon it within a quarter.</p>
-              </div>
-            </div>
-            <div class="sf-problem-item">
-              <span class="sf-problem-item__x">✗</span>
-              <div>
-                <strong>Handwritten consumer validation</strong>
-                <p>Unscalable, inconsistent. Every team does it differently.</p>
-              </div>
-            </div>
-            <div class="sf-problem-item">
-              <span class="sf-problem-item__x">✗</span>
-              <div>
-                <strong>Daily data quality jobs</strong>
-                <p>Fire 6 hours after the damage is done. Not a guardrail.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── HOW IT WORKS ──────────────────────────────────────────────────── -->
+  <!-- ── CAPABILITIES ──────────────────────────────────────────────────── -->
   <section class="sf-steps" id="sf-how-it-works">
     <div class="sf-container">
-      <div class="sf-section-label">How it Works</div>
+      <div class="sf-section-label">What It Does</div>
       <h2 class="sf-section-title">
-        One command to set up.<br />
-        <span class="sf-gradient-text">Continuous protection.</span>
+        Three operations.
       </h2>
 
       <div class="sf-step-list">
 
-        <!-- Step 1 -->
+        <!-- Capability 1 -->
         <div class="sf-step">
           <div class="sf-step__marker"><span>01</span></div>
           <div class="sf-step__body">
-            <div class="sf-step__tag">INFER — one-time setup per stream</div>
-            <h3>Statistical inference learns your schema</h3>
-            <p>One command. StreamForge samples hundreds of events from your Kafka topic, analyzes type distributions, presence rates, and value patterns to infer a fully typed schema — field types, required fields, enum values, confidence scores, PII flags.</p>
-            <p>It writes a human-readable <code>schema.yaml</code> to your repo. Readable, diffable, editable. No proprietary format. No vendor lock-in.</p>
+            <div class="sf-step__tag">DISCOVER</div>
+            <h3>Automated Schema Discovery</h3>
+            <p>StreamForge samples live traffic from your event streams and uses statistical inference to determine
+               field types, presence rates, enum values, and data patterns. No producer instrumentation required.
+               No schema registry adoption needed. Works with brownfield systems today.</p>
+            <p>The result: a complete, accurate schema for every stream — documented in version-controlled YAML,
+               not locked in a proprietary format.</p>
             <div class="sf-code">
               <div class="sf-code__bar">
                 <span class="sf-code__dot"></span><span class="sf-code__dot"></span><span class="sf-code__dot"></span>
-                <span class="sf-code__title">Terminal</span>
+                <span class="sf-code__title">Discovery Output</span>
               </div>
-              <pre><code><span class="sf-c-prompt">$</span> streamforge init kafka://events.payments
+              <pre><code>Discovered 147 streams across 3 clusters
+├── 23 streams: schemas inferred, high confidence
+├── 89 streams: schemas inferred, medium confidence
+├── 35 streams: mixed event types detected (multi-schema)
+└── PII detected in 12 streams (email, phone, card data)
 
-<span class="sf-c-ok">✓</span> Loaded 400 events from Kafka
-<span class="sf-c-ok">✓</span> Sampled 400 events (all)
-<span class="sf-c-info">📊</span> Inferring schema via statistical analysis...
-<span class="sf-c-ok">✓</span> Schema inferred — 12 fields, confidence 0.91
-<span class="sf-c-warn">⚠</span> PII detected: user.email, user.name, card_last_four
-<span class="sf-c-ok">✓</span> Written: schemas/events.payments/schema.yaml
-<span class="sf-c-ok">✓</span> Registered in Confluent Schema Registry</code></pre>
+Written: schemas/ (147 files, ready for version control)</code></pre>
             </div>
           </div>
         </div>
 
-        <!-- Step 2 -->
+        <!-- Capability 2 -->
         <div class="sf-step">
           <div class="sf-step__marker"><span>02</span></div>
           <div class="sf-step__body">
-            <div class="sf-step__tag">WATCH — continuous monitoring</div>
-            <h3>Statistical drift detection, always on</h3>
-            <p>Every 30 seconds, StreamForge samples 200 events and runs a battery of statistical tests — binomial z-test for presence rate changes, chi-squared for type distribution shifts, PSI for numeric drift, enum diff for new categorical values.</p>
-            <p>Pure statistics. <strong>Sub-100ms per cycle. Lightweight and deterministic.</strong></p>
-            <div class="sf-code">
-              <div class="sf-code__bar">
-                <span class="sf-code__dot"></span><span class="sf-code__dot"></span><span class="sf-code__dot"></span>
-                <span class="sf-code__title">Live watch output</span>
+            <div class="sf-step__tag">GOVERN</div>
+            <h3>Data Contract Enforcement</h3>
+            <p>Once schemas are established, StreamForge monitors every stream continuously. Statistical tests
+               run every 30 seconds — detecting type changes, presence rate shifts, new fields, removed fields,
+               and PII exposure. Changes are classified by severity and routed accordingly.</p>
+            <div class="sf-tiers">
+              <div class="sf-tier sf-tier--1">
+                <div class="sf-tier__hd"><span class="sf-tier__badge">EVOLUTION</span></div>
+                <p>Non-breaking changes: new optional fields, presence increases. Auto-documented. No human interrupted.</p>
               </div>
-              <pre><code>[14:23:01] <span class="sf-c-ok">✓</span> events.payments — 200 events — schema clean
-[14:28:01] <span class="sf-c-warn">⚠</span> events.payments — DRIFT DETECTED — Tier 2
-           → created_at: epoch_ms → ISO8601 (34% of events)
-           → Report: drift_reports/events.payments/2026-03-11-1428.md
-[14:28:01] <span class="sf-c-error">🔴</span> events.payments — TIER 3 DRIFT — action required
-           → amount: field removed (was 98% present, now 2%)</code></pre>
+              <div class="sf-tier sf-tier--2">
+                <div class="sf-tier__hd"><span class="sf-tier__badge">BREAKING</span></div>
+                <p>Compatibility risks: type changes, enum expansion, format shifts. Team notified. Review required.</p>
+              </div>
+              <div class="sf-tier sf-tier--3">
+                <div class="sf-tier__hd"><span class="sf-tier__badge">CRITICAL</span></div>
+                <p>High-impact changes: required fields removed, new PII detected. Deployment blocked. Escalation triggered.</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Step 3 -->
+        <!-- Capability 3 -->
         <div class="sf-step sf-step--last">
           <div class="sf-step__marker"><span>03</span></div>
           <div class="sf-step__body">
-            <div class="sf-step__tag">CLASSIFY &amp; ACT — tiered response</div>
-            <h3>Block bad deployments. Open PRs. Kill alert fatigue.</h3>
-            <p>Not all schema changes are equal. StreamForge classifies every detected change and responds accordingly — no manual triage needed.</p>
-            <div class="sf-tiers">
-              <div class="sf-tier sf-tier--1">
-                <div class="sf-tier__hd"><span class="sf-tier__badge">TIER 1</span> Evolution</div>
-                <p>New optional field, presence rate up. Auto-PR opened. No human interrupted.</p>
+            <div class="sf-step__tag">PROTECT</div>
+            <h3>CI/CD Integration & Blast Radius Analysis</h3>
+            <p>StreamForge integrates into your deployment pipeline. Before any change reaches production,
+               you know exactly what it affects. Breaking schema changes block deployment automatically.
+               Impact analysis shows downstream dependencies. No more surprise production incidents.</p>
+            <div class="sf-code">
+              <div class="sf-code__bar">
+                <span class="sf-code__dot"></span><span class="sf-code__dot"></span><span class="sf-code__dot"></span>
+                <span class="sf-code__title">CI Pipeline Output</span>
               </div>
-              <div class="sf-tier sf-tier--2">
-                <div class="sf-tier__hd"><span class="sf-tier__badge">TIER 2</span> Breaking</div>
-                <p>Type widened, enum expanded, timestamp format changed. Slack alert sent. Auto-correctable.</p>
-              </div>
-              <div class="sf-tier sf-tier--3">
-                <div class="sf-tier__hd"><span class="sf-tier__badge">TIER 3</span> Critical</div>
-                <p>Required field removed, new PII detected, presence drops 50pt+. CI blocked. PagerDuty paged.</p>
-              </div>
+              <pre><code>streamforge validate --strict
+
+Schema validation: payments-events
+├── Field 'amount': type changed (integer → string) — BREAKING
+├── Downstream consumers: billing-service, fraud-detection, analytics
+└── Estimated blast radius: 3 services, 12 dashboards
+
+Result: BLOCKED (exit 1)
+Action: Review required before merge</code></pre>
             </div>
           </div>
         </div>
@@ -384,201 +191,368 @@
     </div>
   </section>
 
-  <!-- ── FEATURES ──────────────────────────────────────────────────────── -->
-  <section class="sf-features" id="sf-features">
+  <!-- ── CROSS-TOPIC DATA MAP / BLAST RADIUS (THE DIFFERENTIATOR) ──────────── -->
+  <section class="sf-strategy" id="sf-blast-radius">
     <div class="sf-container">
-      <div class="sf-section-label">Full Feature Set</div>
+      <div class="sf-section-label">Data mapping &amp; architecture across the line of business</div>
       <h2 class="sf-section-title">
-        Everything you need.<br />
-        <span class="sf-gradient-text">Nothing you don't.</span>
+        One map for every stream —<br />
+        <span class="sf-gradient-text">and what breaks when it changes.</span>
       </h2>
-
-      <div class="sf-feat-grid">
-        <div class="sf-feat sf-feat--wide">
-          <div class="sf-feat__icon">📊</div>
-          <h3>Statistical Schema Inference</h3>
-          <p>Automatic type detection. 14 field types: string, integer, float, boolean, UUID, email, phone, three timestamp variants, date, array, object, mixed. Per-field confidence scores, enum detection, and presence rates — all derived from statistical analysis of your event samples.</p>
-          <div class="sf-feat__sub">Type inference via distribution analysis, pattern matching, and heuristics</div>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🔬</div>
-          <h3>Statistical Drift Detection</h3>
-          <p>Binomial z-test, chi-squared, PSI, and enum diff. Conservative α=0.01 prevents false positives. Deterministic results. Sub-100ms per cycle.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🔒</div>
-          <h3>PII Auto-Detection</h3>
-          <p>10 categories: email, phone, name, passport, card number, IP, DOB, national ID, address, loyalty number. Field-name heuristics + regex patterns. Zero API calls.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🧩</div>
-          <h3>Multi-Schema Clustering</h3>
-          <p>Streams with mixed event types (payment, refund, chargeback) each get their own sub-schema. Drift reported per cluster. Routing regression detection built in.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">📦</div>
-          <h3>5 Export Formats</h3>
-          <p>JSON Schema, Apache Avro, Protocol Buffers, ksqlDB DDL, Apache Flink DDL. Your schema, your format, your stack.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🔗</div>
-          <h3>Registry Integration</h3>
-          <p>Confluent Schema Registry, Apicurio, and AWS Glue. Auto-register on init. Compatibility check on every watch cycle.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🔀</div>
-          <h3>Git-Native Workflow</h3>
-          <p>schema.yaml committed to your repo. Auto-PRs on schema evolution. Drift analysis posted as PR comments. Diffable. Editable. No proprietary format.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🚦</div>
-          <h3>CI/CD Gate</h3>
-          <p><code>streamforge plan</code> — like terraform plan for data. Exit 0 = clean. Exit 1 = breaking drift. Block merges before production.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">📡</div>
-          <h3>Slack &amp; PagerDuty</h3>
-          <p>Rich Slack webhook formatting, PagerDuty routing key integration with severity mapping, and generic HTTP webhooks for any endpoint.</p>
-        </div>
-        <div class="sf-feat sf-feat--wide">
-          <div class="sf-feat__icon">📊</div>
-          <h3>Streamlit Dashboard</h3>
-          <p>Live stream health grid, per-stream schema view, drift timeline, PII heatmap across all streams, schema export UI, consumer health view, drift history search, and configuration editor — all with auto-refresh.</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🔍</div>
-          <h3>Kafka Discovery</h3>
-          <p><code>streamforge discover</code> lists every topic on your cluster and instantly shows governance gaps. "47 topics — 3 monitored, 44 unmonitored."</p>
-        </div>
-        <div class="sf-feat">
-          <div class="sf-feat__icon">🔄</div>
-          <h3>Watch State Machine</h3>
-          <p>Cold-start safety: LEARNING → STABILIZING → STABLE. Survives process restarts. Flap suppression. No false alerts on new streams.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── ARCHITECTURE ──────────────────────────────────────────────────── -->
-  <section class="sf-arch" id="sf-architecture">
-    <div class="sf-container">
-      <div class="sf-section-label">Architecture</div>
-      <h2 class="sf-section-title">
-        Connector-agnostic by design.<br />
-        <span class="sf-gradient-text">Built for the long run.</span>
-      </h2>
-      <p class="sf-section-sub">
-        All event ingestion flows through a pluggable <code>StreamConnector</code> interface.
-        Swapping from NDJSON files to Kafka, GCP Pub/Sub, or AWS Kinesis is one new class —
-        zero changes to inference or drift logic.
+      <p class="sf-strategy__intro">
+        StreamForge builds a live, cross-topic dependency map of your event estate: every field, every
+        topic it appears in, and — uniquely — where the <strong>same field is modelled inconsistently
+        across business units</strong>. Then it traces the blast radius of any change to the exact
+        consumers and teams that break. This is the data map a Schema Registry can't give you, because
+        it works on raw streams with no registration, across every line of business.
       </p>
 
-      <div class="sf-arch-diagram">
-        <div class="sf-arch-row sf-arch-row--sources">
-          <div class="sf-arch-label">Event Sources</div>
-          <div class="sf-arch-nodes">
-            <div class="sf-arch-node">Kafka / Redpanda</div>
-            <div class="sf-arch-node">Amazon SQS</div>
-            <div class="sf-arch-node">IBM MQ</div>
-            <div class="sf-arch-node">NDJSON / CSV / Parquet</div>
-          </div>
+      <figure class="sf-shot">
+        <img src="assets/img/blast-radius-map.png"
+             alt="StreamForge cockpit — cross-topic dependency map showing 7 inconsistent fields across 11 streams" />
+      </figure>
+      <p class="sf-shot__cap">The homepage: every shared field, and the cross-topic conflicts that are latent integration bugs.</p>
+
+      <div style="text-align:center; margin: 22px 0 8px;">
+        <span class="sf-find">timestamp · 4 conflicting types across 7 topics</span>
+        <span class="sf-find">id · string vs integer</span>
+        <span class="sf-find">user · string vs object</span>
+        <span class="sf-find">currency · breaks 3 consumers, 2 teams</span>
+      </div>
+
+      <div class="sf-strategy__grid">
+        <div class="sf-strategy__card">
+          <h3>Inconsistent across the business</h3>
+          <p>The same concept, modelled differently between teams. On a sample estate, <code>timestamp</code>
+             appears four ways (ISO-8601, epoch-ms, integer, mixed) across seven topics. These are the
+             integration bugs no schema registry or data catalog surfaces.</p>
         </div>
-        <div class="sf-arch-arrow">↓ StreamConnector (pluggable interface)</div>
-        <div class="sf-arch-row sf-arch-row--ingestion">
-          <div class="sf-arch-label">Ingestion Layer</div>
-          <div class="sf-arch-nodes">
-            <div class="sf-arch-node">Resilient Parser</div>
-            <div class="sf-arch-node">Reservoir Sampler</div>
-            <div class="sf-arch-node">Field Flattener</div>
-          </div>
+        <div class="sf-strategy__card">
+          <h3>Field-level blast radius</h3>
+          <p>Click any field and StreamForge shows who breaks. Change <code>currency</code> and it
+             hard-breaks three consumers across two teams (Finance, Risk) in two different topics —
+             <strong>before</strong> you ship, not after.</p>
         </div>
-        <div class="sf-arch-split">
-          <div class="sf-arch-branch">
-            <div class="sf-arch-arrow">↓ once on init</div>
-            <div class="sf-arch-box sf-arch-box--inference">
-              <div class="sf-arch-box__title">Inference Engine</div>
-              <span>Type Distribution Analysis</span>
-              <span>PII Detector</span>
-              <span>Pattern Matching</span>
-            </div>
-          </div>
-          <div class="sf-arch-branch">
-            <div class="sf-arch-arrow">↓ every 30s poll</div>
-            <div class="sf-arch-box sf-arch-box--drift">
-              <div class="sf-arch-box__title">Drift Engine</div>
-              <span>Binomial z-test</span>
-              <span>Chi-squared</span>
-              <span>PSI</span>
-              <span>Cluster Routing</span>
-            </div>
-          </div>
+        <div class="sf-strategy__card">
+          <h3>Consumer data discovery</h3>
+          <p>Auto-discovers which services consume each topic from Kafka consumer-group metadata.
+             Field-level dependencies are declared once in a contract file and enforced forever —
+             so the map stays true as teams change.</p>
         </div>
-        <div class="sf-arch-arrow">↓ classify: DRIFT / EVOLUTION / NOISE</div>
-        <div class="sf-arch-row sf-arch-row--output">
-          <div class="sf-arch-label">Output Layer</div>
-          <div class="sf-arch-nodes">
-            <div class="sf-arch-node sf-arch-node--out">Schema Registry</div>
-            <div class="sf-arch-node sf-arch-node--out">Git / GitHub PR</div>
-            <div class="sf-arch-node sf-arch-node--out">Slack / PagerDuty</div>
-            <div class="sf-arch-node sf-arch-node--out">CI Gate (exit 1)</div>
-          </div>
+        <div class="sf-strategy__card">
+          <h3>Data architecture, mapped</h3>
+          <p>The cross-topic graph is the contract map for your streaming estate: where data lives,
+             where it disagrees, and who depends on it. Version-controlled and exportable — it
+             complements your data catalog, it doesn't replace it.</p>
         </div>
       </div>
 
-      <div class="sf-perf-grid">
-        <div class="sf-perf">
-          <span class="sf-perf__num">2–5s</span>
-          <span class="sf-perf__desc">init (300 events, statistical inference)</span>
+      <figure class="sf-shot">
+        <img src="assets/img/blast-radius-consumers.png"
+             alt="StreamForge blast radius panel — currency field breaks 3 consumers across 2 teams in 2 topics" />
+      </figure>
+      <p class="sf-shot__cap">Click a field → its blast radius: every topic it touches and the downstream consumers (and teams) at risk.</p>
+    </div>
+  </section>
+
+  <!-- ── PROOF / IT GRADES ITSELF ─────────────────────────────────────────── -->
+  <section class="sf-steps" id="sf-proof">
+    <div class="sf-container">
+      <div class="sf-section-label">Proof, not promises</div>
+      <h2 class="sf-section-title">It grades itself against ground truth.</h2>
+      <p class="sf-section-sub">
+        Most tools ask you to trust them. StreamForge ships a benchmark that scores its own inference and
+        drift detection against hand-labeled data — so you can see exactly how accurate it is, and it's
+        reproducible (same input, same result, every run).
+      </p>
+      <div class="sf-proof">
+        <div class="sf-proof__stat"><div class="sf-proof__num">0.93</div><div class="sf-proof__lbl">Schema F1</div></div>
+        <div class="sf-proof__stat"><div class="sf-proof__num">0.86</div><div class="sf-proof__lbl">PII F1</div></div>
+        <div class="sf-proof__stat"><div class="sf-proof__num">0.0%</div><div class="sf-proof__lbl">False positives (null)</div></div>
+        <div class="sf-proof__stat"><div class="sf-proof__num">0.10</div><div class="sf-proof__lbl">Calibration (ECE)</div></div>
+        <div class="sf-proof__stat"><div class="sf-proof__num">100%</div><div class="sf-proof__lbl">Deterministic mode</div></div>
+      </div>
+      <p class="sf-section-sub" style="margin-top:24px;">
+        Runs fully deterministic with <strong>no data leaving your VPC</strong> — the LLM is optional
+        enrichment, can be self-hosted, or disabled entirely. Statistical inference, FDR-controlled drift,
+        and a full audit trail of every decision.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── TECHNICAL DEEP DIVE ───────────────────────────────────────────── -->
+  <section class="sf-arch" id="sf-technical">
+    <div class="sf-container">
+      <div class="sf-section-label">Technical Details</div>
+      <h2 class="sf-section-title">
+        How it works.
+      </h2>
+
+      <div class="sf-technical-grid">
+
+        <!-- Sampling -->
+        <div class="sf-technical-card">
+          <h3>1. Non-Destructive Sampling</h3>
+          <p>StreamForge never consumes messages from your queues. We use platform-native read-only mechanisms:</p>
+          <ul class="sf-technical-list">
+            <li><strong>Kafka:</strong> Dedicated consumer group with independent offsets — your existing consumers are unaffected</li>
+            <li><strong>SQS:</strong> ReceiveMessage with VisibilityTimeout=0 (peek mode) — messages remain in queue</li>
+            <li><strong>IBM MQ:</strong> Browse mode — non-destructive read without removing messages</li>
+            <li><strong>RabbitMQ:</strong> Passive queue declaration + basic.get with no-ack</li>
+          </ul>
+          <p class="sf-technical-note">Result: Zero impact on message delivery. Zero risk to production consumers.</p>
         </div>
-        <div class="sf-perf">
-          <span class="sf-perf__num">&lt;100ms</span>
-          <span class="sf-perf__desc">watch cycle (200 events)</span>
+
+        <!-- Statistical Inference -->
+        <div class="sf-technical-card">
+          <h3>2. Statistical Type Inference</h3>
+          <p>Schema inference uses distribution analysis, not guesswork. For each field, we compute:</p>
+          <ul class="sf-technical-list">
+            <li><strong>Presence rate:</strong> % of events containing the field (determines required vs optional)</li>
+            <li><strong>Type distribution:</strong> Statistical breakdown of observed types per field</li>
+            <li><strong>Value patterns:</strong> Regex matching for semantic types (UUID, email, ISO timestamp, etc.)</li>
+            <li><strong>Cardinality analysis:</strong> Distinct value count to detect enums vs free-form strings</li>
+          </ul>
+          <p class="sf-technical-note">Confidence scores are computed per-field. Low-confidence inferences are flagged for human review.</p>
         </div>
-        <div class="sf-perf">
-          <span class="sf-perf__num">&lt;5ms</span>
-          <span class="sf-perf__desc">drift detection per field</span>
+
+        <!-- LLM + Pseudonymization -->
+        <div class="sf-technical-card sf-technical-card--highlight">
+          <h3>3. LLM-Assisted Semantic Understanding</h3>
+          <p>For ambiguous fields where statistical inference is insufficient, StreamForge uses LLM analysis
+             to understand semantic meaning. <strong>Critical: Your actual data never reaches the LLM.</strong></p>
+
+          <div class="sf-technical-flow">
+            <div class="sf-technical-flow__step">
+              <span class="sf-technical-flow__num">A</span>
+              <div>
+                <strong>PII Detection (Local)</strong>
+                <p>Pattern matching + heuristics identify potential PII fields locally. No external calls.</p>
+              </div>
+            </div>
+            <div class="sf-technical-flow__step">
+              <span class="sf-technical-flow__num">B</span>
+              <div>
+                <strong>Pseudonymization</strong>
+                <p>Before any LLM call, field values are replaced with synthetic examples that preserve structure but contain no real data.</p>
+                <code class="sf-technical-code">
+"john.doe@acme.com" → "user_1@example.com"
+"4532-1234-5678-9012" → "XXXX-XXXX-XXXX-0000"
+"192.168.1.100" → "10.0.0.1"
+                </code>
+              </div>
+            </div>
+            <div class="sf-technical-flow__step">
+              <span class="sf-technical-flow__num">C</span>
+              <div>
+                <strong>Semantic Inference</strong>
+                <p>LLM receives only: field names, pseudonymized samples, and structural metadata. It returns semantic classifications (e.g., "this looks like a correlation ID" or "this appears to be a currency amount in minor units").</p>
+              </div>
+            </div>
+            <div class="sf-technical-flow__step">
+              <span class="sf-technical-flow__num">D</span>
+              <div>
+                <strong>Statistical Fallback</strong>
+                <p>If LLM is unavailable or confidence is low, inference falls back to pure statistical methods. The system degrades gracefully — never blocks on external dependencies.</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="sf-technical-note"><strong>Data residency:</strong> LLM calls can be disabled entirely, routed to on-premise models, or restricted to specific providers. Pseudonymization is applied regardless of destination.</p>
         </div>
-        <div class="sf-perf">
-          <span class="sf-perf__num">&lt;500ms</span>
-          <span class="sf-perf__desc">plan command end-to-end (CI gate)</span>
+
+        <!-- Drift Detection -->
+        <div class="sf-technical-card">
+          <h3>4. Statistical Drift Detection</h3>
+          <p>Continuous monitoring uses proven statistical tests with configurable sensitivity:</p>
+          <ul class="sf-technical-list">
+            <li><strong>Binomial z-test:</strong> Detects presence rate changes (field appearing/disappearing)</li>
+            <li><strong>Chi-squared test:</strong> Detects type distribution shifts (string → integer mixing)</li>
+            <li><strong>Population Stability Index (PSI):</strong> Detects numeric distribution drift</li>
+            <li><strong>Enum diff:</strong> Detects new categorical values appearing</li>
+            <li><strong>Benjamini-Hochberg FDR:</strong> Controls false positive rate at scale (critical for 100+ field schemas)</li>
+          </ul>
+          <p class="sf-technical-note">Default α=0.01 (1% false positive rate). Tunable per-stream for different sensitivity requirements.</p>
         </div>
-        <div class="sf-perf">
-          <span class="sf-perf__num">5</span>
-          <span class="sf-perf__desc">statistical tests per field</span>
+
+        <!-- PII Detection -->
+        <div class="sf-technical-card">
+          <h3>5. PII Detection Pipeline</h3>
+          <p>Multi-layer detection ensures comprehensive PII coverage:</p>
+          <ul class="sf-technical-list">
+            <li><strong>Field name heuristics:</strong> "email", "phone", "ssn", "card_number" patterns</li>
+            <li><strong>Regex patterns:</strong> Email format, phone formats, credit card Luhn validation, IP addresses</li>
+            <li><strong>Semantic analysis:</strong> LLM identifies non-obvious PII (e.g., "loyalty_number" containing SSN format)</li>
+            <li><strong>10 PII categories:</strong> Email, phone, name, passport, card, IP, DOB, national ID, address, loyalty ID</li>
+          </ul>
+          <p class="sf-technical-note">PII detection runs locally first. LLM is only consulted for ambiguous cases, always with pseudonymized data.</p>
         </div>
-        <div class="sf-perf">
-          <span class="sf-perf__num">1000+</span>
-          <span class="sf-perf__desc">passing tests across 30 modules</span>
+
+        <!-- Security Guarantees -->
+        <div class="sf-technical-card">
+          <h3>6. Security Architecture</h3>
+          <ul class="sf-technical-list">
+            <li><strong>Read-only access:</strong> StreamForge never writes to your message brokers</li>
+            <li><strong>No message storage:</strong> Events are sampled, analyzed, and discarded — not persisted</li>
+            <li><strong>Pseudonymization by default:</strong> Real values never leave your infrastructure for LLM calls</li>
+            <li><strong>Configurable LLM routing:</strong> Use Claude, GPT-4, on-premise models, or disable entirely</li>
+            <li><strong>Audit logging:</strong> Every inference decision is logged with reasoning for compliance review</li>
+            <li><strong>No network egress required:</strong> Can run fully air-gapped with statistical-only mode</li>
+          </ul>
         </div>
+
       </div>
     </div>
   </section>
 
-  <!-- ── WHY STREAMFORGE ───────────────────────────────────────────────── -->
-  <section class="sf-why" id="sf-why-streamforge">
+
+  <!-- ── MARKET GAP ANALYSIS ──────────────────────────────────────────────── -->
+  <section class="sf-gap" id="sf-gap-analysis">
     <div class="sf-container">
-      <div class="sf-section-label">Why StreamForge</div>
+      <div class="sf-section-label">Market Gap Analysis</div>
       <h2 class="sf-section-title">
-        Built for real-world<br />
-        <span class="sf-gradient-text">data engineering teams.</span>
+        Existing tools don't solve this.<br />
+        <span class="sf-gradient-text">Here's why.</span>
       </h2>
 
-      <div class="sf-why-grid">
-        <div class="sf-why-card">
-          <div class="sf-why-card__num">01</div>
-          <h3>Streaming is the default</h3>
-          <p>Kafka processes <strong>7 trillion messages per day</strong> globally. Every enterprise running microservices has event streams. Schema governance is their #1 data quality pain point.</p>
+      <div class="sf-gap__table-wrapper">
+        <table class="sf-gap__table">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>What it does</th>
+              <th>What it doesn't do</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Confluent Schema Registry</strong></td>
+              <td>Stores and validates Avro/Protobuf/JSON schemas for Kafka. Enforces compatibility on produce.</td>
+              <td>Requires producers to register schemas manually. No inference. No discovery. Kafka-only. Doesn't work with existing undocumented streams.</td>
+            </tr>
+            <tr>
+              <td><strong>AWS Glue Schema Registry</strong></td>
+              <td>Schema storage for Kinesis and Kafka on AWS. Integrates with Glue ETL.</td>
+              <td>Manual registration only. No inference. No drift detection. AWS-only. Doesn't discover existing schemas.</td>
+            </tr>
+            <tr>
+              <td><strong>Monte Carlo</strong></td>
+              <td>Data observability for warehouses and lakes. ML-based anomaly detection on tables.</td>
+              <td>Focused on batch data in warehouses, not streaming. No schema inference for queues. No real-time drift detection for event streams.</td>
+            </tr>
+            <tr>
+              <td><strong>Soda</strong></td>
+              <td>Data quality testing with SQL-based checks. Runs scheduled validations on tables.</td>
+              <td>Batch-oriented. Requires writing checks manually. No streaming support. No schema inference.</td>
+            </tr>
+            <tr>
+              <td><strong>Great Expectations</strong></td>
+              <td>Data validation framework. Define expectations in code, run against DataFrames/tables.</td>
+              <td>Batch processing only. Manual expectation writing. No streaming. No automatic schema discovery.</td>
+            </tr>
+            <tr>
+              <td><strong>Collibra / Atlan / Alation</strong></td>
+              <td>Data catalogs. Metadata management, lineage tracking, governance workflows.</td>
+              <td>Metadata must be registered manually or via connectors. No real-time schema inference. No drift detection. Focused on documentation, not enforcement.</td>
+            </tr>
+            <tr>
+              <td><strong>OpenMetadata</strong></td>
+              <td>Open-source data catalog. Metadata ingestion from databases, dashboards, pipelines.</td>
+              <td>No streaming/queue connectors. No schema inference from message content. No drift detection.</td>
+            </tr>
+            <tr>
+              <td><strong>Databricks Unity Catalog</strong></td>
+              <td>Governance for Databricks lakehouse. Schema management for Delta tables.</td>
+              <td>Databricks ecosystem only. No support for Kafka, SQS, RabbitMQ, or other message brokers.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sf-gap__summary">
+        <h3>The gap</h3>
+        <p>No existing tool provides:</p>
+        <ul>
+          <li><strong>Automatic schema inference</strong> from live message traffic (without producer changes)</li>
+          <li><strong>Continuous drift detection</strong> for streaming platforms (not just batch)</li>
+          <li><strong>Platform-agnostic coverage</strong> across Kafka, SQS, RabbitMQ, IBM MQ, Pub/Sub</li>
+          <li><strong>Brownfield deployment</strong> that works with existing undocumented streams</li>
+        </ul>
+        <p>Schema registries require adoption. Data catalogs require manual registration. Observability tools focus on warehouses.
+           Nothing discovers schemas from existing streams automatically.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ADOPTION PATH ─────────────────────────────────────────────────── -->
+  <section class="sf-adoption" id="sf-adoption">
+    <div class="sf-container">
+      <div class="sf-section-label">Deployment Options</div>
+      <h2 class="sf-section-title">
+        Three modes of operation.
+      </h2>
+      <p class="sf-section-sub">
+        Each mode can be run independently. Discovery doesn't require monitoring.
+        Schema generation doesn't require continuous drift detection. Use what you need.
+      </p>
+
+      <div class="sf-adoption__phases">
+        <div class="sf-adoption__phase">
+          <div class="sf-adoption__phase-header">
+            <span class="sf-adoption__phase-num">Phase 1</span>
+            <span class="sf-adoption__phase-tag">Hours</span>
+          </div>
+          <h3>Discovery</h3>
+          <p>Run <code>streamforge discover</code> against your clusters. Get a complete inventory of every
+             queue and topic — with governance status, message rates, and identified gaps. No schema inference yet.
+             Pure reconnaissance.</p>
+          <div class="sf-adoption__output">
+            <strong>Output:</strong> Stream inventory report, governance gap analysis
+          </div>
+          <div class="sf-adoption__commitment">
+            <strong>Commitment:</strong> None. One-time read-only scan.
+          </div>
         </div>
-        <div class="sf-why-card">
-          <div class="sf-why-card__num">02</div>
-          <h3>Statistical inference is reliable</h3>
-          <p>Proven statistical methods — binomial z-tests, chi-squared, PSI — provide deterministic, reproducible results. No black-box behavior. Confidence scores you can trust.</p>
+
+        <div class="sf-adoption__phase">
+          <div class="sf-adoption__phase-header">
+            <span class="sf-adoption__phase-num">Phase 2</span>
+            <span class="sf-adoption__phase-tag">Days</span>
+          </div>
+          <h3>Schema Generation</h3>
+          <p>Run <code>streamforge init</code> on critical streams. Statistical inference samples live traffic,
+             infers field types, detects PII, and generates version-controlled schema files. One-time operation
+             per stream — no ongoing monitoring.</p>
+          <div class="sf-adoption__output">
+            <strong>Output:</strong> Schema YAML files, PII report, confidence scores
+          </div>
+          <div class="sf-adoption__commitment">
+            <strong>Commitment:</strong> None. Schemas are yours to keep, no vendor lock-in.
+          </div>
         </div>
-        <div class="sf-why-card">
-          <div class="sf-why-card__num">03</div>
-          <h3>Connector-agnostic by design</h3>
-          <p>Data teams need flexibility. Confluent, AWS Glue, Databricks — all solve parts of the problem, but only within their ecosystems. <strong>StreamForge works with any source.</strong></p>
+
+        <div class="sf-adoption__phase sf-adoption__phase--highlight">
+          <div class="sf-adoption__phase-header">
+            <span class="sf-adoption__phase-num">Phase 3</span>
+            <span class="sf-adoption__phase-tag">Optional</span>
+          </div>
+          <h3>Continuous Monitoring</h3>
+          <p>Enable <code>streamforge watch</code> on production-critical streams. Drift detection runs every
+             30 seconds, classifies changes by severity, and integrates with your alerting and CI/CD pipelines.
+             Opt-in per stream.</p>
+          <div class="sf-adoption__output">
+            <strong>Output:</strong> Real-time drift alerts, CI gates, schema evolution PRs
+          </div>
+          <div class="sf-adoption__commitment">
+            <strong>Commitment:</strong> Ongoing monitoring for selected streams only.
+          </div>
         </div>
+      </div>
+
+      <div class="sf-adoption__note">
+        <strong>No commitment required to see value.</strong> Run discovery against a single cluster.
+        If the inventory is useful, generate schemas for a few critical streams. If that works,
+        consider monitoring. Each phase stands alone.
       </div>
     </div>
   </section>
@@ -587,30 +561,29 @@
   <section class="sf-cta" id="sf-contact">
     <div class="sf-container">
       <div class="sf-cta__card">
-        <div class="sf-badge">Get Started</div>
         <h2 class="sf-cta__title">
-          Your next schema incident<br />is preventable.
+          See it on your streams.
         </h2>
         <p class="sf-cta__sub">
-          Try StreamForge on your Kafka topic. Setup takes under an hour.
-          Catch breaking changes before they reach production.
+          A 30-minute demo on a single Kafka cluster or SQS queue. In one session you'll see:
+          the schema of every topic auto-discovered, the cross-topic conflicts across your teams,
+          the blast radius of a breaking change, and PII mapped across the estate —
+          read-only, no producer changes, no data leaving your network.
         </p>
         <div class="sf-cta__actions">
-          <a href="mailto:hello@loonlabs.io?subject=StreamForge%20Early%20Access"
+          <a href="mailto:hello@loonlabs.io?subject=StreamForge%20Demo&body=We'd%20like%20to%20see%20StreamForge%20on%20our%20event%20streams."
              class="sf-btn sf-btn--primary sf-btn--lg">
-            Request Early Access
-          </a>
-          <a href="#sf-how-it-works"
-             class="sf-btn sf-btn--ghost sf-btn--lg">
-            See How It Works &rarr;
+            Book a 30-minute demo
           </a>
         </div>
-        <p class="sf-cta__note">Built by Loon Labs</p>
+        <p class="sf-cta__sub" style="margin-top:18px; font-size:14px; opacity:.8;">
+          Prefer to try it yourself first? Discovery is a one-time read-only scan — we'll send a sandbox.
+        </p>
       </div>
     </div>
   </section>
 
-</div><!-- /#sf-page -->
+</div>
 
 <script src="assets/js/streamforge.js"></script>
 </body>
