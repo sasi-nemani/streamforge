@@ -6,6 +6,15 @@ dist/
 build/
 .env
 .venv/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+
+# Runtime state caches (schema fingerprint cache, field registry, watch state)
+.streamforge/
 venv/
 
 # Live tap output — runtime, not committed

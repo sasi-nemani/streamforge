@@ -82,31 +82,6 @@ from .eval_cmd import evaluate
 app.command(name="eval")(evaluate)
 
 # ---------------------------------------------------------------------------
-# ui command (kept inline — tiny)
-# ---------------------------------------------------------------------------
-
-@app.command()
-def ui(
-    port: int = typer.Option(8501, "--port", "-p"),
-):
-    """Launch the visual dashboard (Streamlit)."""
-    import subprocess
-    import sys
-
-    from rich.console import Console
-
-    console = Console()
-    ui_script = Path(__file__).resolve().parent.parent / "ui.py"
-    if not ui_script.exists():
-        console.print("[red]streamforge/ui.py not found.[/red]")
-        raise typer.Exit(1)
-    console.print(f"Opening dashboard at [cyan]http://localhost:{port}[/cyan]")
-    cmd = [sys.executable, "-m", "streamlit", "run", str(ui_script),
-           f"--server.port={port}", "--server.headless=false"]
-    subprocess.run(cmd)
-
-
-# ---------------------------------------------------------------------------
 # Cache subcommand group (Field Type RAG Registry)
 # ---------------------------------------------------------------------------
 

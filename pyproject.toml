@@ -31,8 +31,9 @@ dependencies = [
     # ── File watching ─────────────────────────────────────────────────────────
     "watchdog>=4.0.0",          # File-system events for smarter watch mode
 
-    # ── Dashboard ─────────────────────────────────────────────────────────────
-    "streamlit>=1.35.0",        # Dashboard UI
+    # ── Dashboard API (the React cockpit is served separately under cockpit/) ──
+    "fastapi>=0.110.0",         # Cockpit dashboard API
+    "uvicorn>=0.29.0",          # ASGI server for the cockpit API
 
     # ── Kafka (optional — install manually for Kafka support) ─────────────────
     # kafka-python is pure Python (no native deps). Prefer for development.

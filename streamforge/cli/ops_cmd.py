@@ -504,7 +504,7 @@ def demo(
       Phase 1: 300 clean baseline events -> schema inferred, 3 clean watch ticks
       Phase 2: 200 drifted events -> Tier 3 drift detected in real time
 
-    No API key required. Run alongside `streamforge ui` to see the dashboard update live.
+    No API key required. Run alongside the cockpit dashboard to see updates live.
 
     Three demo modes:
       --cto   Executive walkthrough (90 seconds)
@@ -544,7 +544,7 @@ def demo(
             "\nStreamForge catches it before any consumer breaks.\n"
         )
     if loop:
-        console.print("[dim]Running in loop mode (Ctrl+C to stop). Open 'streamforge ui' in another terminal.[/dim]\n")
+        console.print("[dim]Running in loop mode (Ctrl+C to stop). Open the cockpit dashboard in another terminal.[/dim]\n")
     time.sleep(0.5 if _from_cto else 1)
 
     # -- Build baseline schema once -- reused across loop iterations
@@ -628,7 +628,7 @@ def demo(
         _run_one_cycle(1)
         if not _from_cto:
             console.print(
-                "Run [bold]streamforge ui[/bold] to see the drift in the Fleet dashboard.\n"
+                "Open the [bold]cockpit dashboard[/bold] to see the drift in the Fleet view.\n"
                 "Run [bold]streamforge demo --loop[/bold] for a continuous presentation mode.\n\n"
                 "[bold]Try it on your real Kafka:[/bold]\n"
                 "  [cyan]streamforge init kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]\n"
@@ -1256,7 +1256,7 @@ def _run_cto_demo(baseline_size, drift_size, output_dir, write_report):
             "[bold]Try it now:[/bold]\n"
             "  [cyan]streamforge init kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]\n"
             "  [cyan]streamforge watch kafka://YOUR_TOPIC --brokers YOUR_BROKERS[/cyan]\n"
-            "  [cyan]streamforge ui[/cyan]  [dim](visual dashboard)[/dim]",
+            "  [cyan]uvicorn streamforge.api.main:app[/cyan]  [dim](cockpit dashboard API)[/dim]",
             border_style="blue",
             padding=(1, 3),
         )
