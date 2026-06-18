@@ -294,7 +294,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Map every field to every topic it appears in across all lines of business — one
             picture of where data lives, with type, presence and PII per topic.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
             FlightOps, Ground Ops, the AODB, Crew and Baggage each publish a flight. StreamForge maps
             <code>flight_number</code>, <code>aircraft_registration</code> (tail), <code>gate</code>/<code>stand</code>
             and the off-/on-block times across all of them in one view — including the legacy movement feeds no one documented.
@@ -307,7 +307,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Flags where the same concept is modelled differently between teams — the latent
             integration bugs no schema registry or catalog surfaces.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
             <code>gate</code> is <code>"A23"</code> (string) in Gate Management but stand <code>23</code> (integer)
             in the legacy allocator; <code>estimated_off_block_time</code> is UTC in the AODB and local-time in an
             outstation feed. During a busy bank the boarding board shows the wrong gate. StreamForge catches it before it ships.
@@ -320,7 +320,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Sees which services <em>actually read</em> which fields, with real access counts —
             no manifest, no producer changes. It compounds every day it runs.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
             Before Ground Ops changes the gate-change event's <code>gate</code> field, StreamForge shows it was read
             <strong>8M times yesterday</strong> by the departure boards, 3M by the mobile app, plus baggage-routing,
             ramp dispatch and catering. You can't quietly change it — and now you know exactly who to tell.
@@ -333,7 +333,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Change a field and instantly see every downstream service and team that breaks —
             before the pull request merges, not after the incident.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
             FlightOps wants to change the type of <code>estimated_off_block_time</code> (EOBT). Blast radius: it breaks
             slot management, crew rostering, turnaround prediction and the on-time-performance dashboard — four teams, surfaced before merge.
           </p>
@@ -345,7 +345,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Passport, date-of-birth, loyalty and payment data tracked across every stream —
             answer "where does PII flow?" instantly, for audit and GDPR.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops &amp; Compliance</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops &amp; Compliance</span>
             Where do special-assistance and APIS passport details flow? Instant answer:
             <code>passengers[].assistance_code</code> and <code>passport_number</code> appear in DCS, the boarding feed
             and the Border-Force/APIS stream — all flagged PII, with the services that read them and crew IDs in the roster feed.
@@ -358,7 +358,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Browse-mode, read-only inference on undocumented mainframe and IBM MQ streams —
             no producer changes, zero risk to delivery.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
             The AODB, DCS and IATA Type-B movement messages (MVT, LDM, ASM) on decades-old IBM MQ that nobody documented.
             StreamForge browses them read-only and produces a full schema + PII report in an afternoon — without touching the producers.
           </p>
@@ -370,7 +370,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Block a breaking producer change in the pull request and route it to the consuming
             teams for sign-off — a type-checker for your event streams.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
             A team adds a new <code>flight_status</code> value (<code>DIVERTED_FUEL</code>) to the movement event.
             The CI gate fails the PR and routes it to the departure boards, the app and Ops Control (OCC) for sign-off before it can merge.
           </p>
@@ -382,7 +382,7 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Statistical, FDR-controlled drift detection where every alert explains itself —
             the test, the p-value, the effect size — not a vague anomaly.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
             A new outstation ground handler starts sending <code>actual_time_of_arrival</code> in local time instead of UTC.
             StreamForge detects the shift (chi², p&lt;0.0001), classifies it breaking, and shows the evidence — before it corrupts OTP and turnaround metrics.
           </p>
@@ -394,8 +394,8 @@ Action: Review required before merge</code></pre>
           <p class="sf-feat__what">Runs deterministic with no data leaving your network; the optional LLM can be
             self-hosted or disabled. Ships a benchmark that scores its own accuracy.</p>
           <p class="sf-feat__ba">
-            <span class="sf-feat__ba-label">British Airways · Ops</span>
-            Passenger, crew and operational data never leaves BA's network — deterministic mode, on-prem or disabled model.
+            <span class="sf-feat__ba-label">Acme Airways · Ops</span>
+            Passenger, crew and operational data never leaves Acme's network — deterministic mode, on-prem or disabled model.
             The benchmark shows exactly how accurate inference is (Schema F1 0.93, PII F1 0.86), reproducibly.
           </p>
         </div>
