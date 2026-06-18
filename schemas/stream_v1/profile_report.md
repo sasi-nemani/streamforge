@@ -1,8 +1,8 @@
 # Stream Profile Report — stream_v1
 
-**Profiled:** 2026-06-18T15:25:01.087034+00:00  
+**Profiled:** 2026-04-01T18:47:14.747202+00:00  
 **Model:** llama-3.3-70b-versatile  
-**Events sampled:** 300  
+**Events sampled:** 200  
 **Parse success rate:** 100.0%  
 **Discovery method:** single  
 **Sub-schemas:** 1
@@ -13,15 +13,15 @@
 
 | Cluster | Events | % Stream | Fields | Confidence | PII |
 |---------|--------|----------|--------|------------|-----|
-| `payment.processed` | 300 | 100% | 16 | 68% | `user.email`, `user.name`, `metadata.ip_address` |
+| `payment.processed` | 200 | 100% | 16 | 90% | `user.email`, `user.name`, `metadata.ip_address` |
 
 ---
 
 ## `payment.processed`
 
-- **Events:** 300 (100% of stream)
+- **Events:** 200 (100% of stream)
 - **Top-level keys:** event_id, event_type, timestamp, transaction_id, amount, currency, status, payment_method, user, metadata
-- **Confidence:** 68%
+- **Confidence:** 90%
 
 | Field | Type | Required | Confidence | PII |
 |-------|------|----------|------------|-----|
