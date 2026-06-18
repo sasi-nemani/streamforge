@@ -159,5 +159,10 @@ def write_drift_report(report: DriftReport, output_dir: str) -> str:
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(content)
 
+    # Sibling structured JSON — lets the API/cockpit surface per-field drift
+    # with its statistical evidence (the markdown is for humans, this is for code).
+    json_path = out / f"{timestamp}.json"
+    json_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
     logger.info("Written drift report: %s", report_path)
     return str(report_path)

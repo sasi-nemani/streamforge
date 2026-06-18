@@ -73,6 +73,9 @@ class Store:
         active_drifts = 0
         total_poll_cycles = 0
         total_drift_detected = 0
+        total_llm_calls = 0
+        total_cache_hits = 0
+        total_statistical = 0
 
         for schema_path in self._schema_dir.glob("*/schema.yaml"):
             total_schemas += 1
@@ -93,6 +96,9 @@ class Store:
                         total_messages += int(metrics.get("events_sampled_total", 0))
                         total_poll_cycles += int(metrics.get("poll_cycles_total", 0))
                         total_drift_detected += int(metrics.get("drift_detected_total", 0))
+                        total_llm_calls += int(metrics.get("inference_llm_calls_total", 0))
+                        total_cache_hits += int(metrics.get("schema_cache_hits_total", 0))
+                        total_statistical += int(metrics.get("inference_statistical_total", 0))
                     except Exception:
                         # Fallback to schema if health.json parse fails
                         total_messages += schema.get("event_count_sampled", 0)
@@ -107,6 +113,8 @@ class Store:
             if drift_dir.exists():
                 active_drifts += len(list(drift_dir.glob("*.md")))
 
+        deterministic = total_cache_hits + total_statistical
+        total_inferences = deterministic + total_llm_calls
         return {
             "messages_sampled": total_messages,
             "fields_detected": total_fields,
@@ -115,6 +123,13 @@ class Store:
             "active_drifts": active_drifts,
             "poll_cycles": total_poll_cycles,
             "drift_detected": total_drift_detected,
+            "inference_llm_calls": total_llm_calls,
+            "schema_cache_hits": total_cache_hits,
+            "inference_statistical": total_statistical,
+            "deterministic_pct": (
+                round(100 * deterministic / total_inferences, 1)
+                if total_inferences else None
+            ),
         }
 
     def get_active_drifts(self) -> list[dict]:
@@ -126,13 +141,36 @@ class Store:
                 continue
 
             for report_path in sorted(drift_dir.glob("*.md"), reverse=True)[:10]:
-                drifts.append({
+                entry = {
                     "stream": schema_path.parent.name,
                     "report": report_path.name,
                     "detected_at": datetime.fromtimestamp(
                         report_path.stat().st_mtime, tz=UTC
                     ).isoformat(),
-                })
+                    "highest_tier": None,
+                    "findings": [],
+                }
+                # Structured sibling JSON carries per-field drift + evidence.
+                json_path = report_path.with_suffix(".json")
+                if json_path.exists():
+                    try:
+                        data = json.loads(json_path.read_text(encoding="utf-8"))
+                        entry["highest_tier"] = data.get("highest_tier")
+                        entry["findings"] = [
+                            {
+                                "field_path": d.get("field_path"),
+                                "drift_type": d.get("drift_type"),
+                                "tier": d.get("tier"),
+                                "test_name": d.get("test_name"),
+                                "p_value": d.get("p_value"),
+                                "effect_size": d.get("effect_size"),
+                                "affected_event_rate": d.get("affected_event_rate"),
+                            }
+                            for d in data.get("drifts", [])
+                        ]
+                    except Exception:
+                        pass  # malformed sibling JSON → just omit findings
+                drifts.append(entry)
         return drifts
 
     def get_pii_summary(self) -> dict:

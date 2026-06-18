@@ -22,12 +22,28 @@ export interface MetricsSummary {
   schemas_inferred: number
   pii_fields: number
   active_drifts: number
+  inference_llm_calls?: number
+  schema_cache_hits?: number
+  inference_statistical?: number
+  deterministic_pct?: number | null
+}
+
+export interface DriftFinding {
+  field_path: string
+  drift_type: string
+  tier: number | null
+  test_name: string | null
+  p_value: number | null
+  effect_size: number | null
+  affected_event_rate: number | null
 }
 
 export interface DriftAlert {
   stream: string
   report: string
   detected_at: string
+  highest_tier?: number | null
+  findings?: DriftFinding[]
 }
 
 export interface PiiSummary {

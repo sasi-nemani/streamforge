@@ -123,6 +123,9 @@ export function StreamDetail() {
 
   useEffect(() => {
     if (!name) return
+    // Reset to loading on stream change; the cascading render here is intentional
+    // and harmless (one extra paint before the fetch resolves).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     api
       .getStream(name)

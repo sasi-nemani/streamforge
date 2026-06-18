@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { api } from '../lib/api'
-import type { SearchResult } from '../lib/types'
+import type { SearchResult, StreamDetail, FieldDetail } from '../lib/types'
 
 interface EnrichedField extends SearchResult {
   confidence?: number
@@ -168,18 +168,20 @@ export function Catalog() {
 
       // Fetch stream details for enrichment
       const streams = [...new Set(searchRes.results.map((r) => r.stream))]
-      const details: Record<string, any> = {}
+      const details: Record<string, StreamDetail> = {}
       await Promise.all(
         streams.map(async (s) => {
           try {
             details[s] = await api.getStream(s)
-          } catch {}
+          } catch {
+            /* stream detail enrichment is best-effort */
+          }
         })
       )
       // Enrich fields with sample values and enums
       const enriched = searchRes.results.map((f) => {
         const streamDetail = details[f.stream]
-        const fieldDetail = streamDetail?.fields?.find((fd: any) => fd.path === f.path)
+        const fieldDetail = streamDetail?.fields?.find((fd: FieldDetail) => fd.path === f.path)
         return {
           ...f,
           confidence: fieldDetail?.confidence || 1,

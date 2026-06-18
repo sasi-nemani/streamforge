@@ -5,6 +5,7 @@ import { SourcesTable } from '../components/SourcesTable'
 import { HealthStatus } from '../components/HealthStatus'
 import { DashboardSkeleton } from '../components/Skeleton'
 import { Scorecard } from '../components/Scorecard'
+import type { MetricsSummary } from '../lib/types'
 
 function MetricCard({
   label,
@@ -160,6 +161,34 @@ function PiiCard({ pii }: { pii: { total: number; by_category: Record<string, nu
   )
 }
 
+function EfficiencyStrip({ metrics }: { metrics: MetricsSummary | null }) {
+  const det = metrics?.deterministic_pct
+  const llm = metrics?.inference_llm_calls ?? 0
+  const cache = metrics?.schema_cache_hits ?? 0
+  const stat = metrics?.inference_statistical ?? 0
+  const hasActivity = llm + cache + stat > 0
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-8 gap-y-2 px-5 py-3 bg-white rounded-lg border border-gray-200 text-sm">
+      <span className="text-xs text-gray-500 uppercase tracking-wide">Inference efficiency</span>
+      {hasActivity ? (
+        <>
+          <span>
+            <span className="font-mono font-semibold text-emerald-600">{det ?? 0}%</span>{' '}
+            <span className="text-gray-500">deterministic</span>
+          </span>
+          <span className="text-gray-300">·</span>
+          <span><span className="font-mono">{cache}</span> <span className="text-gray-500">cache hits</span></span>
+          <span><span className="font-mono">{stat}</span> <span className="text-gray-500">statistical</span></span>
+          <span><span className="font-mono">{llm}</span> <span className="text-gray-500">LLM calls</span></span>
+        </>
+      ) : (
+        <span className="text-gray-400">No inference activity yet — run a watch to populate</span>
+      )}
+    </div>
+  )
+}
+
 export function Dashboard() {
   const { sources, metrics, drifts, pii, health, loading, error } = useData()
 
@@ -201,8 +230,12 @@ export function Dashboard() {
         </p>
       </div>
 
-      <div className="mb-8 bg-gray-50 rounded-xl border border-gray-200 p-6">
+      <div className="mb-4 bg-gray-50 rounded-xl border border-gray-200 p-6">
         <Scorecard />
+      </div>
+
+      <div className="mb-8">
+        <EfficiencyStrip metrics={metrics} />
       </div>
 
       <div className="grid grid-cols-5 gap-4 mb-8">
