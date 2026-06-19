@@ -86,7 +86,8 @@
         A producer changes one field and a dozen downstream systems break — hours later, with no idea what
         depended on it. StreamForge reads your Kafka, SQS and IBM&nbsp;MQ messages, maps every field across the
         business, and shows the blast radius of any change <strong>before you ship</strong>.
-        No producer changes. No schema registry. Works with undocumented legacy systems.
+        No producer changes. No schema registry — even on the legacy queues and external partner
+        feeds you can't change.
       </p>
       <div class="sf-hero__actions">
         <a href="#sf-blast-radius" class="sf-btn sf-btn--primary">See the data map</a>
@@ -130,6 +131,63 @@
             <li><span class="sf-vp__mark">✓</span> PII tracked across the whole estate — answer audit in seconds.</li>
           </ul>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── THE DISCOVERY PROBLEM ────────────────────────────────────────────── -->
+  <section class="sf-strategy" id="sf-discovery">
+    <div class="sf-container">
+      <div class="sf-section-label">The discovery problem</div>
+      <h2 class="sf-section-title">
+        The hardest part is just<br />
+        <span class="sf-gradient-text">knowing what you have.</span>
+      </h2>
+      <p class="sf-strategy__intro">
+        Hundreds of topics and queues spread across clusters and platforms. Some built years ago by people
+        who've long since moved on. Some are external feeds from partners and vendors you don't control.
+        Before you can govern any of it, someone burns weeks just working out what's there — and the picture
+        is stale the moment it's written down.
+      </p>
+
+      <div class="sf-strategy__grid">
+        <div class="sf-strategy__card">
+          <h3>Too many to track</h3>
+          <p>Hundreds of topics and queues across multiple clusters and platforms — Kafka, SQS, RabbitMQ, IBM&nbsp;MQ.
+             New ones appear without anyone telling the data team. No single inventory exists.</p>
+        </div>
+
+        <div class="sf-strategy__card">
+          <h3>Legacy nobody owns</h3>
+          <p>Decades-old MQ and mainframe streams. The team that built them has gone, the wiki is wrong, and
+             the schema lives only in code you can't touch. Asking the producer to register a schema isn't an option.</p>
+        </div>
+
+        <div class="sf-strategy__card">
+          <h3>External feeds you don't control</h3>
+          <p>Partner, vendor and downstream feeds where you can't add instrumentation and can't change the producer.
+             All you have is the messages on the wire — and they change without warning.</p>
+        </div>
+      </div>
+
+      <p class="sf-strategy__intro" style="margin-bottom: 0;">
+        <strong>StreamForge discovers all of it from the messages themselves</strong> — internal or external,
+        modern or decades-old — read-only, with zero producer changes. One command and you have a documented,
+        version-controlled schema and a PII map for every stream.
+      </p>
+
+      <div class="sf-code" style="margin-top: 40px;">
+        <div class="sf-code__bar">
+          <span class="sf-code__dot"></span><span class="sf-code__dot"></span><span class="sf-code__dot"></span>
+          <span class="sf-code__title">streamforge discover --all-clusters</span>
+        </div>
+        <pre><code>Discovered 214 streams across 4 clusters · 0 messages consumed
+├── 168 internal topics      (Kafka — dedicated consumer group)
+├──  31 legacy queues        (IBM MQ — browse mode, producers untouched)
+├──  15 external partner feeds (read-only)
+└── PII detected in 23 streams (passport, DOB, card, email)
+
+Inventory written: schemas/ (214 files, ready for version control)</code></pre>
       </div>
     </div>
   </section>
