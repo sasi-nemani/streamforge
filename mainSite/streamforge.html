@@ -83,11 +83,10 @@
         <span class="sf-gradient-text">and what breaks when you change them.</span>
       </h1>
       <p class="sf-hero__sub">
-        A producer changes one field and a dozen downstream systems break — hours later, with no idea what
-        depended on it. StreamForge reads your Kafka, SQS and IBM&nbsp;MQ messages, maps every field across the
-        business, and shows the blast radius of any change <strong>before you ship</strong>.
-        No producer changes. No schema registry — even on the legacy queues and external partner
-        feeds you can't change.
+        Hundreds of topics and queues — some built years ago, some from partners you don't control — and
+        no one has the full picture. StreamForge reads the messages and maps every field, type and PII risk
+        across all of them, read-only, with no producer changes.
+        <strong>Then it watches them</strong>, so a breaking change can't slip through.
       </p>
       <div class="sf-hero__actions">
         <a href="#sf-blast-radius" class="sf-btn sf-btn--primary">See the data map</a>
@@ -97,45 +96,7 @@
     <div class="sf-hero__scroll-hint"></div>
   </section>
 
-  <!-- ── VALUE PROP: THE PROBLEM IN PLAIN TERMS (BEFORE / AFTER) ───────────── -->
-  <section class="sf-vp" id="sf-value">
-    <div class="sf-container">
-      <div class="sf-section-label">The problem, in plain terms</div>
-      <h2 class="sf-vp__lead">
-        Event streams have no contract — so a one-line change quietly breaks things downstream.
-      </h2>
-      <p class="sf-vp__sub">
-        Picture a gate change: a team retypes the <code style="font-family:'JetBrains Mono',monospace;background:#eef2ff;padding:1px 6px;border-radius:4px;color:#1d4f91;">gate</code>
-        field from <em>"A23"</em> to <em>23</em>. The departure boards go blank, bags route to the wrong belt,
-        the app shows the old gate — and you hear about it from passengers, not your tools. Multiply that by
-        hundreds of undocumented topics and queues.
-      </p>
-      <div class="sf-vp__cols">
-        <div class="sf-vp__col sf-vp__col--bad">
-          <h3>Today — without StreamForge</h3>
-          <ul class="sf-vp__list">
-            <li><span class="sf-vp__mark">✕</span> A producer renames or retypes a field — no one is told.</li>
-            <li><span class="sf-vp__mark">✕</span> Downstream services fail hours later, in production.</li>
-            <li><span class="sf-vp__mark">✕</span> Days of debugging just to find what depended on it.</li>
-            <li><span class="sf-vp__mark">✕</span> The same field is modelled three different ways across teams.</li>
-            <li><span class="sf-vp__mark">✕</span> "Where does our passport / PII data flow?" — nobody can answer.</li>
-          </ul>
-        </div>
-        <div class="sf-vp__col sf-vp__col--good">
-          <h3>With StreamForge</h3>
-          <ul class="sf-vp__list">
-            <li><span class="sf-vp__mark">✓</span> Every field mapped across every stream — automatically, no producer changes.</li>
-            <li><span class="sf-vp__mark">✓</span> The exact blast radius of a change shown <strong>in the pull request</strong>.</li>
-            <li><span class="sf-vp__mark">✓</span> Breaking changes blocked in CI; the right teams sign off first.</li>
-            <li><span class="sf-vp__mark">✓</span> Inconsistencies between teams surfaced before they cause incidents.</li>
-            <li><span class="sf-vp__mark">✓</span> PII tracked across the whole estate — answer audit in seconds.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── THE DISCOVERY PROBLEM ────────────────────────────────────────────── -->
+  <!-- ── THE DISCOVERY PROBLEM (leads — the entry pain) ───────────────────── -->
   <section class="sf-strategy" id="sf-discovery">
     <div class="sf-container">
       <div class="sf-section-label">The discovery problem</div>
@@ -188,6 +149,44 @@
 └── PII detected in 23 streams (passport, DOB, card, email)
 
 Inventory written: schemas/ (214 files, ready for version control)</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── THEN: DRIFT COMES AS A NATURAL ADD-ON (before / after) ───────────── -->
+  <section class="sf-vp" id="sf-value">
+    <div class="sf-container">
+      <div class="sf-section-label">Then drift detection comes for free</div>
+      <h2 class="sf-vp__lead">
+        Once every stream is mapped, nothing changes without you knowing.
+      </h2>
+      <p class="sf-vp__sub">
+        Discovery gives you the contract. Enforcing it is the same engine, no extra work: StreamForge watches
+        every stream and flags the moment a producer breaks it — a gate change retyping
+        <code style="font-family:'JetBrains Mono',monospace;background:#eef2ff;padding:1px 6px;border-radius:4px;color:#1d4f91;">gate</code>
+        from <em>"A23"</em> to <em>23</em> blanks the boards and misroutes bags. You'd see it in the pull request, not from passengers.
+      </p>
+      <div class="sf-vp__cols">
+        <div class="sf-vp__col sf-vp__col--bad">
+          <h3>Today — without StreamForge</h3>
+          <ul class="sf-vp__list">
+            <li><span class="sf-vp__mark">✕</span> A producer renames or retypes a field — no one is told.</li>
+            <li><span class="sf-vp__mark">✕</span> Downstream services fail hours later, in production.</li>
+            <li><span class="sf-vp__mark">✕</span> Days of debugging just to find what depended on it.</li>
+            <li><span class="sf-vp__mark">✕</span> The same field is modelled three different ways across teams.</li>
+            <li><span class="sf-vp__mark">✕</span> "Where does our passport / PII data flow?" — nobody can answer.</li>
+          </ul>
+        </div>
+        <div class="sf-vp__col sf-vp__col--good">
+          <h3>With StreamForge</h3>
+          <ul class="sf-vp__list">
+            <li><span class="sf-vp__mark">✓</span> Every field mapped across every stream — automatically, no producer changes.</li>
+            <li><span class="sf-vp__mark">✓</span> The exact blast radius of a change shown <strong>in the pull request</strong>.</li>
+            <li><span class="sf-vp__mark">✓</span> Breaking changes blocked in CI; the right teams sign off first.</li>
+            <li><span class="sf-vp__mark">✓</span> Inconsistencies between teams surfaced before they cause incidents.</li>
+            <li><span class="sf-vp__mark">✓</span> PII tracked across the whole estate — answer audit in seconds.</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
