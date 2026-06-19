@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>StreamForge — Enterprise Brief</title>
+<title>StreamForge — Solution Overview</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -92,7 +92,7 @@
 <!-- ════════════════ PAGE 1 — COVER / EXECUTIVE SUMMARY ════════════════ -->
 <section class="page">
   <div class="rh"><div class="rh__logo">Stream<span>Forge</span></div>
-    <div class="rh__tag">Enterprise Brief · for architects &amp; data leaders</div></div>
+    <div class="rh__tag">Solution Overview · for architects &amp; data leaders</div></div>
 
   <div style="margin-top:14mm;">
     <div class="eyebrow">Data discovery, mapping &amp; contracts for event streams</div>
@@ -101,9 +101,9 @@
 
   <div style="margin-top:11mm; background:var(--ba-tint); border:1px solid #c2d8f3; border-left:4px solid var(--ba);
        border-radius:8px; padding:13px 16px; font-size:10pt;">
-    <b style="color:var(--ba-navy);">What this is —</b> a working system, built and running today.
-    &nbsp;<b style="color:var(--ba-navy);">What we're asking —</b> a short, <b>read-only trial on one of your real
-    Kafka or SQS instances</b>, on your infrastructure, with no data leaving your network.
+    <b style="color:var(--ba-navy);">In one line —</b> a read-only system that discovers, documents and monitors the
+    schemas of event streams (Kafka, SQS and message queues), maps how fields relate across the business, and shows
+    the blast radius of a change before it ships.
   </div>
 
   <p class="lead" style="margin-top:9mm; max-width:160mm;">
@@ -131,7 +131,7 @@
     </div>
   </div>
 
-  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 1 of 5 · Confidential</span></div>
+  <div class="pf"><span>StreamForge — Solution Overview</span><span>Page 1 of 5</span></div>
 </section>
 
 <!-- ════════════════ PAGE 2 — BUSINESS: THE PROBLEM & THE SHIFT ════════════════ -->
@@ -197,7 +197,7 @@
       <td style="padding:6px;">Automated, always-current, version-controlled.</td></tr>
   </table>
 
-  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 2 of 5 · Confidential</span></div>
+  <div class="pf"><span>StreamForge — Solution Overview</span><span>Page 2 of 5</span></div>
 </section>
 
 <!-- ════════════════ PAGE 3 — BUSINESS: USE CASES & VALUE ════════════════ -->
@@ -238,7 +238,7 @@
     <b>3. Monitor</b> (opt-in) — drift detection and the CI gate on the streams that matter.
     Schemas are plain YAML you keep — there is no vendor lock-in.</p>
 
-  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 3 of 5 · Confidential</span></div>
+  <div class="pf"><span>StreamForge — Solution Overview</span><span>Page 3 of 5</span></div>
 </section>
 
 <!-- ════════════════ PAGE 4 — TECHNICAL: HOW IT WORKS & ARCHITECTURE ════════════════ -->
@@ -319,7 +319,7 @@
 
   <div style="margin-top:12px;border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:8px;
        padding:11px 14px;background:#fbfcfe;">
-    <h3 style="color:var(--ink);font-size:10pt;margin-bottom:5px;">Assumptions &amp; limitations (so the trial is scoped honestly)</h3>
+    <h3 style="color:var(--ink);font-size:10pt;margin-bottom:5px;">Assumptions &amp; limitations</h3>
     <p style="font-size:8.8pt;margin:0;color:var(--body);line-height:1.5;">
       Inference is <b>sampling-based</b> — it characterises the sampled distribution, not every historical message.
       It works best on <b>self-describing payloads</b> (JSON / text); opaque binary without a schema needs that schema supplied.
@@ -328,7 +328,7 @@
       catalogues and does not provide governance workflow or access control on its own.</p>
   </div>
 
-  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 4 of 5 · Confidential</span></div>
+  <div class="pf"><span>StreamForge — Solution Overview</span><span>Page 4 of 5</span></div>
 </section>
 
 <!-- ════════════════ PAGE 5 — TECHNICAL: SECURITY, THE MOAT, PROOF ════════════════ -->
@@ -365,21 +365,20 @@
   </div>
   <p class="note" style="margin-top:6px;">Measured on hand-labelled benchmark streams with injected, known drift —
     deterministic and reproducible (same input → same result). Figures shown are the deterministic, no-LLM path;
-    the optional LLM-assisted path scores higher on semantic types. Accuracy on your own data will vary — that is
-    what the trial establishes.</p>
+    the optional LLM-assisted path scores higher on semantic types. Accuracy on any given estate will vary with
+    data shape and should be validated against the same benchmark.</p>
 
   <div class="cta">
-    <h3>Trial it on your Kafka or SQS — read-only</h3>
-    <p>StreamForge is built and running today. The objective is a short, read-only trial on one of your real
-      clusters or queues. <b style="color:#fff;">What we need:</b> read access to one Kafka cluster or SQS queue
-      (a dedicated consumer group / peek — your consumers and delivery untouched).
-      <b style="color:#fff;">What you get back:</b> a documented schema and PII map per stream, the cross-topic
-      inconsistencies across your teams, and the blast radius of a sample change — on your infrastructure, with no
-      data leaving your network.</p>
-    <p style="margin-top:8px;color:#fff;"><strong>hello@loonlabs.io</strong> &nbsp;·&nbsp; loonlabs.io/streamforge</p>
+    <h3>In summary</h3>
+    <p>StreamForge <b style="color:#fff;">discovers</b> every stream — including legacy queues and external feeds —
+      and documents each as version-controlled schema; <b style="color:#fff;">maps</b> how fields relate across the
+      business and where they are modelled inconsistently; <b style="color:#fff;">shows the blast radius</b> of a
+      change, grounded in observed consumer usage, before it ships; and <b style="color:#fff;">watches</b> for drift.
+      It runs read-only and deterministic, with no producer changes and no data leaving your network — complementing,
+      not replacing, your schema registry and catalogue.</p>
   </div>
 
-  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 5 of 5 · Confidential</span></div>
+  <div class="pf"><span>StreamForge — Solution Overview</span><span>Page 5 of 5</span></div>
 </section>
 
 </body>
