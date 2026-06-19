@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>StreamForge — Enterprise Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0f172a; --body:#334155; --muted:#64748b; --line:#e5e7eb;
+    --ba:#1d4f91; --ba-navy:#0a2d66; --ba-light:#2e74c2; --ba-tint:#eef3fb;
+    --good:#0f766e; --bad:#b91c1c;
+  }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { font-family:'Inter',sans-serif; color:var(--body); font-size:10.5pt; line-height:1.5; }
+  .page { width:210mm; height:297mm; padding:15mm 16mm; position:relative; overflow:hidden;
+    page-break-after:always; background:#fff; }
+  .page:last-child { page-break-after:auto; }
+
+  /* running header / footer */
+  .rh { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line);
+    padding-bottom:7px; margin-bottom:18px; }
+  .rh__logo { font-weight:800; font-size:12pt; color:var(--ink); letter-spacing:-.01em; }
+  .rh__logo span{ color:var(--ba); }
+  .rh__tag { font-size:8pt; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .pf { position:absolute; bottom:9mm; left:16mm; right:16mm; display:flex; justify-content:space-between;
+    font-size:8pt; color:var(--muted); border-top:1px solid var(--line); padding-top:6px; }
+
+  h1 { font-size:30pt; font-weight:900; color:var(--ink); letter-spacing:-.02em; line-height:1.05; }
+  h2 { font-size:16pt; font-weight:800; color:var(--ink); letter-spacing:-.01em; margin-bottom:10px; }
+  h3 { font-size:11pt; font-weight:700; color:var(--ink); margin-bottom:4px; }
+  .eyebrow { font-size:8.5pt; font-weight:700; color:var(--ba); text-transform:uppercase; letter-spacing:.12em; margin-bottom:12px; }
+  .lead { font-size:12pt; color:var(--body); line-height:1.55; }
+  p { margin-bottom:9px; }
+  strong { color:var(--ink); }
+  code { font-family:'JetBrains Mono',monospace; font-size:8.8pt; background:var(--ba-tint); color:var(--ba);
+    padding:1px 4px; border-radius:3px; }
+  .sec-band { display:inline-block; font-size:9pt; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    color:#fff; background:var(--ba); padding:5px 12px; border-radius:5px; margin-bottom:16px; }
+  .sec-band--tech { background:var(--ba-navy); }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .card { border:1px solid var(--line); border-radius:9px; padding:13px 15px; }
+  .card h3 { color:var(--ba-navy); }
+  .card p { font-size:9.5pt; color:var(--body); margin:0; }
+
+  .facts { background:var(--ba-tint); border:1px solid #d6e2f3; border-radius:10px; padding:16px 18px; }
+  .facts h3 { color:var(--ba-navy); margin-bottom:8px; font-size:10pt; text-transform:uppercase; letter-spacing:.05em; }
+  .facts ul { list-style:none; }
+  .facts li { display:flex; gap:8px; font-size:9.8pt; padding:3.5px 0; color:var(--body); }
+  .facts li b{ color:var(--ink); font-weight:600; }
+  .tick { color:var(--ba); font-weight:800; }
+
+  .ba-cols { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .ba-col { border-radius:10px; padding:15px 16px; border:1px solid var(--line); }
+  .ba-col--bad { background:#fdf4f4; border-color:#f6cccc; }
+  .ba-col--good{ background:#f3f8ff; border-color:#c2d8f3; }
+  .ba-col h3 { font-size:9pt; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
+  .ba-col--bad h3{ color:var(--bad); } .ba-col--good h3{ color:var(--ba); }
+  .ba-col ul{ list-style:none; }
+  .ba-col li{ display:flex; gap:8px; font-size:9.3pt; padding:5px 0; border-top:1px solid rgba(0,0,0,.05); color:var(--body); }
+  .ba-col li:first-child{ border-top:none; }
+  .x{ color:var(--bad); font-weight:800; } .v{ color:var(--ba); font-weight:800; }
+
+  .uc { border-left:3px solid var(--ba); background:#f8fafc; border-radius:0 8px 8px 0; padding:11px 14px; margin-bottom:10px; }
+  .uc b{ color:var(--ba-navy); }
+  .uc .ll{ display:block; font-size:8pt; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ba); margin-bottom:3px; }
+  .uc p{ font-size:9.4pt; margin:0; }
+
+  .pipe { display:flex; gap:8px; margin:14px 0 4px; }
+  .pipe__step{ flex:1; border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; background:#fbfcfe; }
+  .pipe__step b{ display:block; color:var(--ba-navy); font-size:9.5pt; }
+  .pipe__step span{ font-size:8pt; color:var(--muted); }
+  .pipe__arrow{ align-self:center; color:var(--ba); font-weight:800; }
+
+  .note { font-size:9pt; color:var(--muted); }
+  .shot{ width:100%; border:1px solid var(--line); border-radius:8px; margin:6px 0; }
+  .kpis{ display:flex; gap:10px; margin:10px 0; }
+  .kpi{ flex:1; border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; }
+  .kpi b{ display:block; font-family:'JetBrains Mono',monospace; font-size:15pt; color:var(--good); }
+  .kpi span{ font-size:7.5pt; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .cta{ background:var(--ba-navy); color:#fff; border-radius:10px; padding:16px 18px; margin-top:14px; }
+  .cta h3{ color:#fff; font-size:13pt; margin-bottom:5px; }
+  .cta p{ color:#cdd9ec; font-size:9.5pt; margin:0; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ PAGE 1 — COVER / EXECUTIVE SUMMARY ════════════════ -->
+<section class="page">
+  <div class="rh"><div class="rh__logo">Stream<span>Forge</span></div>
+    <div class="rh__tag">Enterprise Brief · for architects &amp; data leaders</div></div>
+
+  <div style="margin-top:14mm;">
+    <div class="eyebrow">Data discovery, mapping &amp; contracts for event streams</div>
+    <h1>Know what's in your<br>event streams —<br><span style="color:var(--ba);">and what breaks<br>when you change them.</span></h1>
+  </div>
+
+  <p class="lead" style="margin-top:14mm; max-width:160mm;">
+    Most organisations run hundreds of Kafka topics and message queues that are undocumented — some built years
+    ago by people who've moved on, some external feeds from partners you don't control. No one has the full
+    picture, so a single field change quietly breaks systems downstream, and "where does our PII flow?" has no
+    answer. <strong>StreamForge reads the messages, maps every field across the business, shows the blast radius
+    of any change before it ships, and watches every stream for breaking changes</strong> — read-only, with no
+    producer changes and no schema registry.
+  </p>
+
+  <div class="facts" style="margin-top:12mm;">
+    <h3>At a glance</h3>
+    <div class="grid2" style="gap:6px 28px;">
+      <ul>
+        <li><span class="tick">✓</span><span><b>Works with</b> Kafka, SQS, RabbitMQ, IBM&nbsp;MQ, Pub/Sub</span></li>
+        <li><span class="tick">✓</span><span><b>Read-only</b> — never consumes or writes your messages</span></li>
+        <li><span class="tick">✓</span><span><b>No producer changes</b>, no schema registry to adopt</span></li>
+      </ul>
+      <ul>
+        <li><span class="tick">✓</span><span><b>Deterministic</b> — no data leaves your network</span></li>
+        <li><span class="tick">✓</span><span><b>Schema-as-code</b> (git), CI gate, cross-topic lineage</span></li>
+        <li><span class="tick">✓</span><span><b>PII</b> detected and mapped across the estate</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 1 of 5 · Confidential</span></div>
+</section>
+
+<!-- ════════════════ PAGE 2 — BUSINESS: THE PROBLEM & THE SHIFT ════════════════ -->
+<section class="page">
+  <div class="rh"><div class="rh__logo">Stream<span>Forge</span></div>
+    <div class="rh__tag">Business · for data leaders</div></div>
+
+  <div class="sec-band">For data &amp; business leaders</div>
+  <h2>The problem isn't a missing tool — it's that no one can see the estate.</h2>
+  <p>Event streams are the nervous system of a modern business, but they're governed by tribal knowledge.
+    The result is three compounding problems:</p>
+
+  <div class="grid3" style="margin:14px 0;">
+    <div class="card"><h3>You can't see what you have</h3><p>Hundreds of topics and queues across clusters and
+      platforms. Legacy systems nobody owns. External partner feeds you can't change. No single inventory exists.</p></div>
+    <div class="card"><h3>Changes break things silently</h3><p>A producer renames or retypes a field; nobody is
+      told; downstream services fail hours later. Days are lost finding what even depended on it.</p></div>
+    <div class="card"><h3>Compliance can't be answered</h3><p>Passport numbers, dates of birth and payment data
+      flow through queues nobody monitors. When audit asks where PII goes, no one can say.</p></div>
+  </div>
+
+  <p>The cost is concrete: production incidents, weeks of engineering time on every new project, slow change,
+    and standing audit risk — all because the contract of each stream lives only in code.</p>
+
+  <h2 style="margin-top:18px;">What changes with StreamForge</h2>
+  <div class="ba-cols" style="margin-top:8px;">
+    <div class="ba-col ba-col--bad">
+      <h3>Today — without StreamForge</h3>
+      <ul>
+        <li><span class="x">✕</span> A field changes — no one is told.</li>
+        <li><span class="x">✕</span> Downstream fails hours later, in production.</li>
+        <li><span class="x">✕</span> Days of debugging to find the dependency.</li>
+        <li><span class="x">✕</span> The same field is modelled three ways.</li>
+        <li><span class="x">✕</span> "Where does PII flow?" — no answer.</li>
+      </ul>
+    </div>
+    <div class="ba-col ba-col--good">
+      <h3>With StreamForge</h3>
+      <ul>
+        <li><span class="v">✓</span> Every field mapped across every stream, automatically.</li>
+        <li><span class="v">✓</span> The blast radius of a change shown <b>in the pull request</b>.</li>
+        <li><span class="v">✓</span> Breaking changes blocked in CI; teams sign off first.</li>
+        <li><span class="v">✓</span> Cross-team inconsistencies caught before incidents.</li>
+        <li><span class="v">✓</span> PII mapped — answer audit in seconds.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 2 of 5 · Confidential</span></div>
+</section>
+
+<!-- ════════════════ PAGE 3 — BUSINESS: USE CASES & VALUE ════════════════ -->
+<section class="page">
+  <div class="rh"><div class="rh__logo">Stream<span>Forge</span></div>
+    <div class="rh__tag">Business · use cases &amp; value</div></div>
+
+  <div class="sec-band">In an operational estate — an airline example</div>
+  <h2>One change, mapped to everyone it touches.</h2>
+  <p class="note" style="margin-bottom:12px;">FlightOps, Ground Ops, the AODB, Crew, Baggage and Payments all
+    publish events across Kafka and decades of IBM&nbsp;MQ. A few representative scenarios (illustrative —
+    "Acme&nbsp;Airways"):</p>
+
+  <div class="uc"><span class="ll">Data map &amp; inconsistency</span><p><b>gate</b> is <code>"A23"</code> (string)
+    in Gate Management but stand <code>23</code> (integer) in the legacy allocator; departure times are UTC in the
+    AODB and local at an outstation. StreamForge surfaces the conflict before the boarding board shows the wrong gate.</p></div>
+  <div class="uc"><span class="ll">Blast radius — before you ship</span><p>FlightOps wants to retype
+    <b>estimated_off_block_time</b>. The blast radius: it breaks slot management, crew rostering, turnaround
+    prediction and the on-time-performance dashboard — four teams, surfaced in the pull request.</p></div>
+  <div class="uc"><span class="ll">Discovery on legacy &amp; external feeds</span><p>The AODB, DCS and IATA Type-B
+    movement messages (MVT/LDM/ASM) on decades-old IBM&nbsp;MQ — browsed read-only, documented in an afternoon,
+    without touching the producers.</p></div>
+  <div class="uc"><span class="ll">PII &amp; compliance</span><p>Where do APIS passport details and special-assistance
+    codes flow? Instantly: across DCS, the boarding feed and the Border-Force stream — all flagged, with the services that read them.</p></div>
+
+  <div class="grid3" style="margin-top:16px;">
+    <div class="card"><h3>Fewer incidents</h3><p>Breaking changes are caught in CI, not in production at 2&nbsp;a.m.</p></div>
+    <div class="card"><h3>Faster delivery</h3><p>New projects start with a map, not weeks of asking around.</p></div>
+    <div class="card"><h3>Audit-ready</h3><p>PII flow and every schema decision documented and explainable.</p></div>
+  </div>
+
+  <h3 style="margin-top:16px; color:var(--ba-navy);">Adoption — value in hours, no lock-in</h3>
+  <p style="font-size:9.6pt;"><b>1. Discover</b> (hours) — a read-only scan inventories every stream. &nbsp;·&nbsp;
+    <b>2. Schema</b> (days) — infer and commit contracts for critical streams. &nbsp;·&nbsp;
+    <b>3. Monitor</b> (opt-in) — drift detection and the CI gate on the streams that matter.
+    Schemas are plain YAML you keep — there is no vendor lock-in.</p>
+
+  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 3 of 5 · Confidential</span></div>
+</section>
+
+<!-- ════════════════ PAGE 4 — TECHNICAL: HOW IT WORKS & ARCHITECTURE ════════════════ -->
+<section class="page">
+  <div class="rh"><div class="rh__logo">Stream<span>Forge</span></div>
+    <div class="rh__tag">Technical · architecture</div></div>
+
+  <div class="sec-band sec-band--tech">For engineers &amp; architects</div>
+  <h2>How it works</h2>
+  <div class="pipe">
+    <div class="pipe__step"><b>Sample</b><span>non-destructive read</span></div>
+    <div class="pipe__arrow">→</div>
+    <div class="pipe__step"><b>Infer</b><span>statistical + optional LLM</span></div>
+    <div class="pipe__arrow">→</div>
+    <div class="pipe__step"><b>Map</b><span>cross-topic graph + lineage</span></div>
+    <div class="pipe__arrow">→</div>
+    <div class="pipe__step"><b>Watch</b><span>FDR-controlled drift</span></div>
+  </div>
+  <p style="font-size:9.6pt;">Schema inference is <b>deterministic by default</b> — typed-frequency analysis,
+    presence rates, pattern detection (UUID, email, timestamp), cardinality and quorum voting, with a confidence
+    score per field (Wilson interval). An LLM is an <b>optional</b> enrichment for semantic naming only, can be
+    self-hosted or disabled, and never sits on the critical path. Drift uses proven tests — binomial z, chi-squared,
+    PSI — with Benjamini-Hochberg FDR correction to control false positives at scale.</p>
+
+  <h2 style="margin-top:14px;">Connector architecture &amp; loose coupling</h2>
+  <svg viewBox="0 0 660 232" width="100%" style="border:1px solid var(--line);border-radius:8px;background:#fbfcfe;margin:6px 0;">
+    <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#1d4f91"/></marker></defs>
+    <!-- col labels -->
+    <text x="78"  y="20" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#64748b">SOURCES</text>
+    <text x="248" y="20" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#64748b">CONNECTORS (read-only)</text>
+    <text x="430" y="20" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#64748b">STREAMFORGE CORE</text>
+    <text x="600" y="20" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#64748b">OUTPUTS</text>
+    <!-- sources -->
+    <g font-family="JetBrains Mono" font-size="9.5" fill="#0f172a">
+      <rect x="20" y="32" width="116" height="22" rx="5" fill="#eef3fb" stroke="#c2d8f3"/><text x="78" y="47" text-anchor="middle">Kafka</text>
+      <rect x="20" y="60" width="116" height="22" rx="5" fill="#eef3fb" stroke="#c2d8f3"/><text x="78" y="75" text-anchor="middle">SQS</text>
+      <rect x="20" y="88" width="116" height="22" rx="5" fill="#eef3fb" stroke="#c2d8f3"/><text x="78" y="103" text-anchor="middle">RabbitMQ</text>
+      <rect x="20" y="116" width="116" height="22" rx="5" fill="#eef3fb" stroke="#c2d8f3"/><text x="78" y="131" text-anchor="middle">IBM MQ</text>
+      <rect x="20" y="144" width="116" height="22" rx="5" fill="#fdf4f4" stroke="#f6cccc"/><text x="78" y="159" text-anchor="middle" fill="#b91c1c">partner feeds</text>
+    </g>
+    <!-- connector box -->
+    <rect x="166" y="40" width="164" height="130" rx="8" fill="#fff" stroke="#1d4f91" stroke-width="1.5"/>
+    <text x="248" y="92" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="700" fill="#0a2d66">Source</text>
+    <text x="248" y="107" text-anchor="middle" font-family="Inter" font-size="10.5" font-weight="700" fill="#0a2d66">abstraction</text>
+    <text x="248" y="128" text-anchor="middle" font-family="Inter" font-size="8.5" fill="#64748b">browse / peek mode</text>
+    <text x="248" y="140" text-anchor="middle" font-family="Inter" font-size="8.5" fill="#64748b">dedicated consumer group</text>
+    <!-- core box -->
+    <rect x="360" y="32" width="140" height="146" rx="8" fill="#0a2d66"/>
+    <g font-family="Inter" font-size="9.5" fill="#fff" text-anchor="middle">
+      <text x="430" y="58">Sample</text><text x="430" y="86">Infer</text>
+      <text x="430" y="114">Map / lineage</text><text x="430" y="142">Watch (drift)</text>
+    </g>
+    <!-- outputs -->
+    <g font-family="JetBrains Mono" font-size="8.5" fill="#0f172a">
+      <rect x="528" y="36" width="120" height="20" rx="4" fill="#f3f8ff" stroke="#c2d8f3"/><text x="588" y="50" text-anchor="middle">schema.yaml (git)</text>
+      <rect x="528" y="62" width="120" height="20" rx="4" fill="#f3f8ff" stroke="#c2d8f3"/><text x="588" y="76" text-anchor="middle">CI gate</text>
+      <rect x="528" y="88" width="120" height="20" rx="4" fill="#f3f8ff" stroke="#c2d8f3"/><text x="588" y="102" text-anchor="middle">cockpit / blast radius</text>
+      <rect x="528" y="114" width="120" height="20" rx="4" fill="#f3f8ff" stroke="#c2d8f3"/><text x="588" y="128" text-anchor="middle">PII map</text>
+      <rect x="528" y="140" width="120" height="20" rx="4" fill="#f3f8ff" stroke="#c2d8f3"/><text x="588" y="154" text-anchor="middle">alerts / Slack</text>
+    </g>
+    <!-- arrows -->
+    <line x1="138" y1="101" x2="164" y2="101" stroke="#1d4f91" stroke-width="1.5" marker-end="url(#ar)"/>
+    <line x1="332" y1="101" x2="358" y2="101" stroke="#1d4f91" stroke-width="1.5" marker-end="url(#ar)"/>
+    <line x1="502" y1="101" x2="526" y2="101" stroke="#1d4f91" stroke-width="1.5" marker-end="url(#ar)"/>
+    <text x="330" y="212" text-anchor="middle" font-family="Inter" font-size="9" font-style="italic" fill="#1d4f91">
+      Loose coupling: swap a connector and the inference, mapping and drift engine are unchanged.</text>
+  </svg>
+
+  <div class="grid2" style="margin-top:6px;">
+    <div class="card"><h3>Non-destructive by design</h3><p>Kafka: dedicated consumer group, independent offsets.
+      SQS: peek (VisibilityTimeout&nbsp;0). IBM&nbsp;MQ: browse mode. Your consumers and delivery are untouched.</p></div>
+    <div class="card"><h3>Decoupled core</h3><p>Connectors implement one read interface; inference, the cross-topic
+      graph and drift detection never depend on the transport. New sources plug in without touching the engine.</p></div>
+  </div>
+
+  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 4 of 5 · Confidential</span></div>
+</section>
+
+<!-- ════════════════ PAGE 5 — TECHNICAL: SECURITY, THE MOAT, PROOF ════════════════ -->
+<section class="page">
+  <div class="rh"><div class="rh__logo">Stream<span>Forge</span></div>
+    <div class="rh__tag">Technical · security &amp; differentiation</div></div>
+
+  <div class="sec-band sec-band--tech">For engineers &amp; architects</div>
+  <h2>Security &amp; data residency</h2>
+  <div class="grid2" style="margin-bottom:14px;">
+    <div class="card"><h3>Nothing leaves your network</h3><p>Runs fully deterministic with no external calls. If
+      the optional LLM is enabled, values are pseudonymised first and it can be pointed at an on-prem model — or
+      disabled for an air-gapped deployment.</p></div>
+    <div class="card"><h3>Read-only &amp; auditable</h3><p>Never writes to brokers; messages are sampled, analysed
+      and discarded, not stored. Every inference and drift decision is logged with its evidence for compliance review.</p></div>
+  </div>
+
+  <h2>The differentiator: observed lineage</h2>
+  <p style="font-size:9.8pt;">Most tools ask teams to <em>declare</em> which fields they consume — a manifest that
+    rots and that a competitor can copy. StreamForge can <strong>observe which fields each consumer actually reads
+    at runtime</strong>, with access counts, and compound that into a per-company access graph that gets more
+    valuable every day it runs. So the blast radius isn't a guess: <em>"changing <code>gate</code> affects the
+    departure boards (read 8M&nbsp;times yesterday), the app, baggage routing and catering."</em> It's the one
+    asset a new competitor can't bootstrap.</p>
+
+  <h2 style="margin-top:6px;">Proof, not promises</h2>
+  <p style="font-size:9.8pt; margin-bottom:4px;">StreamForge ships a benchmark that scores its own inference and
+    drift detection against hand-labelled data — reproducibly (same input, same result).</p>
+  <div class="kpis">
+    <div class="kpi"><b>0.93</b><span>Schema F1</span></div>
+    <div class="kpi"><b>0.86</b><span>PII F1</span></div>
+    <div class="kpi"><b>0.0%</b><span>False positives (null)</span></div>
+    <div class="kpi"><b>0.10</b><span>Calibration (ECE)</span></div>
+    <div class="kpi"><b>100%</b><span>Deterministic mode</span></div>
+  </div>
+
+  <div class="cta">
+    <h3>See it on your streams</h3>
+    <p>A 30-minute demo on one cluster or queue: every topic's schema auto-discovered, the cross-topic conflicts
+      across your teams, the blast radius of a breaking change, and PII mapped — read-only, no producer changes,
+      no data leaving your network.</p>
+    <p style="margin-top:8px;color:#fff;"><strong>hello@loonlabs.io</strong> &nbsp;·&nbsp; loonlabs.io/streamforge</p>
+  </div>
+
+  <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 5 of 5 · Confidential</span></div>
+</section>
+
+</body>
+</html>
