@@ -99,13 +99,20 @@
     <h1>Know what's in your<br>event streams —<br><span style="color:var(--ba);">and what breaks<br>when you change them.</span></h1>
   </div>
 
-  <p class="lead" style="margin-top:14mm; max-width:160mm;">
+  <div style="margin-top:11mm; background:var(--ba-tint); border:1px solid #c2d8f3; border-left:4px solid var(--ba);
+       border-radius:8px; padding:13px 16px; font-size:10pt;">
+    <b style="color:var(--ba-navy);">What this is —</b> a working system, built and running today.
+    &nbsp;<b style="color:var(--ba-navy);">What we're asking —</b> a short, <b>read-only trial on one of your real
+    Kafka or SQS instances</b>, on your infrastructure, with no data leaving your network.
+  </div>
+
+  <p class="lead" style="margin-top:9mm; max-width:160mm;">
     Most organisations run hundreds of Kafka topics and message queues that are undocumented — some built years
-    ago by people who've moved on, some external feeds from partners you don't control. No one has the full
-    picture, so a single field change quietly breaks systems downstream, and "where does our PII flow?" has no
-    answer. <strong>StreamForge reads the messages, maps every field across the business, shows the blast radius
-    of any change before it ships, and watches every stream for breaking changes</strong> — read-only, with no
-    producer changes and no schema registry.
+    ago by people who've moved on, some external feeds from partners you don't control. Few teams have a complete,
+    current picture, so a single field change can quietly break systems downstream, and "where does our PII flow?"
+    is hard to answer. <strong>StreamForge reads the messages, maps each field across the business, estimates the
+    blast radius of a change before it ships, and watches streams for breaking changes</strong> — read-only, with no
+    producer changes. It is designed to complement a schema registry or data catalog, not replace one.
   </p>
 
   <div class="facts" style="margin-top:12mm;">
@@ -133,9 +140,9 @@
     <div class="rh__tag">Business · for data leaders</div></div>
 
   <div class="sec-band">For data &amp; business leaders</div>
-  <h2>The problem isn't a missing tool — it's that no one can see the estate.</h2>
-  <p>Event streams are the nervous system of a modern business, but they're governed by tribal knowledge.
-    The result is three compounding problems:</p>
+  <h2>Often the gap isn't tooling — it's visibility into the estate.</h2>
+  <p>Event streams carry much of a modern business, yet they're frequently governed by tribal knowledge.
+    Where that's the case, three problems tend to compound:</p>
 
   <div class="grid3" style="margin:14px 0;">
     <div class="card"><h3>You can't see what you have</h3><p>Hundreds of topics and queues across clusters and
@@ -164,14 +171,31 @@
     <div class="ba-col ba-col--good">
       <h3>With StreamForge</h3>
       <ul>
-        <li><span class="v">✓</span> Every field mapped across every stream, automatically.</li>
-        <li><span class="v">✓</span> The blast radius of a change shown <b>in the pull request</b>.</li>
+        <li><span class="v">✓</span> Each sampled field mapped across streams, automatically.</li>
+        <li><span class="v">✓</span> The estimated blast radius of a change shown <b>in the pull request</b>.</li>
         <li><span class="v">✓</span> Breaking changes blocked in CI; teams sign off first.</li>
-        <li><span class="v">✓</span> Cross-team inconsistencies caught before incidents.</li>
-        <li><span class="v">✓</span> PII mapped — answer audit in seconds.</li>
+        <li><span class="v">✓</span> Cross-team inconsistencies surfaced earlier.</li>
+        <li><span class="v">✓</span> PII detected and mapped for audit.</li>
       </ul>
     </div>
   </div>
+
+  <h3 style="margin-top:16px;color:var(--ba-navy);">Where it fits — alongside what you already have</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:8.7pt;margin-top:5px;">
+    <tr style="text-align:left;color:var(--muted);font-size:8pt;text-transform:uppercase;letter-spacing:.04em;">
+      <th style="padding:5px 6px;border-bottom:1px solid var(--line);width:22%;">Approach</th>
+      <th style="padding:5px 6px;border-bottom:1px solid var(--line);width:33%;">What it does well</th>
+      <th style="padding:5px 6px;border-bottom:1px solid var(--line);">How StreamForge relates</th></tr>
+    <tr><td style="padding:6px;color:var(--ink);"><b>Schema registry</b></td>
+      <td style="padding:6px;">Enforces <em>registered</em> Avro/Protobuf on produce (Kafka)</td>
+      <td style="padding:6px;">Infers from raw messages — no registration; also covers legacy, external &amp; non-Kafka; adds drift + cross-topic lineage. Can push to your registry.</td></tr>
+    <tr style="background:#fafbfd;"><td style="padding:6px;color:var(--ink);"><b>Data catalog</b></td>
+      <td style="padding:6px;">Metadata, governance, lineage (mostly ingested/manual)</td>
+      <td style="padding:6px;">Auto-infers from live stream content incl. queues; real-time drift. Complements a catalog — can feed it, not replace it.</td></tr>
+    <tr><td style="padding:6px;color:var(--ink);"><b>Manual docs</b></td>
+      <td style="padding:6px;">Wikis, spreadsheets, schemas in code</td>
+      <td style="padding:6px;">Automated, always-current, version-controlled.</td></tr>
+  </table>
 
   <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 2 of 5 · Confidential</span></div>
 </section>
@@ -204,6 +228,9 @@
     <div class="card"><h3>Faster delivery</h3><p>New projects start with a map, not weeks of asking around.</p></div>
     <div class="card"><h3>Audit-ready</h3><p>PII flow and every schema decision documented and explainable.</p></div>
   </div>
+  <p class="note" style="margin-top:8px;">The capabilities above — discovery, mapping, blast radius and drift —
+    are implemented and demonstrable today. The business outcomes are expected results; the realised benefit
+    depends on your estate and how widely the contract checks are adopted.</p>
 
   <h3 style="margin-top:16px; color:var(--ba-navy);">Adoption — value in hours, no lock-in</h3>
   <p style="font-size:9.6pt;"><b>1. Discover</b> (hours) — a read-only scan inventories every stream. &nbsp;·&nbsp;
@@ -231,10 +258,12 @@
     <div class="pipe__step"><b>Watch</b><span>FDR-controlled drift</span></div>
   </div>
   <p style="font-size:9.6pt;">Schema inference is <b>deterministic by default</b> — typed-frequency analysis,
-    presence rates, pattern detection (UUID, email, timestamp), cardinality and quorum voting, with a confidence
-    score per field (Wilson interval). An LLM is an <b>optional</b> enrichment for semantic naming only, can be
-    self-hosted or disabled, and never sits on the critical path. Drift uses proven tests — binomial z, chi-squared,
-    PSI — with Benjamini-Hochberg FDR correction to control false positives at scale.</p>
+    presence rates, pattern detection (UUID, email, timestamp), cardinality and quorum voting, with a per-field
+    confidence score (a Wilson interval — a statistical bound on a proportion). An LLM is an <b>optional</b>
+    enrichment for semantic naming only; it can be self-hosted or disabled and never sits on the critical path.
+    Drift uses standard statistical tests — binomial-z, chi-squared and PSI (population stability index, a
+    distribution-shift measure) — with Benjamini-Hochberg correction to control the false-discovery rate when
+    hundreds of fields are tested at once.</p>
 
   <h2 style="margin-top:14px;">Connector architecture &amp; loose coupling</h2>
   <svg viewBox="0 0 660 232" width="100%" style="border:1px solid var(--line);border-radius:8px;background:#fbfcfe;margin:6px 0;">
@@ -288,6 +317,17 @@
       graph and drift detection never depend on the transport. New sources plug in without touching the engine.</p></div>
   </div>
 
+  <div style="margin-top:12px;border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:8px;
+       padding:11px 14px;background:#fbfcfe;">
+    <h3 style="color:var(--ink);font-size:10pt;margin-bottom:5px;">Assumptions &amp; limitations (so the trial is scoped honestly)</h3>
+    <p style="font-size:8.8pt;margin:0;color:var(--body);line-height:1.5;">
+      Inference is <b>sampling-based</b> — it characterises the sampled distribution, not every historical message.
+      It works best on <b>self-describing payloads</b> (JSON / text); opaque binary without a schema needs that schema supplied.
+      <b>Topic-level</b> consumer discovery is automatic from broker metadata; <b>field-level</b> observed lineage
+      requires a thin read-only wrapper in the consumer (or a declared contract). It complements registries and
+      catalogues and does not provide governance workflow or access control on its own.</p>
+  </div>
+
   <div class="pf"><span>StreamForge — Enterprise Brief</span><span>Page 4 of 5 · Confidential</span></div>
 </section>
 
@@ -306,30 +346,36 @@
       and discarded, not stored. Every inference and drift decision is logged with its evidence for compliance review.</p></div>
   </div>
 
-  <h2>The differentiator: observed lineage</h2>
-  <p style="font-size:9.8pt;">Most tools ask teams to <em>declare</em> which fields they consume — a manifest that
-    rots and that a competitor can copy. StreamForge can <strong>observe which fields each consumer actually reads
-    at runtime</strong>, with access counts, and compound that into a per-company access graph that gets more
-    valuable every day it runs. So the blast radius isn't a guess: <em>"changing <code>gate</code> affects the
-    departure boards (read 8M&nbsp;times yesterday), the app, baggage routing and catering."</em> It's the one
-    asset a new competitor can't bootstrap.</p>
+  <h2>A differentiator: observed lineage</h2>
+  <p style="font-size:9.5pt;">Most tools ask teams to <em>declare</em> which fields they consume — a manifest that
+    drifts out of date. StreamForge can also <strong>observe which fields each consumer actually reads at
+    runtime</strong>, with access counts, and accumulate that into a per-company access graph. The blast radius is
+    then grounded in real usage rather than a guess: <em>changing <code>gate</code> was read by the departure
+    boards, the app, baggage routing and catering.</em> Because it builds up over time, it is hard for a newcomer
+    to reproduce quickly. <span style="color:var(--muted);">Collected by a thin, read-only wrapper the consumer
+    imports — it records which fields are read and never alters the message or the consumer's behaviour.</span></p>
 
-  <h2 style="margin-top:6px;">Proof, not promises</h2>
-  <p style="font-size:9.8pt; margin-bottom:4px;">StreamForge ships a benchmark that scores its own inference and
-    drift detection against hand-labelled data — reproducibly (same input, same result).</p>
+  <h2 style="margin-top:8px;">Proof — and how it is measured</h2>
   <div class="kpis">
     <div class="kpi"><b>0.93</b><span>Schema F1</span></div>
     <div class="kpi"><b>0.86</b><span>PII F1</span></div>
-    <div class="kpi"><b>0.0%</b><span>False positives (null)</span></div>
-    <div class="kpi"><b>0.10</b><span>Calibration (ECE)</span></div>
+    <div class="kpi"><b>0.0%</b><span>False positives</span></div>
+    <div class="kpi"><b>0.10</b><span>Calibration error</span></div>
     <div class="kpi"><b>100%</b><span>Deterministic mode</span></div>
   </div>
+  <p class="note" style="margin-top:6px;">Measured on hand-labelled benchmark streams with injected, known drift —
+    deterministic and reproducible (same input → same result). Figures shown are the deterministic, no-LLM path;
+    the optional LLM-assisted path scores higher on semantic types. Accuracy on your own data will vary — that is
+    what the trial establishes.</p>
 
   <div class="cta">
-    <h3>See it on your streams</h3>
-    <p>A 30-minute demo on one cluster or queue: every topic's schema auto-discovered, the cross-topic conflicts
-      across your teams, the blast radius of a breaking change, and PII mapped — read-only, no producer changes,
-      no data leaving your network.</p>
+    <h3>Trial it on your Kafka or SQS — read-only</h3>
+    <p>StreamForge is built and running today. The objective is a short, read-only trial on one of your real
+      clusters or queues. <b style="color:#fff;">What we need:</b> read access to one Kafka cluster or SQS queue
+      (a dedicated consumer group / peek — your consumers and delivery untouched).
+      <b style="color:#fff;">What you get back:</b> a documented schema and PII map per stream, the cross-topic
+      inconsistencies across your teams, and the blast radius of a sample change — on your infrastructure, with no
+      data leaving your network.</p>
     <p style="margin-top:8px;color:#fff;"><strong>hello@loonlabs.io</strong> &nbsp;·&nbsp; loonlabs.io/streamforge</p>
   </div>
 
