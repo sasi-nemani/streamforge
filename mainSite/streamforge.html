@@ -45,6 +45,29 @@
       text-transform: uppercase; color: #0a2d66; margin-bottom: 5px; }
     .sf-feat__ba code { font-family: 'JetBrains Mono', monospace; font-size: 12px;
       background: #e7eef8; padding: 1px 5px; border-radius: 4px; color: #1d4f91; }
+
+    /* ── Value proposition: the problem in plain terms (before / after) ── */
+    .sf-vp { padding: 90px 0; background: linear-gradient(180deg, #ffffff 0%, #f5f8fd 100%);
+      border-top: 1px solid #eef2f7; border-bottom: 1px solid #eef2f7; }
+    .sf-vp__lead { font-size: clamp(26px, 3.6vw, 40px); font-weight: 800; color: #0f172a;
+      max-width: 940px; line-height: 1.18; letter-spacing: -0.02em; margin-bottom: 14px; }
+    .sf-vp__sub { font-size: 18px; color: #64748b; max-width: 840px; line-height: 1.6; margin-bottom: 44px; }
+    .sf-vp__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 820px) { .sf-vp__cols { grid-template-columns: 1fr; } }
+    .sf-vp__col { border-radius: 16px; padding: 30px; border: 1px solid #e5e7eb; }
+    .sf-vp__col--bad { background: #fdf4f4; border-color: #f6cccc; }
+    .sf-vp__col--good { background: #f3f8ff; border-color: #c2d8f3; }
+    .sf-vp__col h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+      font-weight: 800; margin-bottom: 18px; }
+    .sf-vp__col--bad h3 { color: #b91c1c; }
+    .sf-vp__col--good h3 { color: #1d4f91; }
+    .sf-vp__list { list-style: none; margin: 0; padding: 0; }
+    .sf-vp__list li { display: flex; gap: 11px; padding: 11px 0; font-size: 15.5px; color: #334155;
+      line-height: 1.5; border-top: 1px solid rgba(15,23,42,.06); }
+    .sf-vp__list li:first-child { border-top: none; }
+    .sf-vp__mark { flex-shrink: 0; font-weight: 800; font-size: 15px; line-height: 1.5; }
+    .sf-vp__col--bad .sf-vp__mark { color: #dc2626; }
+    .sf-vp__col--good .sf-vp__mark { color: #1d4f91; }
   </style>
 </head>
 <body>
@@ -56,13 +79,14 @@
     <canvas class="sf-hero__canvas" id="sfCanvas"></canvas>
     <div class="sf-container sf-hero__inner">
       <h1 class="sf-hero__headline">
-        Automatic schema discovery<br />
-        <span class="sf-gradient-text">for Kafka, SQS, RabbitMQ, IBM MQ.</span>
+        Know what's in your event streams —<br />
+        <span class="sf-gradient-text">and what breaks when you change them.</span>
       </h1>
       <p class="sf-hero__sub">
-        StreamForge reads your messages, infers the schema, and maps every field across the business —
-        where the same field is modelled inconsistently between teams, and exactly which consumers break
-        when it changes. No producer changes. No schema registry. Works with undocumented legacy systems.
+        A producer changes one field and a dozen downstream systems break — hours later, with no idea what
+        depended on it. StreamForge reads your Kafka, SQS and IBM&nbsp;MQ messages, maps every field across the
+        business, and shows the blast radius of any change <strong>before you ship</strong>.
+        No producer changes. No schema registry. Works with undocumented legacy systems.
       </p>
       <div class="sf-hero__actions">
         <a href="#sf-blast-radius" class="sf-btn sf-btn--primary">See the data map</a>
@@ -72,42 +96,39 @@
     <div class="sf-hero__scroll-hint"></div>
   </section>
 
-  <!-- ── ENTERPRISE PROBLEM ─────────────────────────────────────────────── -->
-  <section class="sf-strategy" id="sf-problem">
+  <!-- ── VALUE PROP: THE PROBLEM IN PLAIN TERMS (BEFORE / AFTER) ───────────── -->
+  <section class="sf-vp" id="sf-value">
     <div class="sf-container">
-      <div class="sf-section-label">The Problem</div>
-      <h2 class="sf-section-title">
-        Undocumented event streams.
+      <div class="sf-section-label">The problem, in plain terms</div>
+      <h2 class="sf-vp__lead">
+        Event streams have no contract — so a one-line change quietly breaks things downstream.
       </h2>
-      <p class="sf-strategy__intro">
-        Most organizations have message queues and event streams that are undocumented.
-        Teams that built them have moved on. Wikis are outdated. Schemas exist only in code.
-        When something breaks, nobody knows what depends on what.
+      <p class="sf-vp__sub">
+        Picture a gate change: a team retypes the <code style="font-family:'JetBrains Mono',monospace;background:#eef2ff;padding:1px 6px;border-radius:4px;color:#1d4f91;">gate</code>
+        field from <em>"A23"</em> to <em>23</em>. The departure boards go blank, bags route to the wrong belt,
+        the app shows the old gate — and you hear about it from passengers, not your tools. Multiply that by
+        hundreds of undocumented topics and queues.
       </p>
-
-      <div class="sf-strategy__grid">
-        <div class="sf-strategy__card">
-          <h3>No one knows what data exists</h3>
-          <p>Hundreds of queues. Different field names for the same thing. Duplicate sources.
-             Every project starts with weeks of asking around to understand what's there.</p>
+      <div class="sf-vp__cols">
+        <div class="sf-vp__col sf-vp__col--bad">
+          <h3>Today — without StreamForge</h3>
+          <ul class="sf-vp__list">
+            <li><span class="sf-vp__mark">✕</span> A producer renames or retypes a field — no one is told.</li>
+            <li><span class="sf-vp__mark">✕</span> Downstream services fail hours later, in production.</li>
+            <li><span class="sf-vp__mark">✕</span> Days of debugging just to find what depended on it.</li>
+            <li><span class="sf-vp__mark">✕</span> The same field is modelled three different ways across teams.</li>
+            <li><span class="sf-vp__mark">✕</span> "Where does our passport / PII data flow?" — nobody can answer.</li>
+          </ul>
         </div>
-
-        <div class="sf-strategy__card">
-          <h3>Changes break things silently</h3>
-          <p>Someone renames a field. No one is notified. Downstream systems fail hours later.
-             Debugging takes forever because no one documented the dependency.</p>
-        </div>
-
-        <div class="sf-strategy__card">
-          <h3>PII is everywhere (untracked)</h3>
-          <p>Email addresses, phone numbers, customer IDs flowing through queues nobody monitors.
-             Audit asks "where does PII flow?" — no one can answer.</p>
-        </div>
-
-        <div class="sf-strategy__card">
-          <h3>Tribal knowledge walks out the door</h3>
-          <p>"Ask Dave, he built that in 2019." Dave left. The docs were never written.
-             Now nobody knows how the system works.</p>
+        <div class="sf-vp__col sf-vp__col--good">
+          <h3>With StreamForge</h3>
+          <ul class="sf-vp__list">
+            <li><span class="sf-vp__mark">✓</span> Every field mapped across every stream — automatically, no producer changes.</li>
+            <li><span class="sf-vp__mark">✓</span> The exact blast radius of a change shown <strong>in the pull request</strong>.</li>
+            <li><span class="sf-vp__mark">✓</span> Breaking changes blocked in CI; the right teams sign off first.</li>
+            <li><span class="sf-vp__mark">✓</span> Inconsistencies between teams surfaced before they cause incidents.</li>
+            <li><span class="sf-vp__mark">✓</span> PII tracked across the whole estate — answer audit in seconds.</li>
+          </ul>
         </div>
       </div>
     </div>
