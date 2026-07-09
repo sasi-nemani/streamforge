@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{ --ba:#1d4f91; --navy:#0a2d66; --light:#2e74c2; --tint:#eef3fb; --ink:#0f172a; --muted:#64748b; }
+  body{ width:1600px; height:900px; font-family:'Inter',sans-serif; overflow:hidden;
+    background:
+      radial-gradient(1100px 700px at 88% -10%, rgba(46,116,194,.14), transparent 60%),
+      linear-gradient(180deg,#ffffff 0%, #f4f8fd 100%);
+    color:var(--ink); }
+  .wrap{ display:grid; grid-template-columns:1.02fr .98fr; height:100%; }
+  .left{ padding:78px 60px 64px 86px; display:flex; flex-direction:column; }
+  .logo{ font-size:34px; font-weight:800; letter-spacing:-.02em; }
+  .logo span{ color:var(--ba); }
+  .eyebrow{ margin-top:52px; font-size:15px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--ba); }
+  h1{ margin-top:16px; font-size:58px; line-height:1.04; font-weight:900; letter-spacing:-.025em; color:var(--ink); }
+  h1 span{ background:linear-gradient(120deg,var(--navy),var(--light)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .sub{ margin-top:26px; font-size:22px; line-height:1.5; color:#475569; max-width:640px; }
+  .chips{ margin-top:34px; display:flex; flex-wrap:wrap; gap:11px; max-width:660px; }
+  .chip{ font-size:15px; font-weight:600; color:var(--navy); background:var(--tint); border:1px solid #c9dbf2;
+    padding:8px 15px; border-radius:100px; }
+  .foot{ margin-top:auto; font-family:'JetBrains Mono',monospace; font-size:14.5px; color:var(--muted); letter-spacing:.01em; }
+  .foot b{ color:var(--ba); font-weight:600; }
+
+  .right{ position:relative; overflow:hidden; }
+  .shotframe{ position:absolute; top:96px; left:36px; right:-90px; bottom:-70px;
+    border-radius:16px 0 0 16px; overflow:hidden; border:1px solid #d8e3f2; border-right:none;
+    box-shadow:-40px 40px 90px -40px rgba(10,45,102,.45); background:#fff; }
+  .shotbar{ height:34px; background:#f6f8fb; border-bottom:1px solid #e6ecf4; display:flex; align-items:center; gap:8px; padding:0 14px; }
+  .dot{ width:11px; height:11px; border-radius:50%; }
+  .shot{ width:100%; height:calc(100% - 34px); object-fit:cover; object-position:top left; display:block; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="left">
+      <div class="logo">Stream<span>Forge</span></div>
+
+      <div class="eyebrow">Data discovery, lineage &amp; drift detection for event streams</div>
+      <h1>Know what's in your<br>event streams —<br><span>and what breaks when<br>you change them.</span></h1>
+      <p class="sub">Read-only schema discovery, cross-topic field lineage, and blast-radius
+        analysis for Kafka, SQS &amp; message queues.</p>
+
+      <div class="chips">
+        <span class="chip">Schema discovery</span>
+        <span class="chip">Cross-topic lineage</span>
+        <span class="chip">Blast radius</span>
+        <span class="chip">Drift detection</span>
+        <span class="chip">Deterministic</span>
+      </div>
+
+      <div class="foot">Python&nbsp;·&nbsp; statistical inference&nbsp;·&nbsp; FDR-controlled drift&nbsp;·&nbsp;
+        observed lineage&nbsp;·&nbsp; <b>1,600+ tests</b></div>
+    </div>
+
+    <div class="right">
+      <div class="shotframe">
+        <div class="shotbar">
+          <span class="dot" style="background:#f87171;"></span>
+          <span class="dot" style="background:#fbbf24;"></span>
+          <span class="dot" style="background:#34d399;"></span>
+        </div>
+        <img class="shot" src="assets/img/blast-radius-map.png" alt="StreamForge cockpit — cross-topic dependency map" />
+      </div>
+    </div>
+  </div>
+</body>
+</html>
