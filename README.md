@@ -1,123 +1,95 @@
-# StreamForge — CI Guardrail for Data Pipelines
+# StreamForge
 
-> Like a type checker for your Kafka event streams. Catches breaking changes before they deploy.
+> **Know what's in your event streams — and what breaks when you change them.**
+> Read-only schema discovery, cross-topic lineage, and drift detection for Kafka, SQS and message queues.
 
-## The problem in one sentence
+Most event estates have no enforced contract: hundreds of topics and queues, some built years
+ago by people who've moved on, some external feeds you can't change. A producer renames one
+field and downstream systems break hours later — and nobody can say what depended on it.
 
-Every team running Kafka is one silent field rename away from a production incident.
-When a producer changes "amount" to "amount_minor_units" without telling anyone, fraud
-models degrade, ledgers go off by 100x, and engineers lose hours debugging before
-the root cause surfaces.
+StreamForge **infers the contract directly from the messages** — read-only, no producer
+changes, no registry to adopt — then watches for breaking drift and shows the **blast radius**
+of a change across topics and consumers before it ships.
 
-## How it works
+## What it does
 
-- **Learn once** — one LLM call ($0.02) infers a typed schema from your live events
-- **Watch free** — continuous statistical drift detection runs every 30 seconds, zero LLM cost
-- **Block in CI** — `streamforge plan` exits 1 on breaking drift, blocking merges automatically
+- **Discover** — sample live traffic and infer a typed schema per stream (types, presence
+  rates, enums, PII), written as version-controlled YAML. Deterministic by default.
+- **Map** — a cross-topic dependency graph: where each field lives, where the *same field is
+  typed differently across teams*, and which consumers read it (including a runtime observer
+  that records the fields consumers *actually* access).
+- **Watch** — statistical drift detection (binomial-z, chi-squared, PSI) under
+  Benjamini–Hochberg FDR control, so hundreds of simultaneously-tested fields don't drown
+  you in false positives. Every alert carries its evidence (test, p-value, effect size).
+- **Block** — `streamforge plan` exits 1 on breaking drift; plug it into any CI pipeline.
 
----
+## Quickstart (2 minutes, no Kafka, no API key)
 
-## 5-minute quickstart
-
-### Prerequisites
-
-- Python 3.11+
-- Kafka running (or use the included demo: `bash demo/reset.sh`)
-- Groq API key (free at [console.groq.com](https://console.groq.com))
-
-### Install
-
-```bash
-pip install streamforge-cli
-```
-
-### See your governance posture
+Runs fully offline against the bundled sample streams:
 
 ```bash
-streamforge discover --brokers localhost:9092
-# Output: Discovered 47 topics | Monitored (0) | Unmonitored (47)
-# Every unmonitored topic is a schema incident waiting to happen.
+git clone https://github.com/nskq4b6gmv-rgb/streamforge-mvp.git
+cd streamforge-mvp
+pip install -e .
+
+# 1. Infer a schema — deterministic, no LLM, no key
+python -m streamforge init events/payments/stream_v1 --offline
+
+# 2. Prove it works — scores itself against hand-labelled ground truth
+python -m streamforge eval
+
+# 3. Detect drift — compare a drifted stream against the contract (exits 1)
+python -m streamforge plan events/payments/stream_v2_drift \
+    --schema schemas/stream_v1/schema.yaml
 ```
 
-### Infer your first schema
-
-```bash
-export GROQ_API_KEY=gsk_...
-streamforge init kafka://events.payments --brokers localhost:9092
-# Writes schemas/events.payments/schema.yaml — commit it to Git.
-```
-
-### Watch for drift
-
-```bash
-streamforge watch kafka://events.payments --brokers localhost:9092
-# Polls every 30s. Alerts on breaking changes. Zero cost per cycle.
-```
-
-### Block drift in CI
-
-```bash
-streamforge plan kafka://events.payments --brokers <brokers>
-# Exits 0 (clean) or 1 (breaking drift found) — plug into any CI pipeline.
-```
-
----
-
-## CI Integration (GitHub Action)
-
-```yaml
-- uses: streamforge/streamforge-action@v1
-  with:
-    brokers: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-    topic: events.payments
-    api-key: ${{ secrets.GROQ_API_KEY }}
-```
-
-PRs that introduce schema drift fail the status check and are blocked from merging.
-See [streamforge-action/README.md](streamforge-action/README.md) for full configuration.
-
----
+With a real broker: `streamforge discover --brokers localhost:9092`, then
+`init kafka://<topic>` / `watch kafka://<topic>`. An optional LLM (any OpenAI-compatible
+endpoint, self-hosted included) adds semantic types (uuid / email / timestamp) on first
+sight of a novel shape; a structural-fingerprint cache means repeated shapes never call
+it again.
 
 ## Commands
 
-| Command | What it does | When to use it |
-|---------|-------------|----------------|
-| `init` | Infer schema from event sample (LLM, one-time) | First time on a new topic |
-| `watch` | Continuous drift monitoring loop | Always-on production monitoring |
-| `plan` | One-shot drift check, exits 1 on breaking drift | CI/CD pipeline gate |
-| `discover` | List all Kafka topics with governance status | Kickoff — see your exposure |
-| `profile` | Multi-schema profiling for mixed-event-type streams | Topics with multiple event types |
-| `report` | Print current schema and drift history | Debugging, auditing |
-| `incident-report` | Structured summary of past drift incidents | Sharing with engineering managers |
-| `export` | Convert schema to JSON Schema, Avro, Protobuf, Flink, ksqlDB | Downstream integration |
-| `kafka-ping` | Connectivity check — exits 0 if reachable | Pre-flight checks, health probes |
+| Command | What it does |
+|---------|--------------|
+| `discover` | Inventory every topic/queue with governance status |
+| `init` | Infer a schema from live events (`--offline` = deterministic, no LLM) |
+| `watch` | Continuous drift monitoring loop |
+| `plan` | One-shot drift check — exits 1 on breaking drift (CI gate) |
+| `eval` | Score inference + drift against labelled benchmarks (P/R/F1, calibration) |
+| `profile` | Multi-schema profiling for mixed-event-type topics |
+| `report` / `incident-report` | Schema + drift history, structured incident summaries |
+| `export` | Convert schemas to JSON Schema, Avro, Protobuf, Flink DDL, ksqlDB |
 
----
+A React cockpit (`cockpit/` + `streamforge/api/`) visualises the cross-topic dependency
+map, per-field blast radius and drift evidence. A CI example lives in `streamforge-action/`.
 
-## Architecture in one paragraph
+## Where it fits (honestly)
 
-StreamForge uses an LLM exactly once per stream to infer a typed schema from a sample
-of real production events. After that, all drift detection is pure statistics: binomial
-z-tests for presence rate changes, chi-squared tests for type distribution shifts, and
-PSI for numeric field drift. The LLM cost is a one-time $0.02 bootstrapping fee. Every
-subsequent monitoring cycle costs $0.00. Schemas are stored as human-readable YAML files,
-committed to Git, and diff-able in pull requests — schema as code, not a proprietary registry.
+| You have | Use |
+|----------|-----|
+| Avro/Protobuf discipline + Confluent/Glue registry on Kafka | **Keep your registry.** StreamForge adds statistical drift, cross-topic lineage, and coverage of what the registry can't see — and can push schemas to it. |
+| Raw-JSON topics, legacy MQ (SQS/IBM MQ), external partner feeds | This is the gap StreamForge is built for: contracts inferred from the wire, with no registration and no producer changes. |
+| A data catalog (DataHub/OpenMetadata/Collibra) | StreamForge complements it — stream-level inference and drift can feed the catalog, not replace it. |
 
----
+**Assumptions & limits:** inference is sampling-based; works best on self-describing payloads
+(JSON/text); topic-level consumer discovery is automatic from broker metadata, field-level
+observed lineage needs a thin read-only wrapper in the consumer; this is a young project —
+not yet battle-tested at large scale.
 
-## Design partner program
+## How it's built
 
-We are looking for 5 design partner companies — Series B+ fintechs or data-heavy
-engineering teams running Kafka with 3+ producing teams who have had at least one
-schema-related incident in the past 6 months.
-
-Offer: free deployment (we handle setup in under 1 hour), 30-day trial on one Kafka
-topic, no contract. In exchange: a monthly feedback call and a quote if value delivered.
-
-Contact: [your email]
-
----
+~29k lines of Python, **1,600+ tests**, CI-enforced coverage and type-checking on new code.
+Types are inferred by typed-frequency analysis and quorum voting with per-field
+Wilson-interval confidence. All inference is deterministic by default — same input, same
+result — and nothing leaves your network in offline mode. A reproducible eval harness scores
+the system against hand-labelled benchmarks: on the bundled streams, schema F1 0.93, PII F1
+0.86, 0% false positives on clean data, calibration error (ECE) ≈ 0.10 (deterministic path;
+run `streamforge eval` to reproduce). Connectors (Kafka, SQS, IBM MQ) sit behind a
+source-agnostic read interface, so the inference/mapping/drift engine never depends on the
+transport.
 
 ## License
 
-MIT
+[Apache-2.0](LICENSE)
