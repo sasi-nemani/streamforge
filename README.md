@@ -28,8 +28,8 @@ of a change across topics and consumers before it ships.
 Runs fully offline against the bundled sample streams:
 
 ```bash
-git clone https://github.com/nskq4b6gmv-rgb/streamforge-mvp.git
-cd streamforge-mvp
+git clone https://github.com/sasi-nemani/streamforge.git
+cd streamforge
 pip install -e .
 
 # 1. Infer a schema — deterministic, no LLM, no key

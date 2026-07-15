@@ -69,7 +69,7 @@ Once published, update `schema-guard.yml` in this repo to reference the marketpl
 
 The action installs StreamForge from the GitHub source:
 ```
-pip install git+https://github.com/nskq4b6gmv-rgb/streamforge-mvp.git@main
+pip install git+https://github.com/sasi-nemani/streamforge.git@main
 ```
 
 Once the package is published to PyPI as `streamforge-cli`, update this to:

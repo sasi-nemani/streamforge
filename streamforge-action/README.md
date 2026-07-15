@@ -82,7 +82,7 @@ That's it. StreamForge reads your committed `schemas/` files and blocks any PR t
 
 ```bash
 # 1. Install StreamForge CLI locally
-pip install git+https://github.com/nskq4b6gmv-rgb/streamforge-mvp.git
+pip install git+https://github.com/sasi-nemani/streamforge.git
 
 # 2. Discover which topics need schemas
 streamforge discover --brokers $KAFKA_BROKERS

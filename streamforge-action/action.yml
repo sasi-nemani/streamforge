@@ -48,7 +48,7 @@ runs:
       shell: bash
       run: |
         pip install --quiet \
-          "git+https://github.com/nskq4b6gmv-rgb/streamforge-mvp.git@${{ inputs.version }}"
+          "git+https://github.com/sasi-nemani/streamforge.git@${{ inputs.version }}"
 
     - name: Run schema drift gate
       id: gate
